@@ -8,6 +8,7 @@ extends RefCounted
 ## 결과: {winner: 0|1|-1(무승부), survivors, end_time, events, units}
 
 const DT := 0.1
+static var _HANGUL := RegEx.create_from_string("[가-힣]")
 
 var rng := RandomNumberGenerator.new()
 var units: Array = []          # 유닛 런타임 상태 (Dictionary)
@@ -515,7 +516,9 @@ func _normal_attack(u: Dictionary, target: Dictionary) -> void:
 
 func _cast(u: Dictionary, which: String) -> void:
 	var a := GameData.apostle(u["aid"])
-	var sname: String = a.get("skills", {}).get(which, {}).get("name", "저학년 스킬" if which == "fresh" else "고학년 스킬")
+	var sname: String = a.get("skills", {}).get(which, {}).get("name", "")
+	if not _HANGUL.search(sname):
+		sname = "저학년 스킬" if which == "fresh" else "고학년 스킬"
 	_emit("skill", u["i"], -1, 0 if which == "fresh" else 1, sname)
 	var p: float = u["power"]
 	var row: String = a.get("row", "mid")

@@ -64,6 +64,8 @@ static func apostle(box: Control, u: Dictionary, on_art: Callable = Callable(), 
 		nl.clip_text = true
 		nl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		h.add_child(nl)
+		if sk.get("tr", "") == "translated":
+			h.add_child(UI.chip("임시 번역", Color("9aa0b4"), 13))
 		box.add_child(h)
 		box.add_child(UI.wrap_label(sk["desc"], 15))
 	section(box, "어사이드")
@@ -79,6 +81,8 @@ static func apostle(box: Control, u: Dictionary, on_art: Callable = Callable(), 
 		nl.clip_text = true
 		nl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		h.add_child(nl)
+		if asd.get("tr", "") == "translated":
+			h.add_child(UI.chip("임시 번역", Color("9aa0b4"), 13))
 		box.add_child(h)
 		box.add_child(UI.wrap_label(asd["desc"], 15, UI.SUB if on else Color(1, 1, 1, 0.35)))
 	if a.get("aside", {}).is_empty():

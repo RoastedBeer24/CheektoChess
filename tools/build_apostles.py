@@ -47,6 +47,28 @@ def slug(name: str) -> str:
     return s
 
 
+def apply_translations(out):
+    """data/translations_ko.json 의 한국어 번역을 덮어쓴다 (원본이 영어인 사도용).
+    name_src: official(공식 이름 확인) / translated(임시 번역)"""
+    path = os.path.join(ROOT, "data", "translations_ko.json")
+    if not os.path.exists(path):
+        return
+    tr = json.load(open(path, encoding="utf-8"))
+    n = 0
+    for aid, t in tr.items():
+        if aid.startswith("_") or aid not in out:
+            continue
+        for kind, sk in t.get("skills", {}).items():
+            if kind in out[aid]["skills"]:
+                out[aid]["skills"][kind].update({"name": sk["name"], "desc": sk["desc"], "tr": sk.get("name_src", "translated")})
+                n += 1
+        for star, asd in t.get("aside", {}).items():
+            if star in out[aid]["aside"]:
+                out[aid]["aside"][star].update({"name": asd["name"], "desc": asd["desc"], "tr": asd.get("name_src", "translated")})
+                n += 1
+    print(f"번역 적용: {n}개")
+
+
 def main():
     chars = json.load(open(os.path.join(RAW, "lootandwaifus_characters.json"), encoding="utf-8"))
     eldyne = set(json.load(open(os.path.join(RAW, "eldyne_names.json"), encoding="utf-8")))
@@ -89,6 +111,7 @@ def main():
             "skills": skills,
             "aside": aside,
         }
+    apply_translations(out)
     path = os.path.join(ROOT, "data", "apostles.json")
     with open(path, "w", encoding="utf-8") as f:
         json.dump(out, f, ensure_ascii=False, indent=1)
