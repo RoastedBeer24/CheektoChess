@@ -158,7 +158,7 @@ func _build() -> void:
 	iscroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	rv.add_child(iscroll)
 	_inv_grid = GridContainer.new()
-	_inv_grid.columns = 3
+	_inv_grid.columns = 2
 	_inv_grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	iscroll.add_child(_inv_grid)
 
@@ -386,12 +386,7 @@ func _refresh_inventory() -> void:
 	UI.clear(_inv_grid)
 	var p := me()
 	for a in p.get("inv", []):
-		var art := GameData.artifact(a["id"])
-		var b := UI.button(art.get("name", "?"), 16, Vector2(130, 56), UI.GRADE_COLOR[art["grade"]].darkened(0.55))
-		b.clip_text = true
-		b.tooltip_text = art.get("name", "")
-		if sel.get("art", -1) == int(a["uid"]):
-			b.add_theme_stylebox_override("normal", UI.box(UI.GRADE_COLOR[art["grade"]].darkened(0.3), 10, UI.ACCENT, 4))
+		var b := UI.artifact_button(a["id"], Vector2(200, 60), 16, sel.get("art", -1) == int(a["uid"]))
 		var uid := int(a["uid"])
 		b.pressed.connect(func(): _on_art(uid))
 		_inv_grid.add_child(b)
@@ -460,7 +455,8 @@ func _detail_unit(u: Dictionary) -> void:
 	for art in u.get("arts", []):
 		var info := GameData.artifact(art["id"])
 		var fav := " ♥애착" if info.get("owner", "") == a["name"] else ""
-		var b := UI.button("%s [%s]%s" % [info["name"], GameData.grade_name(info["grade"]), fav], 17, Vector2(0, 48), UI.GRADE_COLOR[info["grade"]].darkened(0.55))
+		var b := UI.artifact_button(art["id"], Vector2(0, 56), 17, sel.get("art", -1) == int(art["uid"]))
+		b.text = "%s [%s]%s" % [info["name"], GameData.grade_name(info["grade"]), fav]
 		var uid := int(art["uid"])
 		b.pressed.connect(func(): _on_art(uid))
 		_detail_box.add_child(b)
@@ -470,7 +466,21 @@ func _detail_unit(u: Dictionary) -> void:
 
 func _detail_art(art_id: String) -> void:
 	var a := GameData.artifact(art_id)
-	_detail_box.add_child(UI.label(a["name"], 26, UI.GRADE_COLOR[a["grade"]]))
+	var hb := HBoxContainer.new()
+	hb.add_theme_constant_override("separation", 10)
+	_detail_box.add_child(hb)
+	var ic := UI.artifact_icon(art_id)
+	if ic != null:
+		var tr := TextureRect.new()
+		tr.texture = ic
+		tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		tr.custom_minimum_size = Vector2(72, 72)
+		hb.add_child(tr)
+	var nl := UI.label(a["name"], 26, UI.GRADE_COLOR[a["grade"]])
+	nl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	nl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	hb.add_child(nl)
 	_detail_box.add_child(UI.label("%s 등급%s" % [GameData.grade_name(a["grade"]), " · 글로벌 전용" if a.get("region", "") == "global" else ""], 18, UI.SUB))
 	for k in a.get("stats", {}):
 		_detail_box.add_child(UI.label("%s +%s%%" % [STAT_NAME.get(k, k), str(a["stats"][k])], 19))
@@ -649,11 +659,23 @@ func _show_offer(offer: Dictionary) -> void:
 	for i in offer["options"].size():
 		var art := GameData.artifact(offer["options"][i])
 		var card := UI.panel(UI.GRADE_COLOR[art["grade"]].darkened(0.6), 14)
-		card.custom_minimum_size = Vector2(380, 420)
+		card.custom_minimum_size = Vector2(380, 540)
 		h.add_child(card)
 		var cv := VBoxContainer.new()
 		cv.add_theme_constant_override("separation", 6)
 		card.add_child(cv)
+		var ic := UI.artifact_icon(offer["options"][i])
+		var icon_box := UI.panel(Color(0, 0, 0, 0.35), 10)
+		icon_box.custom_minimum_size = Vector2(0, 110)
+		cv.add_child(icon_box)
+		if ic != null:
+			var tr := TextureRect.new()
+			tr.texture = ic
+			tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+			tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+			icon_box.add_child(tr)
+		else:
+			icon_box.add_child(UI.label("아이콘 없음", 18, UI.SUB, HORIZONTAL_ALIGNMENT_CENTER))
 		cv.add_child(UI.label(art["name"], 26, UI.GRADE_COLOR[art["grade"]]))
 		cv.add_child(UI.label(GameData.grade_name(art["grade"]) + (" · 애착: " + art["owner"] if art.get("owner", "") != "" else ""), 18, UI.SUB))
 		for k in art.get("stats", {}):

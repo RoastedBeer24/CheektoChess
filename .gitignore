@@ -7,3 +7,4 @@
 *.aab
 *.keystore
 export_credentials.cfg
+.asset_cache/

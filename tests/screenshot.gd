@@ -26,7 +26,7 @@ func _ready() -> void:
 	Session.submit({"t": "move", "from": {"bench": 1}, "to": {"board": "1,0"}})
 	Session.submit({"t": "move", "from": {"bench": 2}, "to": {"board": "2,2"}})
 	Session.submit({"t": "move", "from": {"bench": 3}, "to": {"board": "1,2"}, "pers": "우울"})
-	p["inv"] = [{"uid": 90001, "id": "belita_staff"}, {"uid": 90002, "id": "toy_telescope"}, {"uid": 90003, "id": "fox_dagger"}, {"uid": 90004, "id": "emergency_belt"}]
+	p["inv"] = [{"uid": 90001, "id": "belita_staff"}, {"uid": 90002, "id": "kettlebell"}, {"uid": 90003, "id": "life_gem"}, {"uid": 90004, "id": "emergency_belt"}, {"uid": 90005, "id": "jade_codex"}]
 	Session.submit({"t": "equip", "art": 90002, "loc": {"board": "2,2"}})
 	Session.state_changed.emit()
 	await _wait(10)
@@ -39,7 +39,7 @@ func _ready() -> void:
 	await _wait(5)
 	_shot("03_personality")
 	gs._close_modal()
-	p["art_offer"] = {"options": ["rim_scythe", "prickle_seal", "atta_sword"], "rerolled": [false, true, false]}
+	p["art_offer"] = {"options": ["tig_sword", "prickle_seal", "healing_pendant"], "rerolled": [false, true, false]}
 	Session.state_changed.emit()
 	await _wait(5)
 	_shot("04_artifact_offer")

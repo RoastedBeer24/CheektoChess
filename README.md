@@ -4,6 +4,7 @@
 
 - 기획서: [docs/DESIGN.md](docs/DESIGN.md)
 - 진행 상황 / 남은 작업: [docs/STATUS.md](docs/STATUS.md)
+- 에셋 현황 (없는 아이콘 목록): [docs/ASSETS.md](docs/ASSETS.md)
 
 ## 실행 방법 (PC)
 
@@ -42,9 +43,10 @@ scripts/core/        규칙 (네트워크·화면과 무관)
 scripts/net/         LAN (net.gd), 세션·동기화 (session.gd)
 scripts/ui/          화면
 assets/fonts/        Noto Sans KR (SIL OFL)
-assets/portraits/    사도 초상화 넣는 곳 (<사도 id>.png)
+assets/portraits/    사도 초상화 (<사도 id>.webp)
+assets/artifacts/    아티팩트 아이콘 (<아티팩트 id>.png)
 tests/               자동 테스트
-tools/               데이터 변환 스크립트
+tools/               데이터 변환 / 에셋 받기 스크립트 (fetch_assets.py)
 ```
 
 ## 테스트
@@ -64,6 +66,6 @@ godot --headless --path . res://tests/lan_test.tscn -- client
 
 ## 데이터 출처 / 라이선스
 
-- 사도·아티팩트 정보: [lootandwaifus.com](https://lootandwaifus.com), 나무위키 「트릭컬 리바이브/카드/아티팩트」 (CC BY-NC-SA 2.0 KR)
+- 사도·아티팩트 정보, 초상화·아이콘 이미지: [lootandwaifus.com](https://lootandwaifus.com), 나무위키 「트릭컬 리바이브/카드/아티팩트」 (CC BY-NC-SA 2.0 KR)
 - 트릭컬 리바이브의 캐릭터와 설정의 권리는 원저작자(에피드게임즈)에게 있습니다. 비상업적 팬게임입니다.
 - 폰트: Noto Sans KR — SIL Open Font License 1.1 (`assets/fonts/OFL.txt`)

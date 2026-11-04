@@ -11,6 +11,7 @@ var _hp_bg: ColorRect
 var _hp: ColorRect
 var _shield: ColorRect
 var _arts: HBoxContainer
+var _strip: PanelContainer
 var _color := Color.GRAY
 var selected := false
 var highlight := false
@@ -35,19 +36,27 @@ func _init(size: Vector2 = Vector2(140, 140)) -> void:
 	v.add_theme_constant_override("separation", 0)
 	add_child(v)
 	_stars = UI.label("", 18, UI.ACCENT)
+	_stars.add_theme_color_override("font_outline_color", Color.BLACK)
+	_stars.add_theme_constant_override("outline_size", 5)
 	v.add_child(_stars)
 	var spacer := Control.new()
 	spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	v.add_child(spacer)
-	_name = UI.label("", 20, UI.TEXT, HORIZONTAL_ALIGNMENT_CENTER)
-	_name.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_name.add_theme_color_override("font_outline_color", Color.BLACK)
-	_name.add_theme_constant_override("outline_size", 6)
-	v.add_child(_name)
-	_sub = UI.label("", 15, UI.SUB, HORIZONTAL_ALIGNMENT_CENTER)
-	_sub.add_theme_color_override("font_outline_color", Color.BLACK)
-	_sub.add_theme_constant_override("outline_size", 2)
-	v.add_child(_sub)
+	# 이름 띠: 초상화 위에서도 읽히도록 반투명 어두운 배경
+	_strip = PanelContainer.new()
+	var sb := UI.box(Color(0, 0, 0, 0.62), 6)
+	sb.set_content_margin_all(2)
+	_strip.add_theme_stylebox_override("panel", sb)
+	v.add_child(_strip)
+	var sv := VBoxContainer.new()
+	sv.add_theme_constant_override("separation", -2)
+	_strip.add_child(sv)
+	_name = UI.label("", 19, UI.TEXT, HORIZONTAL_ALIGNMENT_CENTER)
+	_name.clip_text = true
+	sv.add_child(_name)
+	_sub = UI.label("", 14, UI.SUB, HORIZONTAL_ALIGNMENT_CENTER)
+	_sub.clip_text = true
+	sv.add_child(_sub)
 	_arts = HBoxContainer.new()
 	_arts.alignment = BoxContainer.ALIGNMENT_CENTER
 	_arts.add_theme_constant_override("separation", 3)
@@ -63,7 +72,7 @@ func _init(size: Vector2 = Vector2(140, 140)) -> void:
 	_shield.color = Color(1, 1, 1, 0.8)
 	_hp_bg.add_child(_shield)
 	_hp_bg.visible = false
-	for c in [_tex, v, _stars, _name, _sub, _arts, _hp_bg, _hp, _shield, spacer]:
+	for c in [_tex, v, _stars, _name, _sub, _arts, _hp_bg, _hp, _shield, spacer, _strip, sv]:
 		c.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	set_empty("")
 
@@ -76,6 +85,7 @@ func set_empty(hint: String = "") -> void:
 	_name.add_theme_color_override("font_color", UI.SUB)
 	_sub.text = ""
 	_stars.text = ""
+	_strip.visible = hint != ""
 	UI.clear(_arts)
 	_hp_bg.visible = false
 	_refresh_style()
@@ -91,14 +101,33 @@ func set_unit(unit: Dictionary, sub_text: String = "") -> void:
 	_name.add_theme_color_override("font_color", UI.TEXT)
 	_stars.text = UI.stars(int(unit.get("star", 0)))
 	_sub.text = sub_text
+	_sub.visible = sub_text != ""
+	_strip.visible = true
 	UI.clear(_arts)
 	for art in unit.get("arts", []):
-		var g: String = GameData.artifact(art["id"] if art is Dictionary else art).get("grade", "common")
-		var dot := ColorRect.new()
-		dot.custom_minimum_size = Vector2(14, 14)
-		dot.color = UI.GRADE_COLOR[g]
-		dot.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		_arts.add_child(dot)
+		var art_id: String = art["id"] if art is Dictionary else art
+		var g: String = GameData.artifact(art_id).get("grade", "common")
+		var frame := PanelContainer.new()
+		var st := UI.box(Color(0, 0, 0, 0.55), 4, UI.GRADE_COLOR[g], 2)
+		st.set_content_margin_all(1)
+		frame.add_theme_stylebox_override("panel", st)
+		frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var tex := UI.artifact_icon(art_id)
+		if tex != null:
+			var tr := TextureRect.new()
+			tr.texture = tex
+			tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+			tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+			tr.custom_minimum_size = Vector2(22, 22)
+			tr.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			frame.add_child(tr)
+		else:
+			var dot := ColorRect.new()
+			dot.custom_minimum_size = Vector2(18, 18)
+			dot.color = UI.GRADE_COLOR[g]
+			dot.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			frame.add_child(dot)
+		_arts.add_child(frame)
 	_refresh_style()
 
 

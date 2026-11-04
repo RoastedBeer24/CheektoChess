@@ -90,6 +90,31 @@ static func portrait(aid: String) -> Texture2D:
 	return null
 
 
+## 아티팩트 아이콘 (assets/artifacts/<id>.png 가 있으면 사용)
+static func artifact_icon(id: String) -> Texture2D:
+	for ext in ["png", "webp", "jpg"]:
+		var path := "res://assets/artifacts/%s.%s" % [id, ext]
+		if ResourceLoader.exists(path):
+			return load(path)
+	return null
+
+
+## 아티팩트 버튼 (아이콘 + 이름, 등급 색 테두리)
+static func artifact_button(id: String, size: Vector2 = Vector2(130, 64), font: int = 15, selected: bool = false) -> Button:
+	var art := GameData.artifact(id)
+	var g: String = art.get("grade", "common")
+	var col: Color = GRADE_COLOR[g]
+	var b := button(art.get("name", "?"), font, size, col.darkened(0.6))
+	b.add_theme_stylebox_override("normal", box(col.darkened(0.6 if not selected else 0.3), 10, ACCENT if selected else col.darkened(0.1), 4 if selected else 2))
+	b.icon = artifact_icon(id)
+	b.expand_icon = true
+	b.add_theme_constant_override("icon_max_width", int(size.y) - 14)
+	b.alignment = HORIZONTAL_ALIGNMENT_LEFT
+	b.clip_text = true
+	b.tooltip_text = art.get("name", "")
+	return b
+
+
 static func clear(node: Node) -> void:
 	for c in node.get_children():
 		node.remove_child(c)

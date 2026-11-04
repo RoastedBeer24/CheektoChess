@@ -20,6 +20,8 @@ var _banner: Label
 var _field: Control
 var _speed_btn: Button
 var _playing := false
+var _anim := {}           # 유닛 index -> {lunge, dir, flash, pulse, dead} (임시 모션)
+var _clock := 0.0
 
 
 func _ready() -> void:
@@ -53,6 +55,7 @@ func setup(bt: Dictionary, my_side: int, name_a: String, name_b: String) -> void
 	_my_side = my_side
 	UI.clear(_field)
 	_tiles.clear()
+	_anim.clear()
 	_hp.clear()
 	_sh.clear()
 	_banner.text = ""
@@ -72,6 +75,8 @@ func setup(bt: Dictionary, my_side: int, name_a: String, name_b: String) -> void
 		tile.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		_field.add_child(tile)
 		_tiles[u["i"]] = tile
+		_anim[u["i"]] = {"lunge": 0.0, "dir": Vector2.ZERO, "flash": 0.0, "pulse": 0.0, "dead": false}
+		tile.pivot_offset = TILE / 2.0
 		_hp[u["i"]] = float(u["max_hp"])
 		_sh[u["i"]] = 0.0
 	_layout()
@@ -104,7 +109,11 @@ func _update_bars() -> void:
 
 
 func _process(delta: float) -> void:
-	if not _playing or not visible:
+	if not visible:
+		return
+	_clock += delta
+	_animate(delta)
+	if not _playing:
 		return
 	_t += delta * _speed
 	var changed := false
@@ -125,6 +134,7 @@ func _apply(e: Array) -> void:
 	match kind:
 		"dmg":
 			_hp[dst] = float(e[6])
+			_anim[dst]["flash"] = 0.18
 			_sh[dst] = float(e[7])
 			var crit := String(e[5]).ends_with("!")
 			_float(dst, str(int(e[4])) + ("!" if crit else ""), UI.ACCENT if crit else Color.WHITE, 30 if crit else 22)
@@ -137,12 +147,11 @@ func _apply(e: Array) -> void:
 		"attack":
 			_lunge(src, dst)
 		"skill":
+			_anim[src]["pulse"] = 0.35
 			_float(src, String(e[5]), UI.ACCENT if int(e[4]) == 1 else Color("9fd3ff"), 22, -40)
 		"death":
 			_hp[dst] = 0.0
-			var t: UnitTile = _tiles[dst]
-			var tw := create_tween()
-			tw.tween_property(t, "modulate", Color(1, 1, 1, 0.25), 0.4)
+			_anim[dst]["dead"] = true
 		"status":
 			var names := {"stun": "기절", "burn": "화상", "bitter": "쓰라림", "shock": "감전", "blind": "눈가림"}
 			_float(dst, names.get(String(e[5]), String(e[5])), Color("ffb3e6"), 18)
@@ -188,9 +197,38 @@ func _float(i: int, text: String, color: Color, fsize: int, dy: float = 0.0) -> 
 func _lunge(src: int, dst: int) -> void:
 	if not _tiles.has(src) or not _tiles.has(dst):
 		return
-	var t: UnitTile = _tiles[src]
-	var home: Vector2 = t.position
-	var dir: Vector2 = (_tiles[dst].position - home).normalized() * 16.0
-	var tw := create_tween()
-	tw.tween_property(t, "position", home + dir, 0.07)
-	tw.tween_property(t, "position", home, 0.1)
+	_anim[src]["lunge"] = 0.18
+	_anim[src]["dir"] = (_tiles[dst].position - _tiles[src].position).normalized()
+
+
+## 임시 모션: 대기 중 흔들림, 공격 시 돌진, 피격 시 붉게 깜빡임, 스킬 시 커짐, 쓰러지면 흐려짐.
+## 사도별 모션 에셋을 받으면 이 부분을 교체한다.
+func _animate(delta: float) -> void:
+	for u in _units:
+		var i: int = u["i"]
+		if not _tiles.has(i):
+			continue
+		var t: UnitTile = _tiles[i]
+		var a: Dictionary = _anim[i]
+		var pos := _cell_pos(u)
+		if a["dead"]:
+			t.position = pos + Vector2(0, 6)
+			t.modulate = t.modulate.lerp(Color(0.5, 0.5, 0.5, 0.25), minf(1.0, delta * 6.0))
+			t.scale = Vector2.ONE
+			continue
+		pos.y += sin(_clock * 3.0 + i * 0.9) * 3.0
+		if a["lunge"] > 0.0:
+			a["lunge"] = maxf(0.0, a["lunge"] - delta)
+			var k: float = sin((1.0 - a["lunge"] / 0.18) * PI)
+			pos += a["dir"] * 18.0 * k
+		t.position = pos
+		if a["flash"] > 0.0:
+			a["flash"] = maxf(0.0, a["flash"] - delta)
+			t.modulate = Color(1.0, 0.55, 0.55)
+		else:
+			t.modulate = Color.WHITE
+		if a["pulse"] > 0.0:
+			a["pulse"] = maxf(0.0, a["pulse"] - delta)
+			t.scale = Vector2.ONE * (1.0 + 0.12 * sin((1.0 - a["pulse"] / 0.35) * PI))
+		else:
+			t.scale = Vector2.ONE
