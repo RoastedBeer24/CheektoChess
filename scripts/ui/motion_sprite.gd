@@ -73,7 +73,13 @@ func has_anim(anim: String) -> bool:
 
 
 ## anim 재생. loop=false 면 끝나면 then 으로 (hold_last 면 마지막 프레임 유지)
+const FALLBACK := {"Ultimate1_1": "Skill1_1", "Skill1_1": "Attack1_1", "Groggy": "Idle", "Move": "Idle"}
+
+
 func play(anim: String, loop: bool = true, then: String = "Idle", hold_last: bool = false, loop_for: float = -1.0) -> void:
+	# 없는 동작은 비슷한 동작으로 (예: 궁극기 없음 → 저학년 스킬)
+	while not has_anim(anim) and FALLBACK.has(anim):
+		anim = FALLBACK[anim]
 	if not has_anim(anim):
 		if anim != "Idle" and has_anim("Idle") and not hold_last:
 			anim = "Idle"

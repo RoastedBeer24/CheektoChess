@@ -41,6 +41,27 @@ static func apostle(box: Control, u: Dictionary, on_art: Callable = Callable(), 
 	var pf := UI.panel(UI.pers_color(aid, u.get("pers", "")).darkened(0.55), 12, UI.pers_color(aid, u.get("pers", "")), 3)
 	pf.add_child(UI.tex_rect(UI.portrait(aid), Vector2(96, 96), true))
 	head.add_child(pf)
+	# 전투 모션 미리보기 (누르면 공격 → 스킬 → 궁극기 순서로)
+	if MotionSprite.available(aid):
+		var mb := Button.new()
+		mb.custom_minimum_size = Vector2(110, 120)
+		mb.focus_mode = Control.FOCUS_NONE
+		mb.add_theme_stylebox_override("normal", UI.box(Color(0, 0, 0, 0.18), 12))
+		mb.add_theme_stylebox_override("hover", UI.box(Color(1, 1, 1, 0.06), 12))
+		mb.add_theme_stylebox_override("pressed", UI.box(Color(0, 0, 0, 0.3), 12))
+		var sp := MotionSprite.new(aid)
+		sp.face_right = true
+		sp.box = 150.0
+		sp.size = Vector2(110, 112)
+		sp.position = Vector2(0, 0)
+		mb.add_child(sp)
+		Tips.set_tip(mb, "전투 모션 — 누르면 공격·스킬·궁극기 동작")
+		var seq := ["Attack1_1", "Skill1_1", "Ultimate1_1"]
+		var state := {"i": 0}
+		mb.pressed.connect(func():
+			sp.play(seq[state["i"] % seq.size()], false, "Idle")
+			state["i"] += 1)
+		head.add_child(mb)
 	var hv := VBoxContainer.new()
 	hv.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	head.add_child(hv)

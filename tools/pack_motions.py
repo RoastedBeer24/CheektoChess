@@ -26,6 +26,45 @@ TARGET_FPS = 8.0
 QUALITY = 78
 MAX_COLS = 12
 FEET = 461 / 512
+STD_FEET = 461        # 512 원본에서 발 위치
+STD_CX = 256          # 512 원본에서 가운데
+STD_H = 360           # 대기 모습 기준 키 (원본 px)
+MIN_H, MAX_H = 0.8, 1.15   # 기준 키의 이 비율 밖이면 크기를 맞춤 (너무 작거나 큰 모델)
+
+
+def idle_box(src_dir):
+    """대기 첫 프레임에서 사도 모습의 범위 (x0, y0, x1, y1)"""
+    d = os.path.join(src_dir, "Idle")
+    frames = sorted(f for f in os.listdir(d) if f.endswith(".png"))
+    im = Image.open(os.path.join(d, frames[0])).convert("RGBA")
+    return im.getchannel("A").point(lambda a: 255 if a > 16 else 0).getbbox()
+
+
+def normalizer(src_dir):
+    """사도마다 위치·크기를 맞추는 변환 (배율, x 이동, y 이동) — 원본 512 기준"""
+    box = idle_box(src_dir)
+    if not box:
+        return 1.0, 0.0, 0.0
+    x0, y0, x1, y1 = box
+    h = max(1, y1 - y0)
+    s = 1.0
+    if h < STD_H * MIN_H:
+        s = min(2.0, STD_H * MIN_H / h)
+    elif h > STD_H * MAX_H:
+        s = STD_H * MAX_H / h
+    cx = (x0 + x1) / 2
+    return s, STD_CX - cx * s, STD_FEET - y1 * s
+
+
+def transform(im, norm):
+    s, dx, dy = norm
+    if abs(s - 1.0) < 0.01 and abs(dx) < 2 and abs(dy) < 2:
+        return im
+    w = round(512 * s)
+    scaled = im.resize((w, w), Image.LANCZOS) if abs(s - 1.0) >= 0.01 else im
+    out = Image.new("RGBA", (512, 512), (0, 0, 0, 0))
+    out.paste(scaled, (round(dx), round(dy)), scaled)
+    return out
 
 
 def pack_one(src_dir: str, aid: str) -> int:
@@ -35,7 +74,9 @@ def pack_one(src_dir: str, aid: str) -> int:
     step = max(1, round(fps / TARGET_FPS))
     out_dir = os.path.join(OUT, aid)
     os.makedirs(out_dir, exist_ok=True)
-    meta = {"size": SIZE, "fps": round(fps / step, 3), "facing": "left", "feet": round(FEET, 4), "anims": {}}
+    norm = normalizer(src_dir)
+    meta = {"size": SIZE, "fps": round(fps / step, 3), "facing": "left", "feet": round(FEET, 4), "anims": {},
+            "norm": [round(norm[0], 3), round(norm[1], 1), round(norm[2], 1)]}
     total = 0
     for anim in ANIMS:
         d = os.path.join(src_dir, anim)
@@ -51,6 +92,7 @@ def pack_one(src_dir: str, aid: str) -> int:
             im = Image.open(os.path.join(d, f)).convert("RGBA")
             if im.size != (512, 512):
                 im = im.resize((512, 512), Image.LANCZOS)
+            im = transform(im, norm)
             im = im.resize((SIZE, SIZE), Image.LANCZOS)
             sheet.paste(im, ((i % cols) * SIZE, (i // cols) * SIZE))
         path = os.path.join(out_dir, anim + ".webp")
@@ -67,16 +109,13 @@ def main():
     ids = sys.argv[2:] or sorted(d for d in os.listdir(src) if os.path.isdir(os.path.join(src, d)))
     os.makedirs(OUT, exist_ok=True)
     open(os.path.join(OUT, ".gdignore"), "w").close()
-    grand = 0
-    for aid in ids:
-        d = os.path.join(src, aid)
-        if not os.path.isdir(d):
-            print("없음:", aid)
-            continue
-        b = pack_one(d, aid)
-        grand += b
+    from multiprocessing import Pool
+    jobs = [(os.path.join(src, aid), aid) for aid in ids if os.path.isdir(os.path.join(src, aid))]
+    with Pool(max(1, (os.cpu_count() or 2))) as pool:
+        sizes = pool.starmap(pack_one, jobs)
+    for (d, aid), b in zip(jobs, sizes):
         print("%-12s %.2f MB" % (aid, b / 1048576))
-    print("합계 %.1f MB" % (grand / 1048576))
+    print("합계 %.1f MB (%d명)" % (sum(sizes) / 1048576, len(sizes)))
 
 
 if __name__ == "__main__":

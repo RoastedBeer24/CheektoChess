@@ -16,16 +16,20 @@ func _ready() -> void:
 	add_child(bv)
 	await get_tree().process_frame
 	var a := [
-		{"aid": "butter", "star": 2, "row": 2, "slot": 0, "arts": [], "pers": ""},
-		{"aid": "aya", "star": 2, "row": 1, "slot": 1, "arts": [], "pers": ""},
+		{"aid": "canna", "star": 2, "row": 2, "slot": 0, "arts": [], "pers": ""},
+		{"aid": "meluna", "star": 2, "row": 2, "slot": 1, "arts": [], "pers": ""},
+		{"aid": "kishya", "star": 2, "row": 1, "slot": 0, "arts": [], "pers": ""},
+		{"aid": "joanne", "star": 2, "row": 1, "slot": 2, "arts": [], "pers": "순수"},
 		{"aid": "rohne", "star": 2, "row": 0, "slot": 1, "arts": [], "pers": ""},
-		{"aid": "selene", "star": 1, "row": 0, "slot": 2, "arts": [], "pers": ""},
+		{"aid": "allet", "star": 1, "row": 0, "slot": 2, "arts": [], "pers": ""},
 	]
 	var b := [
-		{"aid": "aya", "star": 1, "row": 1, "slot": 0, "arts": [], "pers": ""},
-		{"aid": "butter", "star": 1, "row": 2, "slot": 2, "arts": [], "pers": ""},
-		{"aid": "bigwood", "star": 2, "row": 0, "slot": 1, "arts": [], "pers": ""},
+		{"aid": "amelia", "star": 1, "row": 2, "slot": 0, "arts": [], "pers": ""},
+		{"aid": "daya", "star": 1, "row": 2, "slot": 2, "arts": [], "pers": ""},
+		{"aid": "mayo", "star": 1, "row": 2, "slot": 1, "arts": [], "pers": ""},
+		{"aid": "raika", "star": 2, "row": 0, "slot": 1, "arts": [], "pers": ""},
 		{"aid": "kommy", "star": 1, "row": 0, "slot": 0, "arts": [], "pers": ""},
+		{"aid": "guin", "star": 1, "row": 0, "slot": 2, "arts": [], "pers": ""},
 	]
 	bv.setup({"army_a": a, "army_b": b, "seed": 5}, 0, "우리 편", "상대")
 	for t in [0.6, 2.2, 4.5, 9.0]:
