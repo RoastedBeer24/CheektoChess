@@ -1,6 +1,8 @@
 # 콘텐츠 업데이트 자동 배포
 # 게임 코드·데이터·그림이 바뀌어 푸시되면 업데이트 묶음(core.pck, art.pck)을 만들어
 # GitHub 릴리스로 올린다. 게임은 실행할 때 releases/latest 의 manifest.json 을 확인해 바뀐 묶음만 받는다.
+# Windows 실행 파일(zip)도 함께 만들어 올린다. 실행 파일의 시작 화면 버전(boot.gd BASE_VERSION)이
+# 오르면 PC 게임은 실행할 때 새 실행 파일로 스스로 바꾼다 (manifest.json 의 desktop 항목).
 name: content-release
 
 on:
@@ -13,6 +15,11 @@ on:
       - "assets/portraits/**"
       - "assets/artifacts/**"
       - "assets/icons/**"
+      - "assets/icon.png"
+      - "assets/fonts/**"
+      - "boot/**"
+      - "project.godot"
+      - "export_presets.cfg"
       - "tools/build_packs.gd"
       - ".github/workflows/content-release.yml"
   workflow_dispatch:
@@ -53,6 +60,57 @@ jobs:
           ./godot --headless --path . -s res://tools/build_packs.gd -- out "$BUILD"
           cat out/manifest.json
 
+      - name: 내보내기 템플릿 캐시
+        id: tpl
+        uses: actions/cache@v4
+        with:
+          path: ~/.local/share/godot/export_templates
+          key: godot-templates-${{ env.GODOT_VERSION }}-windows-x64
+
+      - name: 내보내기 템플릿 받기 (Windows만)
+        if: steps.tpl.outputs.cache-hit != 'true'
+        run: |
+          VER_DIR="${GODOT_VERSION/-/.}"
+          DEST="$HOME/.local/share/godot/export_templates/$VER_DIR"
+          mkdir -p "$DEST"
+          curl -sSL -o tpl.tpz "https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}/Godot_v${GODOT_VERSION}_export_templates.tpz"
+          unzip -j -o tpl.tpz templates/windows_release_x86_64.exe templates/windows_debug_x86_64.exe templates/version.txt -d "$DEST"
+          rm tpl.tpz
+          ls -la "$DEST"
+
+      - name: Windows 실행 파일 만들기
+        run: |
+          # 실행 파일 안에 넣을 기본 묶음 (처음 실행할 때 바로 최신 내용)
+          mkdir -p packs win
+          cp out/core.pck out/art.pck packs/
+          cp out/manifest.json packs/index.json
+          ./godot --headless --path . --export-release "Windows Desktop" win/CheektoChess.exe
+          ls -la win
+          cat > win/README.txt <<'TXT'
+          볼토체스 (트릭컬 팬게임) - Windows
+
+          1. CheektoChess.exe 를 원하는 폴더(예: 바탕 화면, 문서)에 두고 실행하세요.
+             Program Files 처럼 쓰기 권한이 없는 폴더는 자동 업데이트가 안 될 수 있습니다.
+          2. 처음 실행할 때 "Windows의 PC 보호" 창이 뜨면 [추가 정보] → [실행]을 누르세요.
+             (코드 서명 인증서가 없는 개인 제작 프로그램이라 뜨는 안내입니다.)
+          3. LAN 방을 만들 때 방화벽 창이 뜨면 "개인 네트워크"를 허용하세요.
+          4. 게임 내용은 실행할 때마다 자동으로 업데이트됩니다. 실행 파일이 바뀌어야 하는
+             업데이트도 자동으로 받아 바꾼 뒤 다시 시작합니다.
+          5. F11 또는 Alt+Enter: 전체 화면 전환. 창 크기·위치는 기억됩니다.
+          TXT
+          (cd win && zip -9 -q ../out/CheektoChess-windows.zip CheektoChess.exe README.txt)
+          BASE=$(grep -oP '^const BASE_VERSION := \K[0-9]+' boot/boot.gd)
+          python3 - "$BASE" <<'PY'
+          import hashlib, json, os, sys
+          z = "out/CheektoChess-windows.zip"
+          m = json.load(open("out/manifest.json"))
+          m["desktop"] = {"windows": {
+              "base": int(sys.argv[1]), "file": os.path.basename(z), "exe": "CheektoChess.exe",
+              "sha256": hashlib.sha256(open(z, "rb").read()).hexdigest(), "size": os.path.getsize(z)}}
+          json.dump(m, open("out/manifest.json", "w"), ensure_ascii=False, indent=1)
+          print(m["desktop"])
+          PY
+
       - name: 릴리스 올리기
         env:
           GH_TOKEN: ${{ github.token }}
@@ -62,11 +120,11 @@ jobs:
           # GitHub 일시 오류(5xx)에 대비해 재시도. 릴리스가 이미 생겼으면 파일만 다시 올린다.
           for i in 1 2 3 4 5; do
             if gh release view "$TAG" >/dev/null 2>&1; then
-              gh release upload "$TAG" out/manifest.json out/core.pck out/art.pck --clobber && gh release edit "$TAG" --latest && exit 0
+              gh release upload "$TAG" out/manifest.json out/core.pck out/art.pck out/CheektoChess-windows.zip --clobber && gh release edit "$TAG" --latest && exit 0
             else
-              gh release create "$TAG" out/manifest.json out/core.pck out/art.pck \
+              gh release create "$TAG" out/manifest.json out/core.pck out/art.pck out/CheektoChess-windows.zip \
                 --title "콘텐츠 업데이트 ${VERSION}" \
-                --notes "자동 생성된 게임 콘텐츠 업데이트 (빌드 ${BUILD}, 커밋 ${GITHUB_SHA::7}). 게임 실행 시 자동으로 받습니다." \
+                --notes "자동 생성된 게임 콘텐츠 업데이트 (빌드 ${BUILD}, 커밋 ${GITHUB_SHA::7}). 게임 실행 시 자동으로 받습니다. PC(Windows)는 CheektoChess-windows.zip 을 받아 압축을 풀고 실행하세요." \
                 --target "${GITHUB_SHA}" \
                 --latest && exit 0
             fi

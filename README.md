@@ -27,7 +27,7 @@
 - 누르기→누르기 방식(사도를 누른 뒤 빈칸을 누름)도 그대로 됩니다.
 - 상점 카드 꾹 누르기: 그 칸 잠금. 시너지 꾹 누르기: 상세 정보. 플레이어 이름 누르기: 그 플레이어 보드 보기.
 - 도감: 첫 화면·게임 중 상단의 [도감] 버튼. 이름(초성 가능) 검색과 여러 필터.
-- PC 단축키: D 새로고침 · F 경험치 · E 마우스 아래 사도 판매 · 스페이스 준비/건너뛰기
+- PC 단축키: D 새로고침 · F 경험치 · E 마우스 아래 사도 판매 · 스페이스 준비/건너뛰기 · F11(또는 Alt+Enter) 전체 화면
 - 사도를 고르고 **판매**.
 - 보관함 아티팩트를 누르고 사도를 누르면 장착. 아티팩트를 사도 위로 끌어다 놓아도 장착됩니다.
 - 아티팩트를 고르고 **합성** → 같은 등급의 다른 아티팩트를 누르면 합성. 같은 등급 아티팩트 위로 끌어다 놓아도 합성됩니다.
@@ -40,12 +40,23 @@
   - 게임은 시작할 때 GitHub 릴리스의 `manifest.json`을 확인하고, **바뀐 묶음만** 받습니다 (core ≈ 0.5MB, art ≈ 2.5MB).
   - 인터넷이 없으면 마지막으로 받은 버전으로 실행합니다.
 - **LAN**: 방에 들어갈 때 방장보다 버전이 낮으면, 방장 기기에서 바뀐 묶음만 직접 받습니다 (인터넷 불필요). 받은 뒤 앱을 다시 실행합니다.
-- APK 자체를 다시 설치해야 하는 경우: Godot 엔진 버전 변경, 앱 권한 변경, 시작 화면(`boot/`) 변경. 이때는 `boot/boot.gd`의 `BASE_VERSION`을 올리고 묶음의 `min_base`도 맞춥니다.
+- APK 자체를 다시 설치해야 하는 경우: Godot 엔진 버전 변경, 앱 권한 변경, 시작 화면(`boot/`) 변경. 이때는 `boot/boot.gd`의 `BASE_VERSION`을 올리고, 옛 APK 로는 동작할 수 없는 묶음이면 `min_base`도 맞춥니다.
+
+## PC(Windows) 설치 · 자동 업데이트
+
+- [최신 릴리스](https://github.com/RoastedBeer24/CheektoChess/releases/latest)에서 `CheektoChess-windows.zip`을 받아 압축을 풀고 `CheektoChess.exe`를 실행합니다.
+  - 바탕 화면·문서처럼 쓰기 권한이 있는 폴더에 두세요 (Program Files 는 자동 업데이트가 안 될 수 있음).
+  - 처음 실행할 때 "Windows의 PC 보호" 창이 뜨면 **추가 정보 → 실행** (코드 서명 인증서가 없어서 뜨는 안내).
+  - LAN 방을 만들 때 방화벽 창이 뜨면 **개인 네트워크** 허용.
+- 게임 내용은 안드로이드와 같은 묶음으로 실행할 때 자동 업데이트됩니다.
+- 실행 파일 자체가 바뀌어야 하는 업데이트(`boot/boot.gd`의 `BASE_VERSION` 상승)는 실행할 때 새 실행 파일을 받아 **스스로 바꾼 뒤 다시 시작**합니다.
+  (지금 파일 → `.old` 로 이름 변경, 새 파일을 원래 이름으로. 다음 실행 때 `.old` 삭제. 실패하면 릴리스 페이지를 엽니다.)
+- F11 또는 Alt+Enter 전체 화면, 창 크기·위치 기억. 저장 위치: `%APPDATA%\CheektoChess`.
 
 ### 업데이트 배포 (자동)
 
-`scripts/`, `scenes/`, `data/`, `assets/portraits|artifacts/`가 바뀌어 푸시되면 GitHub Actions(`.github/workflows/content-release.yml`)가
-묶음을 만들어 `content-<빌드번호>` 릴리스로 올립니다. 게임은 항상 최신 릴리스를 봅니다.
+`scripts/`, `scenes/`, `data/`, `assets/`, `boot/` 등이 바뀌어 푸시되면 GitHub Actions(`.github/workflows/content-release.yml`)가
+묶음과 Windows 실행 파일(zip)을 만들어 `content-<빌드번호>` 릴리스로 올립니다. 게임은 항상 최신 릴리스를 봅니다.
 
 ### 직접 빌드
 
@@ -54,6 +65,8 @@
 tools/build_release.sh 1
 # 묶음 + APK (서명 키 환경 변수 필요)
 GODOT_ANDROID_KEYSTORE_RELEASE_PATH=... GODOT_ANDROID_KEYSTORE_RELEASE_USER=cheektochess GODOT_ANDROID_KEYSTORE_RELEASE_PASSWORD=... tools/build_release.sh 1 android
+# 묶음 + Windows 실행 파일
+tools/build_release.sh 1 windows
 ```
 
 필요한 것: Godot 4.7 + 내보내기 템플릿, Android SDK(build-tools), JDK 17 이상. 서명 키는 저장소에 넣지 않습니다.

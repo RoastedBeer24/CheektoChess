@@ -31,6 +31,11 @@ static func start(root: Node) -> void:
 	# 다른 노드가 준비 중일 수 있으므로 지연 추가 (호출한 쪽은 한 프레임 기다린 뒤 사용)
 	root.add_child.call_deferred(net)
 	root.add_child.call_deferred(session)
+	# PC: 전체 화면 전환(F11), 창 크기·위치 기억
+	if OS.has_feature("pc") and DisplayServer.get_name() != "headless" and not OS.has_feature("editor"):
+		var dw := DesktopWindow.new()
+		dw.name = "DesktopWindow"
+		root.add_child.call_deferred(dw)
 
 
 ## 설치된 묶음 정보 {build, packs: {이름: {file, sha256, size}}}
