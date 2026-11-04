@@ -73,7 +73,8 @@ func _init(size: Vector2 = Vector2(140, 140)) -> void:
 	_icons = VBoxContainer.new()
 	_icons.add_theme_constant_override("separation", 1)
 	_icons.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	top.add_child(_icons)
+	_icons.position = Vector2(5, 4)
+	add_child(_icons)   # 흐름 밖에 둬서 이름 띠를 아래로 밀어내지 않게
 	# 가운데 위 알림 (합성 가능·보유 수): 어두운 바탕을 깔아 초상화 위에서도 잘 읽히게
 	var cwrap := CenterContainer.new()
 	cwrap.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -121,12 +122,13 @@ func _init(size: Vector2 = Vector2(140, 140)) -> void:
 	_name.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	sv.add_child(_name)
 	_sub = UI.label("", 14, UI.SUB, HORIZONTAL_ALIGNMENT_CENTER)
+	_sub.add_theme_font_size_override("font_size", 16)   # 칸 안의 보조 글자는 공간이 좁아 조금 작게
 	_sub.clip_text = true
 	_sub.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	sv.add_child(_sub)
 	_hp_bg = ColorRect.new()
 	_hp_bg.color = Color(0, 0, 0, 0.7)
-	_hp_bg.custom_minimum_size = Vector2(0, 12)
+	_hp_bg.custom_minimum_size = Vector2(0, 15)
 	_hp_bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	v.add_child(_hp_bg)
 	_hp = ColorRect.new()
@@ -176,8 +178,26 @@ func _init(size: Vector2 = Vector2(140, 140)) -> void:
 	_lock.position = Vector2(-30, 36)
 	_lock.visible = false
 	add_child(_lock)
-	button_down.connect(func(): held.emit(self))
+	button_down.connect(func():
+		_press_fx(true)
+		held.emit(self))
+	button_up.connect(func(): _press_fx(false))
 	set_empty("")
+
+
+## 누를 때 살짝 작아졌다가 돌아오는 느낌 (눌렸는지 손가락으로도 알 수 있게)
+var _press_tw: Tween
+
+
+func _press_fx(down: bool) -> void:
+	if aid == "" and not down:
+		scale = Vector2.ONE
+		return
+	pivot_offset = size / 2.0
+	if _press_tw:
+		_press_tw.kill()
+	_press_tw = create_tween()
+	_press_tw.tween_property(self, "scale", Vector2(0.95, 0.95) if down else Vector2.ONE, 0.07)
 
 
 func set_empty(hint: String = "") -> void:
@@ -278,7 +298,7 @@ func _set_icons(unit: Dictionary) -> void:
 	var p: String = unit.get("pers", "")
 	if p == "":
 		p = a.get("personality", "")
-	var s := clampf(custom_minimum_size.x * 0.17, 16.0, 30.0)
+	var s := clampf(minf(custom_minimum_size.x, custom_minimum_size.y) * 0.19, 16.0, 30.0)
 	for key in [p, a.get("race", ""), "엘다인" if a.get("eldyne", false) else ""]:
 		var tex := UI.trait_icon(key)
 		if tex != null:

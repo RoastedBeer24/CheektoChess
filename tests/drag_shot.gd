@@ -90,6 +90,33 @@ func _ready() -> void:
 		var after: int = gs.me()["inv"].size()
 		print("장착 합성: 보관함 %d → %d, 장착 %d개" % [before, after, gs.me()["board"][rim_key]["arts"].size()])
 	await _shot("d9_after_equipped_merge")
+	# 8) 보관함을 손가락으로 끌어 스크롤: 스크롤만 되고 아티팩트가 선택·장착되지 않아야 한다
+	var inv := []
+	for i in 12:
+		inv.append({"uid": 8100 + i, "id": ["life_gem", "wooden_sword", "rusty_awl"][i % 3]})
+	p["inv"] = inv
+	gs.sel = {}
+	App.session.state_changed.emit()
+	await _wait(5)
+	var ib: Button = gs._art_buttons()[8102]
+	var iscroll: ScrollContainer = gs._inv_grid.get_parent()
+	var s0 := iscroll.scroll_vertical
+	var f: Vector2 = ib.get_global_rect().get_center()
+	await _press(f)
+	await _move_to(f, f + Vector2(0, -110))
+	await _release(f + Vector2(0, -110))
+	await _wait(20)
+	print("손가락 스크롤: %d → %d, 선택=%s, 보관함 %d개" % [s0, iscroll.scroll_vertical, str(gs.sel), gs.me()["inv"].size()])
+	if iscroll.scroll_vertical <= s0 or gs.sel.has("art") or gs.me()["inv"].size() != 12:
+		push_error("손가락 스크롤 실패")
+	# 짧게 누르기는 그대로 선택
+	var ib2: Button = gs._art_buttons()[8105]
+	var f2: Vector2 = ib2.get_global_rect().get_center()
+	await _press(f2)
+	await _release(f2)
+	await _wait(3)
+	print("짧게 누르기 선택=%s" % str(gs.sel))
+	await _shot("d10_inv_scrolled")
 	get_tree().quit()
 
 

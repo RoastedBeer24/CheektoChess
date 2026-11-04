@@ -2,9 +2,8 @@ extends Control
 ## 첫 화면 / 대기실 / 게임 화면 전환, 알림(토스트), 방장 기기에서 업데이트 받기 안내.
 
 var _screen: Control
-var _toast: PanelContainer
-var _toast_lbl: Label
-var _toast_t := 0.0
+var _toast: VBoxContainer          # 알림 여러 개를 위에서부터 차례로 쌓는다 (최대 3개)
+const TOAST_MAX := 3
 var _rooms_box: VBoxContainer
 var _lobby_list: GridContainer
 var _lobby_count: Label
@@ -20,12 +19,10 @@ func _ready() -> void:
 	bg.color = UI.BG
 	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
 	add_child(bg)
-	_toast = UI.panel(Color("101220").lerp(UI.ACCENT, 0.08), 14, UI.ACCENT, 2)
+	_toast = VBoxContainer.new()
 	_toast.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_toast.z_index = 100
-	_toast_lbl = UI.label("", 24, UI.TEXT, HORIZONTAL_ALIGNMENT_CENTER)
-	_toast.add_child(_toast_lbl)
-	_toast.visible = false
+	_toast.add_theme_constant_override("separation", 8)
 	add_child(_toast)
 	App.session.toast.connect(show_toast)
 	App.session.lobby_changed.connect(_on_lobby_changed)
@@ -41,22 +38,44 @@ func _ready() -> void:
 
 
 func _process(delta: float) -> void:
-	if _toast_t > 0.0:
-		_toast_t -= delta
-		_toast.modulate.a = clampf(_toast_t * 2.0, 0, 1)
-		if _toast_t <= 0.0:
-			_toast.visible = false
+	for t in _toast.get_children():
+		var left: float = t.get_meta("t") - delta
+		t.set_meta("t", left)
+		t.modulate.a = clampf(left * 2.5, 0, 1)
+		if left <= 0.0:
+			_toast.remove_child(t)
+			t.queue_free()
+			_place_toast()
 
 
 func show_toast(msg: String, secs: float = 2.5) -> void:
-	_toast_lbl.text = msg
-	_toast.visible = true
-	_toast_t = secs
-	_toast.modulate.a = 1.0
+	# 같은 알림이 이미 떠 있으면 시간만 늘린다
+	for t in _toast.get_children():
+		if t.get_meta("msg") == msg:
+			t.set_meta("t", secs)
+			return
+	while _toast.get_child_count() >= TOAST_MAX:
+		var old := _toast.get_child(0)
+		_toast.remove_child(old)
+		old.queue_free()
+	var item := UI.panel(Color("101220").lerp(UI.ACCENT, 0.08), 14, UI.ACCENT, 2)
+	item.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var l := UI.label(msg, 24, UI.TEXT, HORIZONTAL_ALIGNMENT_CENTER)
+	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	l.custom_minimum_size.x = minf(900.0, 24.0 * msg.length() + 20.0)
+	item.add_child(l)
+	item.set_meta("msg", msg)
+	item.set_meta("t", secs)
+	item.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	_toast.add_child(item)
+	move_child(_toast, get_child_count() - 1)
+	_place_toast()
+
+
+func _place_toast() -> void:
 	_toast.reset_size()
 	var vp := get_viewport_rect().size
 	_toast.position = Vector2((vp.x - _toast.size.x) / 2.0, 96)
-	move_child(_toast, get_child_count() - 1)
 
 
 func _set_screen(c: Control) -> void:
@@ -194,7 +213,7 @@ func _show_title() -> void:
 	right.add_child(rv)
 	rv.add_child(UI.label("같은 와이파이의 방", 32, UI.ACCENT))
 	rv.add_child(UI.label("방장이 '방 만들기'를 누르면 여기에 나타납니다", 18, UI.SUB))
-	var scroll := ScrollContainer.new()
+	var scroll := DragScroll.new(UI.PANEL)
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	rv.add_child(scroll)

@@ -51,6 +51,11 @@ var _shop_tiles: Array = []
 var _reroll_btn: Button
 var _xp_btn: Button
 var _sell_btn: Button
+var _root: VBoxContainer
+var _row_heads: Array = []
+var _fit_k := 1.0
+var _right_panel: Control
+var _left_panel: Control
 var _drag_layer: Control
 var _drag := {}               # 끌기 중 정보 {src, aid, star, unit, start, active, ghost, hover}
 var _suppress_click := false  # 끌기 직후 버튼 클릭 무시
@@ -62,6 +67,8 @@ var _overlay: Control
 func _ready() -> void:
 	set_anchors_preset(Control.PRESET_FULL_RECT)
 	_build()
+	get_viewport().size_changed.connect(_fit_layout)
+	_fit_layout.call_deferred()
 	App.session.state_changed.connect(refresh)
 	refresh()
 
@@ -82,6 +89,7 @@ func _toast(msg: String) -> void:
 
 func _build() -> void:
 	var root := VBoxContainer.new()
+	_root = root
 	root.set_anchors_preset(Control.PRESET_FULL_RECT)
 	root.offset_left = 12
 	root.offset_right = -12
@@ -126,6 +134,48 @@ func _build() -> void:
 	_drag_layer.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_drag_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_drag_layer)
+
+
+## 화면 높이에 맞춰 보드·대기석·상점 칸 크기를 줄인다 (긴 화면·작은 화면에서 아래가 잘리지 않게)
+const BOARD_TILE := 170.0
+const BENCH_TILE := 124.0
+const SHOP_H := 124.0
+
+
+func _fit_layout() -> void:
+	var avail := get_viewport_rect().size.y
+	if avail <= 0 or _root == null:
+		return
+	# 가로로 긴 화면: 남는 너비를 정보 패널과 왼쪽 목록에 나눠 준다
+	var extra := maxf(0.0, get_viewport_rect().size.x - 1920.0)
+	_right_panel.custom_minimum_size.x = 450.0 + minf(extra * 0.55, 240.0)
+	_left_panel.custom_minimum_size.x = 340.0 + minf(extra * 0.25, 80.0)
+	_apply_fit(1.0)
+	var need := _root.get_combined_minimum_size().y + 20.0
+	var over := need - avail
+	var k := 1.0
+	if over > 0.0:
+		k = clampf(1.0 - over / (BOARD_TILE * 3.0 + BENCH_TILE + SHOP_H), 0.55, 1.0)
+	if not is_equal_approx(k, 1.0):
+		_apply_fit(k)
+	_fit_k = k
+
+
+func _apply_fit(k: float) -> void:
+	var b := roundf(BOARD_TILE * k)
+	for key in _board_tiles:
+		_board_tiles[key].custom_minimum_size = Vector2(b, b)
+	for c in _row_heads:
+		c.custom_minimum_size.x = b
+	var be := roundf(BENCH_TILE * k)
+	for t in _bench_tiles:
+		t.custom_minimum_size = Vector2(be, be)
+	_sell_btn.custom_minimum_size.y = be
+	var sh := roundf(SHOP_H * k)
+	for t in _shop_tiles:
+		t.custom_minimum_size.y = sh
+	_reroll_btn.custom_minimum_size.y = sh
+	_xp_btn.custom_minimum_size.y = sh
 
 
 func _build_top() -> Control:
@@ -194,8 +244,8 @@ func _build_top() -> Control:
 func _build_left() -> Control:
 	var left := UI.panel()
 	left.custom_minimum_size.x = 340
-	var scroll := ScrollContainer.new()
-	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	_left_panel = left
+	var scroll := DragScroll.new(UI.PANEL)
 	left.add_child(scroll)
 	var lv := VBoxContainer.new()
 	lv.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -216,10 +266,11 @@ func _build_left() -> Control:
 func _build_right() -> Control:
 	var right := UI.panel()
 	right.custom_minimum_size.x = 450
+	_right_panel = right
 	var rv := VBoxContainer.new()
 	rv.add_theme_constant_override("separation", 8)
 	right.add_child(rv)
-	var dscroll := ScrollContainer.new()
+	var dscroll := DragScroll.new(UI.PANEL)
 	dscroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	dscroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	rv.add_child(dscroll)
@@ -236,8 +287,9 @@ func _build_right() -> Control:
 	_merge_btn = UI.button("합성", 20, Vector2(120, 48), Color("5a3f86"))
 	_merge_btn.pressed.connect(_on_merge_pressed)
 	invh.add_child(_merge_btn)
-	var iscroll := ScrollContainer.new()
-	iscroll.custom_minimum_size.y = 210
+	var iscroll := DragScroll.new(UI.PANEL)
+	iscroll.vertical_only = true   # 가로로 끌면 아티팩트 끌어다 놓기
+	iscroll.custom_minimum_size.y = 146
 	iscroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	rv.add_child(iscroll)
 	_inv_grid = GridContainer.new()
@@ -270,6 +322,7 @@ func _build_board() -> Control:
 	for r in [2, 1, 0]:
 		var chip := UI.panel(UI.PANEL_LIGHT, 10)
 		chip.custom_minimum_size.x = 170
+		_row_heads.append(chip)
 		chip.add_child(UI.label(GameData.ROW_NAME[GameData.ROWS[r]], 22, UI.TEXT, HORIZONTAL_ALIGNMENT_CENTER))
 		heads.add_child(chip)
 	for s in int(B()["board_slots"]):
@@ -344,6 +397,8 @@ func _build_shop() -> Control:
 # ─────────────────────────────── 갱신 ───────────────────────────────
 
 func _process(_delta: float) -> void:
+	if DragScroll.scrolling and _syn_popup:
+		_hide_syn_popup()
 	_check_long_press()
 	var st := App.session.state
 	if st.is_empty():
@@ -476,11 +531,13 @@ func _refresh_players() -> void:
 		row.mouse_filter = Control.MOUSE_FILTER_STOP
 		row.tooltip_text = "눌러서 보드 보기"
 		row.gui_input.connect(func(ev):
-			if ev is InputEventMouseButton and ev.button_index == MOUSE_BUTTON_LEFT and not ev.pressed:
+			if ev is InputEventMouseButton and ev.button_index == MOUSE_BUTTON_LEFT and not ev.pressed \
+					and Rect2(Vector2.ZERO, row.size).has_point(ev.position) and not DragScroll.scrolling:
 				_show_player(pid))
 		var sb: StyleBoxFlat = row.get_theme_stylebox("panel")
 		sb.content_margin_top = 4
 		sb.content_margin_bottom = 4
+		row.custom_minimum_size.y = 46
 		var h := HBoxContainer.new()
 		h.add_theme_constant_override("separation", 6)
 		row.add_child(h)
@@ -654,7 +711,8 @@ func _refresh_inventory() -> void:
 	var p := me()
 	var inv: Array = p.get("inv", [])
 	for a in inv:
-		var b := UI.artifact_button(a["id"], Vector2(205, 62), 16, sel.get("art", -1) == int(a["uid"]))
+		var bw := floorf((_right_panel.custom_minimum_size.x - 28.0 - 6.0 - 18.0) / 2.0)
+		var b := UI.artifact_button(a["id"], Vector2(bw, 64), 19, sel.get("art", -1) == int(a["uid"]))
 		var uid := int(a["uid"])
 		b.set_meta("art_uid", uid)
 		b.pressed.connect(func(): _on_art(uid))
@@ -698,7 +756,9 @@ func _refresh_detail() -> void:
 	]:
 		var row := HBoxContainer.new()
 		row.add_theme_constant_override("separation", 8)
-		row.add_child(UI.label("•", 18, UI.ACCENT))
+		var dot := UI.label("•", 18, UI.ACCENT)
+		dot.vertical_alignment = VERTICAL_ALIGNMENT_TOP
+		row.add_child(dot)
 		var l := UI.wrap_label(line, 18, UI.TEXT)
 		l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		row.add_child(l)
@@ -1062,7 +1122,7 @@ func _show_syn_popup(row: Control, name: String, count: int) -> void:
 	for k in p.get("board", {}):
 		aids.append(p["board"][k]["aid"])
 	var panel := UI.panel(Color("161824"), 14, UI.LINE, 2)
-	panel.custom_minimum_size = Vector2(520, 0)
+	panel.custom_minimum_size = Vector2(700, 0)
 	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var v := VBoxContainer.new()
 	v.add_theme_constant_override("separation", 6)
@@ -1072,7 +1132,11 @@ func _show_syn_popup(row: Control, name: String, count: int) -> void:
 	panel.reset_size()
 	var r := row.get_global_rect()
 	var vp := get_viewport_rect().size
-	panel.position = Vector2(r.end.x + 12, clampf(r.position.y - 20, 10, vp.y - panel.size.y - 10))
+	# 화면보다 크면 줄이고, 항상 화면 안에 들어오게
+	var k := minf(1.0, (vp.y - 20.0) / maxf(1.0, panel.size.y))
+	panel.scale = Vector2(k, k)
+	var ps := panel.size * k
+	panel.position = Vector2(clampf(r.end.x + 12, 10, maxf(10.0, vp.x - ps.x - 10)), clampf(r.position.y - 20, 10, maxf(10.0, vp.y - ps.y - 10)))
 	_syn_popup = panel
 
 
@@ -1085,6 +1149,9 @@ func _hide_syn_popup() -> void:
 ## 꾹 누르기: 움직이지 않고 일정 시간 누르고 있으면 발동
 func _check_long_press() -> void:
 	if _drag.is_empty() or _drag.get("active", false):
+		return
+	if DragScroll.scrolling:
+		_drag = {}
 		return
 	if Time.get_ticks_msec() - int(_drag["t0"]) < LONG_PRESS_MS:
 		return
@@ -1123,6 +1190,10 @@ func _input(event: InputEvent) -> void:
 	if _drag.is_empty():
 		return
 	if event is InputEventMouseMotion:
+		# 목록을 손가락으로 스크롤하기 시작했으면 끌어다 놓기 후보는 취소
+		if DragScroll.scrolling and not _drag.get("active", false):
+			_drag = {}
+			return
 		# _input 의 좌표는 화면 배율이 반영된 캔버스 좌표 (GameScreen 은 화면 전체를 덮음)
 		var pos: Vector2 = event.position
 		if not _drag["active"]:
@@ -1131,6 +1202,7 @@ func _input(event: InputEvent) -> void:
 		if _drag.get("active", false):
 			_move_drag(pos)
 	elif event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and not event.pressed:
+		DragScroll.external_drag = false
 		if _drag.get("active", false):
 			_suppress_click = true
 			_finish_drag()
@@ -1141,6 +1213,7 @@ func _input(event: InputEvent) -> void:
 
 func _begin_drag() -> void:
 	_drag["active"] = true
+	DragScroll.external_drag = true
 	sel = {}
 	_vibrate(15)
 	var ghost: Control
@@ -1431,10 +1504,20 @@ func _modal(title: String, kind: String = "") -> VBoxContainer:
 	var dim := ColorRect.new()
 	dim.color = Color(0, 0, 0, 0.65)
 	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
+	# 바깥(어두운 곳)을 누르면 닫기 — 게임 종료 화면은 제외
+	if kind != "over":
+		dim.gui_input.connect(func(ev):
+			if ev is InputEventMouseButton and ev.button_index == MOUSE_BUTTON_LEFT and not ev.pressed \
+					and Rect2(Vector2.ZERO, dim.size).has_point(ev.position):
+				if _overlay_kind == "offer":
+					_offer_hidden = true
+				_close_modal()
+				refresh())
 	_overlay.add_child(dim)
 	var cc := CenterContainer.new()
 	cc.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_overlay.add_child(cc)
+	cc.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var p := UI.panel(UI.PANEL, 18, UI.LINE, 2)
 	cc.add_child(p)
 	var v := VBoxContainer.new()

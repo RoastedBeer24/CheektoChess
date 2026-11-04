@@ -83,7 +83,7 @@ func _ready() -> void:
 	var fpanel := UI.panel()
 	fpanel.custom_minimum_size.x = 330
 	body.add_child(fpanel)
-	var fscroll := ScrollContainer.new()
+	var fscroll := DragScroll.new(UI.PANEL)
 	fscroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	fpanel.add_child(fscroll)
 	_filters_box = VBoxContainer.new()
@@ -98,7 +98,7 @@ func _ready() -> void:
 	center.add_child(cv)
 	_count = UI.label("", 18, UI.SUB)
 	cv.add_child(_count)
-	var gscroll := ScrollContainer.new()
+	var gscroll := DragScroll.new(Color("1c1f2e"))
 	gscroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	gscroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	cv.add_child(gscroll)
@@ -110,7 +110,7 @@ func _ready() -> void:
 	var dpanel := UI.panel()
 	dpanel.custom_minimum_size.x = 470
 	body.add_child(dpanel)
-	var dscroll := ScrollContainer.new()
+	var dscroll := DragScroll.new(UI.PANEL)
 	dscroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	dpanel.add_child(dscroll)
 	_detail = VBoxContainer.new()

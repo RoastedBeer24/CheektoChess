@@ -9,6 +9,11 @@ const STAT_NAME := {
 }
 
 
+const TABS := {"skill": "스킬", "aside": "어사이드", "art": "아티팩트"}
+## 마지막으로 본 사도 정보 탭 (다른 사도를 눌러도 유지)
+static var apostle_tab := "skill"
+
+
 static func section(box: Control, title: String) -> void:
 	box.add_child(UI.hsep())
 	box.add_child(UI.label(title, 20, UI.ACCENT))
@@ -23,17 +28,20 @@ static func apostle(box: Control, u: Dictionary, on_art: Callable = Callable(), 
 	head.add_theme_constant_override("separation", 12)
 	box.add_child(head)
 	var pf := UI.panel(UI.pers_color(aid, u.get("pers", "")).darkened(0.55), 12, UI.pers_color(aid, u.get("pers", "")), 3)
-	pf.add_child(UI.tex_rect(UI.portrait(aid), Vector2(112, 112), true))
+	pf.add_child(UI.tex_rect(UI.portrait(aid), Vector2(96, 96), true))
 	head.add_child(pf)
 	var hv := VBoxContainer.new()
 	hv.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	head.add_child(hv)
-	hv.add_child(UI.label(a["name"], 30, UI.TEXT))
-	hv.add_child(UI.label(UI.stars(star) + "  ·  %d골드" % GameData.cost_of.get(aid, 1), 22, UI.ACCENT))
+	var nh := HBoxContainer.new()
+	nh.add_theme_constant_override("separation", 12)
+	hv.add_child(nh)
+	nh.add_child(UI.label(a["name"], 28, UI.TEXT))
+	nh.add_child(UI.label(UI.stars(star) + "  %d골드" % GameData.cost_of.get(aid, 1), 21, UI.ACCENT))
 	var chips := HFlowContainer.new()
 	chips.add_theme_constant_override("h_separation", 6)
 	chips.add_theme_constant_override("v_separation", 6)
-	box.add_child(chips)
+	hv.add_child(chips)   # 초상화 오른쪽에 (세로 공간 절약)
 	var pers: String = a["personality"] + (" → " + u["pers"] if u.get("pers", "") != "" else "")
 	var picon: String = u["pers"] if u.get("pers", "") != "" else a["personality"]
 	chips.add_child(UI.chip(pers, UI.pers_color(aid, u.get("pers", "")), 16, UI.trait_icon(picon)))
@@ -46,63 +54,108 @@ static func apostle(box: Control, u: Dictionary, on_art: Callable = Callable(), 
 	var bs := Rules.base_stats(aid, star)
 	var grid := GridContainer.new()
 	grid.columns = 4
-	grid.add_theme_constant_override("h_separation", 10)
+	grid.add_theme_constant_override("h_separation", 12)
 	box.add_child(grid)
 	for pair in [["HP", "%d" % bs["hp"]], ["공격력", "%d" % bs["atk"]], ["방어력", "%d" % bs["def"]], ["공속", "%.2f" % bs["aspd"]]]:
-		grid.add_child(UI.label(pair[0], 17, UI.SUB))
-		grid.add_child(UI.label(pair[1], 19, UI.TEXT))
-	section(box, "스킬")
-	box.add_child(UI.wrap_label("현재는 역할별 공통 스킬로 동작합니다 (원작 스킬 구현 예정).", 15, UI.SUB))
+		grid.add_child(UI.label(pair[0], 18, UI.SUB))
+		grid.add_child(UI.label(pair[1], 21, UI.TEXT))
+	if show_sell:
+		box.add_child(UI.label("판매 가격  %d골드" % (GameData.cost_of.get(u["aid"], 1) * int(pow(3, int(u.get("star", 1)) - 1))), 19, UI.SUB))
+	# 탭: 스킬 / 어사이드 / 아티팩트 (한 번에 보이는 양을 줄여 스크롤을 덜 하게)
+	var arts: Array = u.get("arts", [])
+	var tabs := HBoxContainer.new()
+	tabs.add_theme_constant_override("separation", 6)
+	box.add_child(tabs)
+	var pages := {}
+	var btns := {}
+	for key in TABS:
+		var page := VBoxContainer.new()
+		page.add_theme_constant_override("separation", 8)
+		box.add_child(page)
+		pages[key] = page
+		var title: String = TABS[key]
+		if key == "art":
+			title = "아티팩트 %d/%d" % [arts.size(), int(GameData.balance["artifact_slots"])]
+		var b := UI.button(title, 19, Vector2(0, 52))
+		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		btns[key] = b
+		tabs.add_child(b)
+	var show := func(k: String) -> void:
+		apostle_tab = k
+		for key in pages:
+			pages[key].visible = key == k
+			var on: bool = key == k
+			btns[key].add_theme_stylebox_override("normal", UI.box(UI.ACCENT.darkened(0.6) if on else UI.PANEL_LIGHT.darkened(0.15), 10, UI.ACCENT if on else UI.LINE, 3 if on else 2))
+			btns[key].add_theme_color_override("font_color", UI.ACCENT if on else UI.SUB)
+	for key in btns:
+		var kk: String = key
+		btns[key].pressed.connect(func(): show.call(kk))
+
+	# ── 스킬
+	var sp: VBoxContainer = pages["skill"]
+	sp.add_child(UI.wrap_label("현재는 역할별 공통 스킬로 동작합니다 (원작 스킬 구현 예정).", 18, UI.DIM))
 	for k in ["fresh", "senior", "passive"]:
 		var sk: Dictionary = a.get("skills", {}).get(k, {})
 		if sk.is_empty():
 			continue
 		var kn: String = {"fresh": "저학년 · SP", "senior": "고학년 · 재사용 대기", "passive": "패시브"}[k]
-		var h := HBoxContainer.new()
-		h.add_theme_constant_override("separation", 8)
-		h.add_child(UI.chip(kn, Color("9fd3ff") if k == "fresh" else (UI.ACCENT if k == "senior" else Color("c0c4d6")), 15))
-		var nl := UI.label(sk["name"], 19, UI.TEXT)
-		nl.clip_text = true
-		nl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		h.add_child(nl)
+		var card := UI.panel(UI.BG2, 10)
+		var cv := VBoxContainer.new()
+		cv.add_theme_constant_override("separation", 6)
+		card.add_child(cv)
+		var h := HFlowContainer.new()
+		h.add_theme_constant_override("h_separation", 8)
+		h.add_theme_constant_override("v_separation", 4)
+		h.add_child(UI.chip(kn, Color("9fd3ff") if k == "fresh" else (UI.ACCENT if k == "senior" else Color("c0c4d6")), 18))
 		if sk.get("tr", "") == "translated" and (k == "fresh" or k == "senior"):
-			h.add_child(UI.chip("임시 번역", Color("9aa0b4"), 13))
-		box.add_child(h)
-		box.add_child(UI.wrap_label(sk["desc"], 15))
-	section(box, "어사이드")
+			h.add_child(UI.chip("임시 번역", Color("9aa0b4"), 18))
+		cv.add_child(h)
+		var nl := UI.label(sk["name"], 22, UI.TEXT)
+		nl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		cv.add_child(nl)
+		cv.add_child(UI.rich_desc(sk["desc"], 19))
+		sp.add_child(card)
+
+	# ── 어사이드
+	var ap: VBoxContainer = pages["aside"]
 	for n in ["1", "2", "3"]:
 		var asd: Dictionary = a.get("aside", {}).get(n, {})
 		if asd.is_empty():
 			continue
 		var on := star >= int(n)
-		var h := HBoxContainer.new()
-		h.add_theme_constant_override("separation", 8)
-		h.add_child(UI.chip("%s성 %s" % [n, "적용" if on else "잠김"], UI.GOOD if on else Color("777b8f"), 15))
-		var nl := UI.label(asd["name"], 19, UI.TEXT if on else UI.SUB)
-		nl.clip_text = true
-		nl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		h.add_child(nl)
+		var card := UI.panel(UI.BG2 if on else UI.BG2.darkened(0.25), 10, UI.GOOD.darkened(0.3) if on else Color.TRANSPARENT, 2 if on else 0)
+		var cv := VBoxContainer.new()
+		cv.add_theme_constant_override("separation", 6)
+		card.add_child(cv)
+		var h := HFlowContainer.new()
+		h.add_theme_constant_override("h_separation", 8)
+		h.add_child(UI.chip("%s성 %s" % [n, "적용 중" if on else "★%s에서 적용" % n], UI.GOOD if on else Color("8a8fa6"), 18))
 		if asd.get("tr", "") == "translated":
-			h.add_child(UI.chip("임시 번역", Color("9aa0b4"), 13))
-		box.add_child(h)
-		box.add_child(UI.wrap_label(asd["desc"], 15, UI.SUB if on else Color(1, 1, 1, 0.35)))
+			h.add_child(UI.chip("임시 번역", Color("9aa0b4"), 18))
+		cv.add_child(h)
+		var nl := UI.label(asd["name"], 21, UI.TEXT if on else UI.SUB)
+		nl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		cv.add_child(nl)
+		cv.add_child(UI.rich_desc(asd["desc"], 19, UI.SUB if on else UI.DIM, Color("ffd98a") if on else UI.DIM))
+		ap.add_child(card)
 	if a.get("aside", {}).is_empty():
-		box.add_child(UI.label("어사이드 정보 없음", 16, UI.SUB))
-	section(box, "아티팩트  %d / %d" % [u.get("arts", []).size(), int(GameData.balance["artifact_slots"])])
-	for art in u.get("arts", []):
+		ap.add_child(UI.label("어사이드 정보 없음", 18, UI.SUB))
+
+	# ── 아티팩트
+	var tp: VBoxContainer = pages["art"]
+	for art in arts:
 		var info := GameData.artifact(art["id"])
 		var fav := "  ♥애착" if info.get("owner", "") == a["name"] else ""
-		var b := UI.artifact_button(art["id"], Vector2(0, 58), 18, sel_art == int(art["uid"]))
+		var b := UI.artifact_button(art["id"], Vector2(0, 64), 20, sel_art == int(art["uid"]))
 		b.text = "%s%s" % [info["name"], fav]
 		var uid := int(art["uid"])
 		b.set_meta("art_uid", uid)   # 게임 화면에서 끌어다 놓기(합성) 대상으로 찾을 수 있게
 		if on_art.is_valid():
 			b.pressed.connect(func(): on_art.call(uid))
-		box.add_child(b)
-	if u.get("arts", []).is_empty():
-		box.add_child(UI.label("보관함의 아티팩트를 누른 뒤 이 사도를 누르면 장착", 16, UI.SUB))
-	if show_sell:
-		box.add_child(UI.label("판매 가격  %d골드" % (GameData.cost_of.get(u["aid"], 1) * int(pow(3, int(u.get("star", 1)) - 1))), 18, UI.SUB))
+		tp.add_child(b)
+	if arts.is_empty():
+		tp.add_child(UI.wrap_label("보관함의 아티팩트를 이 사도 위로 끌어다 놓거나, 아티팩트를 누른 뒤 이 사도를 누르면 장착합니다.", 18, UI.SUB))
+	show.call(apostle_tab if pages.has(apostle_tab) else "skill")
 
 
 ## 아티팩트 정보. where: "inv"(보관함) / "equipped"(장착 중) / ""(도감)
@@ -138,19 +191,19 @@ static func artifact(box: Control, art_id: String, where: String = "") -> void:
 	for k in a.get("stats", {}):
 		box.add_child(UI.label("%s  +%s%%" % [STAT_NAME.get(k, k), str(a["stats"][k])], 20, UI.TEXT))
 	section(box, "효과")
-	box.add_child(UI.wrap_label(a.get("text", ""), 18, UI.TEXT))
+	box.add_child(UI.rich_desc(a.get("text", ""), 20, UI.TEXT))
 	if a.get("nostack", false):
-		box.add_child(UI.label("※ 부가 효과는 한 사도에 중첩되지 않음", 15, UI.SUB))
+		box.add_child(UI.wrap_label("※ 부가 효과는 한 사도에 중첩되지 않음", 18, UI.DIM))
 	if a.get("owner", "") != "":
 		section(box, "애착: %s" % a["owner"])
-		box.add_child(UI.wrap_label(a.get("fav", ""), 16))
-		box.add_child(UI.label("※ 애착 효과는 다음 단계에서 구현 예정", 15, UI.SUB))
+		box.add_child(UI.rich_desc(a.get("fav", ""), 19))
+		box.add_child(UI.wrap_label("※ 애착 효과는 다음 단계에서 구현 예정", 18, UI.DIM))
 	if where != "":
 		box.add_child(UI.hsep())
 	if where == "inv":
-		box.add_child(UI.wrap_label("사도를 누르면 장착합니다. [합성]을 누르면 같은 등급 아티팩트와 합칠 수 있습니다.", 16))
+		box.add_child(UI.wrap_label("사도 위로 끌어다 놓거나 사도를 누르면 장착합니다. 같은 등급 아티팩트 위로 끌어다 놓거나 [합성]을 누르면 합칠 수 있습니다.", 18))
 	elif where == "equipped":
-		box.add_child(UI.wrap_label("장착 중인 아티팩트는 뺄 수 없지만 [합성] 재료로는 쓸 수 있습니다.", 16))
+		box.add_child(UI.wrap_label("장착 중인 아티팩트는 뺄 수 없지만 [합성] 재료로는 쓸 수 있습니다.", 18))
 
 
 const MOD_NAME := {

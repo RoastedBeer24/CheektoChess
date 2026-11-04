@@ -9,7 +9,10 @@ const PANEL_LIGHT := Color("33384f")
 const LINE := Color("3d4360")
 const ACCENT := Color("ffc857")
 const TEXT := Color("f2f2f7")
-const SUB := Color("a3a8bf")
+const SUB := Color("b9bed3")
+const DIM := Color("8a8fa6")
+## 화면 어디서나 이보다 작은 글자는 쓰지 않는다 (모바일 가독성)
+const MIN_FONT := 18
 const GOOD := Color("5ee39b")
 const BAD := Color("ff6b6b")
 const BLUE := Color("4fa3ff")
@@ -41,14 +44,15 @@ static func make_theme() -> Theme:
 	t.set_stylebox("focus", "LineEdit", box(BG2, 10, ACCENT, 2))
 	t.set_font_size("font_size", "LineEdit", 26)
 	# 스크롤바를 손가락으로 잡기 좋게
-	var grab := box(Color(1, 1, 1, 0.25), 6)
+	var grab := box(Color(1, 1, 1, 0.38), 7)
 	t.set_stylebox("grabber", "VScrollBar", grab)
-	t.set_stylebox("grabber_highlight", "VScrollBar", box(Color(1, 1, 1, 0.4), 6))
-	t.set_stylebox("grabber_pressed", "VScrollBar", box(ACCENT, 6))
-	var track := box(Color(0, 0, 0, 0.2), 6)
-	track.content_margin_left = 6
-	track.content_margin_right = 6
+	t.set_stylebox("grabber_highlight", "VScrollBar", box(Color(1, 1, 1, 0.55), 7))
+	t.set_stylebox("grabber_pressed", "VScrollBar", box(ACCENT, 7))
+	var track := box(Color(0, 0, 0, 0.28), 7)
+	track.content_margin_left = 7
+	track.content_margin_right = 7
 	t.set_stylebox("scroll", "VScrollBar", track)
+	t.set_constant("line_spacing", "Label", 3)
 	var tip := box(Color("101220"), 8, LINE, 2)
 	t.set_stylebox("panel", "TooltipPanel", tip)
 	t.set_font_size("font_size", "TooltipLabel", 20)
@@ -84,7 +88,7 @@ static func panel(color: Color = PANEL, radius: int = 14, border: Color = Color.
 static func label(text: String, size: int = 22, color: Color = TEXT, align: int = HORIZONTAL_ALIGNMENT_LEFT) -> Label:
 	var l := Label.new()
 	l.text = text
-	l.add_theme_font_size_override("font_size", size)
+	l.add_theme_font_size_override("font_size", maxi(size, MIN_FONT))
 	l.add_theme_color_override("font_color", color)
 	l.horizontal_alignment = align
 	l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
@@ -108,7 +112,7 @@ static func wrap_label(text: String, size: int = 18, color: Color = SUB) -> Labe
 static func button(text: String, size: int = 22, min_size: Vector2 = Vector2(0, 56), color: Color = PANEL_LIGHT) -> Button:
 	var b := Button.new()
 	b.text = text
-	b.add_theme_font_size_override("font_size", size)
+	b.add_theme_font_size_override("font_size", maxi(size, MIN_FONT))
 	b.custom_minimum_size = min_size
 	b.add_theme_stylebox_override("normal", box(color, 12, color.lightened(0.18), 2))
 	b.add_theme_stylebox_override("hover", box(color.lightened(0.1), 12, color.lightened(0.3), 2))
@@ -155,6 +159,45 @@ static func bar(color: Color, height: int = 14, bg: Color = Color(0, 0, 0, 0.45)
 	b.add_theme_stylebox_override("fill", fill)
 	b.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	return b
+
+
+## 설명 글: 숫자(%, 초 포함)를 강조색으로, '■' 줄은 들여쓰기해 읽기 쉽게
+static var _NUM_RE := RegEx.create_from_string("([+\\-]?\\d+(?:[.,]\\d+)?\\s?(?:%|초|s\\b|회|명|칸)?)")
+
+
+static func rich_desc(text: String, size: int = 19, color: Color = SUB, num_color: Color = Color("ffd98a")) -> RichTextLabel:
+	var r := RichTextLabel.new()
+	r.bbcode_enabled = true
+	r.fit_content = true
+	r.scroll_active = false
+	r.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	r.custom_minimum_size.x = 100
+	r.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	r.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	r.add_theme_font_size_override("normal_font_size", maxi(size, MIN_FONT))
+	r.add_theme_font_size_override("bold_font_size", maxi(size, MIN_FONT))
+	r.add_theme_color_override("default_color", color)
+	r.add_theme_constant_override("line_separation", 4)
+	var lines := []
+	for line in text.replace("[", "［").replace("]", "］").split("\n"):
+		var t := String(line).strip_edges()
+		if t == "":
+			continue
+		t = _NUM_RE.sub(t, "[color=#%s]$1[/color]" % num_color.to_html(false), true)
+		if t.begins_with("■"):
+			t = "[indent]" + t.substr(1).strip_edges() + "[/indent]"
+		lines.append(t)
+	r.text = "\n".join(lines)
+	return r
+
+
+## 주어진 너비에 맞게 글자 크기를 줄인다 (min_size 까지)
+static func fit_font(l: Label, width: float, size: int, min_size: int = 15) -> void:
+	var f := l.get_theme_font("font")
+	var s := size
+	while s > min_size and f.get_string_size(l.text, HORIZONTAL_ALIGNMENT_LEFT, -1, s).x > width:
+		s -= 1
+	l.add_theme_font_size_override("font_size", s)
 
 
 static func hsep(color: Color = LINE) -> ColorRect:
@@ -248,6 +291,14 @@ static func artifact_button(id: String, size: Vector2 = Vector2(130, 64), font: 
 	b.alignment = HORIZONTAL_ALIGNMENT_LEFT
 	b.clip_text = true
 	b.tooltip_text = "%s [%s]\n%s" % [art.get("name", ""), GameData.grade_name(g), art.get("text", "")]
+	# 이름이 길면 버튼 너비에 맞게 글자를 줄인다 (잘림 방지)
+	if size.x > 0:
+		var room := size.x - (size.y - 14) - 34
+		var f := b.get_theme_font("font")
+		var fs := maxi(font, MIN_FONT)
+		while fs > 15 and f.get_string_size(b.text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x > room:
+			fs -= 1
+		b.add_theme_font_size_override("font_size", fs)
 	return b
 
 
