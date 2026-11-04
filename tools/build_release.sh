@@ -15,7 +15,7 @@ GODOT="${GODOT:-godot}"
 # APK/실행 파일 안에 넣을 기본 묶음
 mkdir -p packs
 cp build/packs/core.pck build/packs/art.pck packs/
-cp build/packs/manifest.json packs/index.json
+python3 -c "import json;m=json.load(open('build/packs/manifest.json'));m['packs']={k:v for k,v in m['packs'].items() if k in ('core','art')};json.dump(m,open('packs/index.json','w'),ensure_ascii=False)"
 
 for t in "${TARGETS[@]}"; do
   case "$t" in

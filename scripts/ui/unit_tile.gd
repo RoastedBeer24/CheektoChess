@@ -37,6 +37,7 @@ var _inner: Panel
 var _stripe: ColorRect
 var _cost := 0
 var _clock := 0.0
+var motion_mode := false    # 전투 모션이 있을 때: 초상화·배경 없이 이름·별·HP 만 (모션은 BattleView 가 그림)
 
 
 func _init(size: Vector2 = Vector2(140, 140)) -> void:
@@ -346,7 +347,21 @@ func set_dim(on: bool) -> void:
 	_shade.color.a = 0.55 if on else 0.0
 
 
+func set_motion_mode(on: bool) -> void:
+	motion_mode = on
+	_tex.visible = not on
+	_inner.visible = not on and _inner.visible
+	_stripe.visible = not on and _stripe.visible
+	_icons.visible = not on
+	set_process(not on and _cost >= 5)
+	_refresh_style()
+
+
 func _refresh_style() -> void:
+	if motion_mode:
+		for st in ["normal", "pressed", "disabled", "focus", "hover"]:
+			add_theme_stylebox_override(st, StyleBoxEmpty.new())
+		return
 	var border := UI.ACCENT if selected else (Color("7fffd4") if highlight else _border)
 	var bw := 5 if selected or highlight else (4 if aid != "" else 3)
 	if locked and _drop_state == "":

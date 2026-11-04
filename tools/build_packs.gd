@@ -4,6 +4,7 @@ extends SceneTree
 ## 결과: <출력 폴더>/core.pck, art.pck, manifest.json
 ##   core: 코드·장면·데이터 (res://version.json 포함)
 ##   art : 초상화·아티팩트 아이콘
+##   motion: 전투 모션 시트 (assets/motions, 가져오기 없이 원본 파일 그대로 — 있을 때만)
 ## 먼저 `godot --headless --path . --import` 로 가져오기를 끝내 두어야 한다.
 
 
@@ -41,8 +42,15 @@ func _initialize() -> void:
 				if imported != "":
 					art.append(imported)
 
+	var motion := []
+	if DirAccess.dir_exists_absolute("res://assets/motions"):
+		_collect("res://assets/motions", ["json", "webp"], motion)
+
 	var manifest := {"build": build, "version": version, "min_base": min_base, "packs": {}}
-	for pack in [["core", core], ["art", art]]:
+	var packs := [["core", core], ["art", art]]
+	if not motion.is_empty():
+		packs.append(["motion", motion])
+	for pack in packs:
 		var path: String = out.path_join(pack[0] + ".pck")
 		var p := PCKPacker.new()
 		p.pck_start(path)

@@ -7,6 +7,9 @@ const TILE := Vector2(150, 150)
 const GAP := 12.0
 
 var _tiles := {}          # 유닛 index -> UnitTile
+var _sprites := {}        # 유닛 index -> MotionSprite (모션 파일이 있는 사도만)
+const SPRITE_BOX := 215.0
+const SPRITE_LIFT := 30.0 # 이름·HP 띠 위에 발이 오도록
 var _units: Array = []
 var _hp := {}
 var _sh := {}
@@ -69,6 +72,7 @@ func setup(bt: Dictionary, my_side: int, name_a: String, name_b: String) -> void
 	_my_side = my_side
 	UI.clear(_field)
 	_tiles.clear()
+	_sprites.clear()
 	_anim.clear()
 	_stats.clear()
 	if _stats_panel and is_instance_valid(_stats_panel):
@@ -90,9 +94,19 @@ func setup(bt: Dictionary, my_side: int, name_a: String, name_b: String) -> void
 	_left_tag.text = left
 	_right_tag.text = right
 	for u in _units:
+		if MotionSprite.available(u["aid"]):
+			var sp := MotionSprite.new(u["aid"])
+			sp.face_right = u["side"] == my_side   # 왼쪽(우리 편)은 오른쪽을 봄
+			sp.size = TILE
+			sp.box = SPRITE_BOX
+			sp.pivot_offset = Vector2(TILE.x / 2.0, TILE.y)
+			_field.add_child(sp)
+			_sprites[u["i"]] = sp
 		var tile := UnitTile.new(TILE)
 		tile.set_unit({"aid": u["aid"], "star": u["star"], "pers": u["pers"]})
 		tile.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		if _sprites.has(u["i"]):
+			tile.set_motion_mode(true)
 		_field.add_child(tile)
 		_tiles[u["i"]] = tile
 		_dtype[u["i"]] = GameData.apostle(u["aid"]).get("damage", "physical")
@@ -131,6 +145,8 @@ func _layout() -> void:
 		if _tiles.has(u["i"]):
 			_tiles[u["i"]].position = _cell_pos(u)
 			_tiles[u["i"]].size = TILE
+		if _sprites.has(u["i"]):
+			_sprites[u["i"]].position = _cell_pos(u) - Vector2(0, SPRITE_LIFT)
 
 
 func _update_bars() -> void:
@@ -279,21 +295,32 @@ func _apply(e: Array) -> void:
 			_float(dst, "보호막", Color("cfe8ff"), 18)
 		"attack":
 			_lunge(src, dst)
+			_motion(src, "Attack1_1")
 		"skill":
 			_anim[src]["pulse"] = 0.35
+			_motion(src, "Ultimate1_1" if int(e[4]) == 1 else "Skill1_1")
 			_float(src, "✦ " + String(e[5]), UI.ACCENT if int(e[4]) == 1 else Color("c9a7ff"), 26, -56, true)
 		"death":
 			_hp[dst] = 0.0
 			_anim[dst]["dead"] = true
+			if _sprites.has(dst):
+				_sprites[dst].play("Die", false, "", true)
 		"revive":
 			_hp[dst] = float(e[6])
 			_sh[dst] = 0.0
 			_anim[dst]["dead"] = false
+			if _sprites.has(dst):
+				_sprites[dst].play("Idle")
+				_sprites[dst].modulate = Color.WHITE
 			if _tiles.has(dst):
 				_tiles[dst].modulate = Color.WHITE
 			_float(dst, "부활!", Color("d9b3ff"), 30, -30, true)
 		"status":
 			var names := {"stun": "기절", "burn": "화상", "bitter": "쓰라림", "shock": "감전", "blind": "눈가림", "freeze": "빙결"}
+			if (String(e[5]) == "stun" or String(e[5]) == "freeze") and _sprites.has(dst) and not _anim[dst]["dead"]:
+				_sprites[dst].play("Groggy", true, "Idle", false, float(e[4]))
+				if String(e[5]) == "freeze":
+					_sprites[dst].tint = Color(0.7, 0.85, 1.0)
 			_float(dst, names.get(String(e[5]), String(e[5])), Color("ffb3e6"), 18)
 		"buff":
 			if String(e[5]) != "":
@@ -340,6 +367,13 @@ func _float(i: int, text: String, color: Color, fsize: int, dy: float = 0.0, pop
 	tw.chain().tween_callback(l.queue_free)
 
 
+## 모션 재생 (모션이 있는 사도만). 쓰러진 사도는 무시.
+func _motion(i: int, anim: String) -> void:
+	if not _sprites.has(i) or _anim[i]["dead"]:
+		return
+	_sprites[i].play(anim, false, "Idle")
+
+
 func _lunge(src: int, dst: int) -> void:
 	if not _tiles.has(src) or not _tiles.has(dst):
 		return
@@ -357,24 +391,48 @@ func _animate(delta: float) -> void:
 		var t: UnitTile = _tiles[i]
 		var a: Dictionary = _anim[i]
 		var pos := _cell_pos(u)
+		var sp: MotionSprite = _sprites.get(i)
+		if sp != null:
+			sp.speed = _speed
 		if a["dead"]:
 			t.position = pos + Vector2(0, 6)
 			t.modulate = t.modulate.lerp(Color(0.5, 0.5, 0.5, 0.25), minf(1.0, delta * 6.0))
 			t.scale = Vector2.ONE
+			if sp != null:
+				sp.position = pos - Vector2(0, SPRITE_LIFT)
+				sp.tint = Color.WHITE
+				# 쓰러짐 동작이 끝난 뒤 서서히 흐려짐
+				sp.modulate = sp.modulate.lerp(Color(1, 1, 1, 0.35), minf(1.0, delta * 1.2))
 			continue
-		pos.y += sin(_clock * 3.0 + i * 0.9) * 3.0
+		if sp == null:
+			pos.y += sin(_clock * 3.0 + i * 0.9) * 3.0
 		if a["lunge"] > 0.0:
 			a["lunge"] = maxf(0.0, a["lunge"] - delta)
 			var k: float = sin((1.0 - a["lunge"] / 0.18) * PI)
 			pos += a["dir"] * 18.0 * k
 		t.position = pos
+		if sp != null:
+			sp.position = pos - Vector2(0, SPRITE_LIFT)
 		if a["flash"] > 0.0:
 			a["flash"] = maxf(0.0, a["flash"] - delta)
-			t.modulate = Color(1.0, 0.55, 0.55)
+			if sp != null:
+				sp.tint = Color(1.0, 0.5, 0.5)
+				t.modulate = Color.WHITE
+			else:
+				t.modulate = Color(1.0, 0.55, 0.55)
 		else:
 			t.modulate = Color.WHITE
+			if sp != null and sp.current() != "Groggy":
+				sp.tint = Color.WHITE
 		if a["pulse"] > 0.0:
 			a["pulse"] = maxf(0.0, a["pulse"] - delta)
-			t.scale = Vector2.ONE * (1.0 + 0.12 * sin((1.0 - a["pulse"] / 0.35) * PI))
+			var sc := Vector2.ONE * (1.0 + 0.12 * sin((1.0 - a["pulse"] / 0.35) * PI))
+			if sp != null:
+				sp.scale = Vector2.ONE * (1.0 + 0.06 * sin((1.0 - a["pulse"] / 0.35) * PI))
+				t.scale = Vector2.ONE
+			else:
+				t.scale = sc
 		else:
 			t.scale = Vector2.ONE
+			if sp != null:
+				sp.scale = Vector2.ONE

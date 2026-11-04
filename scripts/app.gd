@@ -18,6 +18,7 @@ static func start(root: Node) -> void:
 	if started:
 		return
 	started = true
+	_load_extra_packs()
 	GameData.load_all()
 	var v := _read_json("res://version.json")
 	build = int(v.get("build", 0))
@@ -39,6 +40,19 @@ static func start(root: Node) -> void:
 		var dw := DesktopWindow.new()
 		dw.name = "DesktopWindow"
 		root.add_child.call_deferred(dw)
+
+
+## 시작 화면(boot)이 불러오지 않는 추가 묶음(motion 등)을 불러온다.
+## 옛 APK·실행 파일의 시작 화면은 core/art 만 불러오므로 여기서 처리한다.
+static func _load_extra_packs() -> void:
+	var inst := _read_json(INSTALLED)
+	for name in inst.get("packs", {}):
+		if name == "core" or name == "art":
+			continue
+		var path: String = PACK_DIR + String(inst["packs"][name].get("file", ""))
+		if FileAccess.file_exists(path):
+			if ProjectSettings.load_resource_pack(path, true):
+				print("[app] 추가 묶음 불러옴: %s (모션 사도 %d명)" % [name, DirAccess.get_directories_at("res://assets/motions").size()])
 
 
 ## 설치된 묶음 정보 {build, packs: {이름: {file, sha256, size}}}

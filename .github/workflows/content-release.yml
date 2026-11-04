@@ -15,6 +15,7 @@ on:
       - "assets/portraits/**"
       - "assets/artifacts/**"
       - "assets/icons/**"
+      - "assets/motions/**"
       - "assets/icon.png"
       - "assets/fonts/**"
       - "boot/**"
@@ -82,8 +83,9 @@ jobs:
         run: |
           # 실행 파일 안에 넣을 기본 묶음 (처음 실행할 때 바로 최신 내용)
           mkdir -p packs win
-          cp out/core.pck out/art.pck packs/
-          cp out/manifest.json packs/index.json
+          cp out/core.pck out/art.pck packs/   # 실행 파일에는 core/art 만 (모션은 실행 후 받음)
+          # 실행 파일 안의 목록에는 실제로 넣은 묶음(core/art)만
+          python3 -c "import json;m=json.load(open('out/manifest.json'));m['packs']={k:v for k,v in m['packs'].items() if k in ('core','art')};json.dump(m,open('packs/index.json','w'),ensure_ascii=False)"
           ./godot --headless --path . --export-release "Windows Desktop" win/CheektoChess.exe
           ls -la win
           cat > win/README.txt <<'TXT'
@@ -120,9 +122,9 @@ jobs:
           # GitHub 일시 오류(5xx)에 대비해 재시도. 릴리스가 이미 생겼으면 파일만 다시 올린다.
           for i in 1 2 3 4 5; do
             if gh release view "$TAG" >/dev/null 2>&1; then
-              gh release upload "$TAG" out/manifest.json out/core.pck out/art.pck out/CheektoChess-windows.zip --clobber && gh release edit "$TAG" --latest && exit 0
+              gh release upload "$TAG" out/manifest.json out/*.pck out/CheektoChess-windows.zip --clobber && gh release edit "$TAG" --latest && exit 0
             else
-              gh release create "$TAG" out/manifest.json out/core.pck out/art.pck out/CheektoChess-windows.zip \
+              gh release create "$TAG" out/manifest.json out/*.pck out/CheektoChess-windows.zip \
                 --title "콘텐츠 업데이트 ${VERSION}" \
                 --notes "자동 생성된 게임 콘텐츠 업데이트 (빌드 ${BUILD}, 커밋 ${GITHUB_SHA::7}). 게임 실행 시 자동으로 받습니다. PC(Windows)는 CheektoChess-windows.zip 을 받아 압축을 풀고 실행하세요." \
                 --target "${GITHUB_SHA}" \
