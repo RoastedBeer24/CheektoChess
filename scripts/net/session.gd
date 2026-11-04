@@ -20,6 +20,7 @@ var my_name := "플레이어"
 var token := ""             # 기기별 고유 id (재접속 확인용)
 var my_pid := ""
 var lobby: Array = []       # [{id, name, bot, connected}]
+var group_id := ""          # 이번 판 그룹 (방장이 고름, 참가자에게 전달)
 var state: Dictionary = {}  # 최신 게임 상태
 var game: Match = null      # 방장만 가짐
 var peer_to_pid := {}
@@ -137,10 +138,21 @@ func can_start() -> bool:
 	return is_host() and lobby.size() >= MIN_PLAYERS and lobby.size() <= MAX_PLAYERS
 
 
+## (방장) 이번 판 그룹 고르기
+func set_group(id: String) -> void:
+	if not is_host() or in_game():
+		return
+	group_id = id
+	GameData.set_group(id)
+	_lobby_updated()
+
+
 func _lobby_updated() -> void:
-	App.net.room_info = {"players": lobby.size(), "max": MAX_PLAYERS, "started": in_game()}
+	if group_id == "":
+		group_id = GameData.group_id
+	App.net.room_info = {"players": lobby.size(), "max": MAX_PLAYERS, "started": in_game(), "group": GameData.group_name(group_id)}
 	if mode == "host":
-		_rpc_lobby.rpc(lobby)
+		_rpc_lobby.rpc(lobby, group_id)
 	lobby_changed.emit()
 
 
@@ -150,6 +162,7 @@ func start_game() -> void:
 	if lobby.size() < MIN_PLAYERS:
 		toast.emit("최소 %d명이 필요합니다. 봇을 추가하세요." % MIN_PLAYERS)
 		return
+	GameData.set_group(group_id if group_id != "" else GameData.group_id)
 	game = Match.new(lobby, randi())
 	game.state_changed.connect(func(): _dirty = true)
 	game.start()
@@ -290,8 +303,11 @@ func _rpc_welcome(pid: String) -> void:
 
 
 @rpc("authority", "reliable")
-func _rpc_lobby(l: Array) -> void:
+func _rpc_lobby(l: Array, gid: String = "") -> void:
 	lobby = l
+	if gid != "" and gid != GameData.group_id:
+		GameData.set_group(gid)
+	group_id = gid
 	lobby_changed.emit()
 
 
@@ -302,6 +318,8 @@ func _rpc_game_started() -> void:
 
 @rpc("authority", "reliable")
 func _rpc_state(s: Dictionary) -> void:
+	if s.get("group", "") != "" and s["group"] != GameData.group_id:
+		GameData.set_group(s["group"])
 	state = s
 	state_changed.emit()
 

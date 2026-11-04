@@ -602,7 +602,7 @@ func _refresh_synergy() -> void:
 		if syn.is_empty():
 			continue
 		var active: int = tiers.get(n, 0)
-		var col: Color = UI.PERS_COLOR.get(n, Color("e0b84f") if n == "엘다인" else Color("8fb7ff"))
+		var col: Color = UI.syn_color(n)
 		var row := UI.panel(col.darkened(0.7) if active > 0 else UI.BG2, 10, col if active > 0 else UI.LINE, 2)
 		# 꾹 누르면(PC는 마우스를 올리면) 시너지 상세 팝업
 		row.mouse_filter = Control.MOUSE_FILTER_STOP
@@ -616,15 +616,14 @@ func _refresh_synergy() -> void:
 		var h := HBoxContainer.new()
 		h.add_theme_constant_override("separation", 8)
 		v.add_child(h)
-		var ic := UI.tex_rect(UI.trait_icon(n), Vector2(30, 30))
-		if active == 0:
-			ic.modulate = Color(1, 1, 1, 0.45)
-		h.add_child(ic)
+		h.add_child(UI.syn_badge(n, 30, active == 0))
 		var cnt := UI.label(str(counts[n]), 22, col if active > 0 else UI.SUB, HORIZONTAL_ALIGNMENT_CENTER)
 		cnt.custom_minimum_size.x = 22
 		h.add_child(cnt)
-		var nl := UI.label(n, 21, UI.TEXT if active > 0 else UI.SUB)
+		var nl := UI.label(UI.syn_short(n), 20, UI.TEXT if active > 0 else UI.SUB)
 		nl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		nl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		nl.custom_minimum_size.x = 60
 		h.add_child(nl)
 		var tl: Array = syn["tiers"]
 		for i in tl.size():
@@ -640,7 +639,10 @@ func _refresh_synergy() -> void:
 			h.move_child(more, 3)
 			row.add_theme_stylebox_override("panel", UI.box(col.darkened(0.75), 10, Color("ffe066").darkened(0.15), 2))
 		if active > 0:
-			v.add_child(UI.wrap_label(syn.get("desc", ""), 18, UI.SUB))
+			# 지금 적용 중인 단계의 효과 (고유 시너지는 효과 전체)
+			var lines: Array = UI.syn_lines(n)
+			var now_text: String = lines[1].get(int(tl[active - 1]), lines[0])
+			v.add_child(UI.wrap_label(now_text, 18, UI.SUB))
 		_syn_box.add_child(row)
 	if names.is_empty():
 		_syn_box.add_child(UI.wrap_label("보드에 사도를 올리면 시너지가 표시됩니다.", 18))
@@ -718,7 +720,11 @@ func _refresh_bench_shop() -> void:
 			continue
 		var a := GameData.apostle(aid)
 		var cost: int = GameData.cost_of[aid]
-		var traits: String = "%s %s · %s" % [a["personality"], a["race"], GameData.ROW_NAME[a["row"]]]
+		var sn := []
+		for tr in GameData.traits_of(aid):
+			if GameData.synergies.get(tr, {}).get("kind", "") != "unique":
+				sn.append(UI.syn_short(tr))
+		var traits: String = "%s · %s" % [" ".join(sn), GameData.ROW_NAME[a["row"]]]
 		t.set_unit({"aid": aid}, traits, UI.cost_color(aid))
 		t.set_badge("%dG" % cost, UI.cost_color(aid).lightened(0.35), 24)
 		t.set_name_color(UI.cost_color(aid).lightened(0.45))
@@ -1257,6 +1263,17 @@ func _show_syn_popup(row: Control, name: String, count: int) -> void:
 	panel.add_child(v)
 	Info.synergy(v, name, count, aids)
 	_drag_layer.add_child(panel)
+	_syn_popup = panel
+	panel.modulate.a = 0.0
+	_place_syn_popup(panel, row)
+	# 글 줄바꿈 높이는 너비가 정해진 뒤에 확정되므로 한 프레임 뒤 다시 맞춘다
+	await get_tree().process_frame
+	if is_instance_valid(panel) and _syn_popup == panel:
+		_place_syn_popup(panel, row)
+		panel.modulate.a = 1.0
+
+
+func _place_syn_popup(panel: Control, row: Control) -> void:
 	panel.reset_size()
 	var r := row.get_global_rect()
 	var vp := get_viewport_rect().size
@@ -1265,7 +1282,6 @@ func _show_syn_popup(row: Control, name: String, count: int) -> void:
 	panel.scale = Vector2(k, k)
 	var ps := panel.size * k
 	panel.position = Vector2(clampf(r.end.x + 12, 10, maxf(10.0, vp.x - ps.x - 10)), clampf(r.position.y - 20, 10, maxf(10.0, vp.y - ps.y - 10)))
-	_syn_popup = panel
 
 
 func _hide_syn_popup() -> void:

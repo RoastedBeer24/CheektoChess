@@ -32,6 +32,7 @@ func _init(players: Array, seed: int) -> void:
 	state = {
 		"round": 0, "phase": "lobby", "phase_end": 0.0, "players": ps, "pool": pool,
 		"battles": [], "next_uid": 1, "log": [], "winner": "", "seed": seed,
+		"group": GameData.group_id,
 	}
 
 
@@ -299,11 +300,42 @@ func _end_battle() -> void:
 func _win(p: Dictionary) -> void:
 	p["streak"] = maxi(1, int(p["streak"]) + 1)
 	p["gold"] += 1
+	_synergy_reward(p, true)
 
 
 func _lose(p: Dictionary, dmg: int) -> void:
 	p["streak"] = mini(-1, int(p["streak"]) - 1)
 	p["hp"] -= dmg
+	_synergy_reward(p, false)
+
+
+## 전투 결과에 따른 시너지 보상 (델리아 탐험대: 골드, n승마다 아티팩트)
+func _synergy_reward(p: Dictionary, won: bool) -> void:
+	var specs := []
+	for k in p["board"]:
+		specs.append(p["board"][k])
+	var tiers := Rules.active_tiers(Rules.count_traits(specs))
+	for name in tiers:
+		var tier: int = tiers[name]
+		if tier <= 0:
+			continue
+		var levels: Array = GameData.synergies[name].get("levels", [])
+		if tier - 1 >= levels.size():
+			continue
+		var spec: Dictionary = levels[tier - 1]
+		if spec.has("gold"):
+			var g := int(spec["gold"].get("win" if won else "lose", 0))
+			if g > 0:
+				p["gold"] += g
+				_log("%s: %s +%d골드" % [p["name"], name, g])
+		if spec.has("art_every_wins") and won:
+			var key: String = "wins_" + String(name)
+			p[key] = int(p.get(key, 0)) + 1
+			if p[key] % int(spec["art_every_wins"]) == 0:
+				var pool: Array = GameData.artifacts_by_grade.get("common", [])
+				if not pool.is_empty():
+					p["inv"].append({"uid": _uid(), "id": pool[rng.randi() % pool.size()]})
+					_log("%s: %s 보물 발견 (일반 아티팩트)" % [p["name"], name])
 
 
 func _eliminate(pid: String, remaining: int) -> void:

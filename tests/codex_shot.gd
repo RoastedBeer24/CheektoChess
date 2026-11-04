@@ -47,7 +47,7 @@ func _ready() -> void:
 	App.session.state_changed.emit()
 	await _wait(5)
 	var row = gs._syn_box.get_child(0)
-	gs._show_syn_popup(row, "냉정", 2)
+	gs._show_syn_popup(row, "벨리티엔", 2)
 	await _wait(3)
 	await _shot("c3_synergy_popup")
 	gs._hide_syn_popup()

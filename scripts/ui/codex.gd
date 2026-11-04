@@ -139,6 +139,13 @@ func _set_tab(t: String) -> void:
 func _build_filters() -> void:
 	UI.clear(_filters_box)
 	var defs: Array = FILTERS if tab == "apostle" else (ART_FILTERS if tab == "artifact" else [])
+	if tab == "apostle":
+		# 그룹 시너지 필터 (고유 제외)
+		var names := []
+		for n in GameData.synergies:
+			if GameData.synergies[n].get("kind", "") != "unique":
+				names.append(n)
+		defs = [["syn", "시너지", names]] + FILTERS
 	if defs.is_empty():
 		if tab == "terms":
 			_filters_box.add_child(UI.label("색 규칙", 24, UI.ACCENT))
@@ -188,6 +195,8 @@ func _build_filters() -> void:
 
 func _filter_color(key: String, val: String) -> Color:
 	match key:
+		"syn":
+			return UI.syn_color(val)
 		"pers":
 			return UI.PERS_COLOR.get(val, Color.GRAY)
 		"cost":
@@ -264,6 +273,8 @@ func _list_apostles() -> void:
 	for aid in GameData.roster:
 		var a := GameData.apostle(aid)
 		if not matches(a["name"], query) and not matches(a.get("name_en", ""), query):
+			continue
+		if not _pick_ok("syn", GameData.traits_of(aid)):
 			continue
 		if not _pick_ok("cost", [str(GameData.cost_of[aid])]):
 			continue
@@ -363,20 +374,45 @@ func _show_artifact(id: String) -> void:
 
 func _list_synergies() -> void:
 	_grid.columns = 3
-	_count.text = "시너지 %d종" % GameData.synergies.size()
-	for name in GameData.synergies:
+	_count.text = "%s · 시너지 %d개" % [GameData.group_name(GameData.group_id), GameData.synergies.size()]
+	var names: Array = GameData.synergies.keys()
+	var order := {"origin": 0, "cls": 1, "unique": 2}
+	names.sort_custom(func(a, b): return order.get(GameData.synergies[a].get("kind", ""), 3) < order.get(GameData.synergies[b].get("kind", ""), 3))
+	for name in names:
 		var syn: Dictionary = GameData.synergies[name]
-		var col: Color = UI.PERS_COLOR.get(name, Color("e0b84f") if name == "엘다인" else Color("8fb7ff"))
+		var col := UI.syn_color(name)
 		var tiers := []
 		for t in syn["tiers"]:
 			tiers.append(str(int(t)))
-		var b := UI.button("%s\n%s  (%s)" % [name, syn.get("desc", ""), "/".join(tiers)], 18, Vector2(300, 96), col.darkened(0.6))
+		var kind_name: String = {"origin": "계열", "cls": "직업", "unique": "고유"}.get(syn.get("kind", ""), "")
+		var b := Button.new()
+		b.custom_minimum_size = Vector2(300, 92)
+		b.focus_mode = Control.FOCUS_NONE
 		b.add_theme_stylebox_override("normal", UI.box(col.darkened(0.65), 12, col, 2))
-		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
-		b.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		b.icon = UI.trait_icon(name)
-		b.expand_icon = true
-		b.add_theme_constant_override("icon_max_width", 48)
+		b.add_theme_stylebox_override("hover", UI.box(col.darkened(0.55), 12, col.lightened(0.2), 2))
+		b.add_theme_stylebox_override("pressed", UI.box(col.darkened(0.75), 12, col, 2))
+		var h := HBoxContainer.new()
+		h.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		h.offset_left = 12
+		h.offset_right = -10
+		h.add_theme_constant_override("separation", 10)
+		h.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		b.add_child(h)
+		var badge := UI.syn_badge(name, 44)
+		badge.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		h.add_child(badge)
+		var v := VBoxContainer.new()
+		v.alignment = BoxContainer.ALIGNMENT_CENTER
+		v.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		v.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		h.add_child(v)
+		var nl := UI.label(name, 20, UI.TEXT)
+		nl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		nl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		v.add_child(nl)
+		var sub := UI.label("%s · %s명" % [kind_name, "/".join(tiers)], 18, col.lightened(0.3))
+		sub.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		v.add_child(sub)
 		var n: String = name
 		b.pressed.connect(func():
 			UI.clear(_detail)

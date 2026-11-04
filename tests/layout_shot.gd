@@ -16,7 +16,7 @@ func _ready() -> void:
 	await _wait(10)
 	var p = App.session.state["players"][App.session.my_pid]
 	p["gold"] = 80
-	p["shop"] = ["ed", "aya", "sylla", "joanne", "uros"]
+	p["shop"] = ["mayo", "aya", "sylla", "joanne", "vela"]
 	for i in 3:
 		App.session.submit({"t": "buy", "i": i})
 	App.session.submit({"t": "move", "from": {"bench": 0}, "to": {"board": "0,1"}})

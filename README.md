@@ -78,9 +78,8 @@ tools/build_release.sh 1 windows
 boot/                시작 화면 + 자동 업데이트 (APK 에 들어가는 유일한 게임 스크립트)
 data/                게임 데이터 (JSON)
   apostles.json      사도 125명 (tools/build_apostles.py 로 생성)
-  roster.json        상점에 나오는 사도(전원)와 코스트 ← tools/build_roster.py 로 생성, 직접 수정 가능
+  groups.json        그룹: 판에 쓰는 사도·코스트·시너지(효과 글 + 게임 동작) ← tools/import_group.py
   artifacts.json     아티팩트 105종 (효과 구조 포함)
-  synergies.json     시너지 단계/효과
   balance.json       경제·전투·확률 수치
   raw/               원본 참고 데이터
 scripts/app.gd       게임 시작점 (App.session / App.net)

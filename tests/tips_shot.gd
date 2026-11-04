@@ -19,7 +19,7 @@ func _ready() -> void:
 	await _wait(10)
 	var p = App.session.state["players"][App.session.my_pid]
 	p["gold"] = 13
-	p["shop"] = ["ed", "aya", "sylla", "erpin", "uros"]
+	p["shop"] = ["mayo", "aya", "sylla", "erpin", "vela"]
 	App.session.submit({"t": "buy", "i": 0})
 	App.session.submit({"t": "buy", "i": 1})
 	App.session.submit({"t": "move", "from": {"bench": 0}, "to": {"board": "0,1"}})

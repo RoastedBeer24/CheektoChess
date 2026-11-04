@@ -3,7 +3,7 @@
 
 사용법: python3 tools/build_apostles.py
 - 원작 능력치는 쓰지 않는다. 성격/종족/열/역할/공격 타입/스킬·어사이드 설명만 가져온다.
-- 실제 게임 수치(코스트 등)는 data/roster.json 에서 정한다.
+- 실제 게임 수치(코스트·시너지)는 data/groups.json (그룹) 에서 정한다.
 """
 import json
 import os
@@ -28,7 +28,7 @@ SKILL_KIND = {
     "Normal ATK": "normal", "Passive": "passive",
 }
 # 원본 데이터 오류 보정 (영문 이름 -> 한글 이름)
-NAME_FIX = {"Yomi": "요미", "Ronnie": "Ronnie"}  # Ronnie: 원본 데이터에 한글 이름이 "오로라"로 잘못 들어가 있음 (확인 필요)
+NAME_FIX = {"Yomi": "요미", "Ronnie": "로니"}  # Ronnie: 원본 데이터에 한글 이름이 "오로라"로 잘못 들어가 있음 → 로니
 
 
 def fill_values(entry):

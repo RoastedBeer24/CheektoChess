@@ -18,6 +18,10 @@ var deaths := [0, 0]           # 진영별 사망 수
 var _tick_count := 0
 var _uid_buff := 0
 var B: Dictionary
+var side_timers: Array = []    # 진영 단위 주기 효과 {side, syn, sec, t, do}
+var guardian := [false, false] # 세계수: 처음 쓰러질 아군을 버티게 함 (진영별 1회)
+var revive := [{}, {}]         # 유령 늪: 처음 쓰러진 시너지 사도 부활 {syn, pct, delay}
+var pending_revive: Array = [] # {i, at, pct}
 
 
 func _init(army_a: Array, army_b: Array, seed: int) -> void:
@@ -83,29 +87,33 @@ func _apply_team_effects() -> void:
 	for side in [0, 1]:
 		var allies := _side_units(side)
 		var enemies := _side_units(1 - side)
-		# 시너지
+		# 시너지 (그룹)
 		var specs := []
 		for u in allies:
 			specs.append({"aid": u["aid"], "pers": u["pers"]})
 		var counts := Rules.count_traits(specs)
 		var tiers := Rules.active_tiers(counts)
-		for name in tiers:
+		var names: Array = tiers.keys()
+		names.sort()   # 결정론: 항상 같은 순서
+		for name in names:
 			var tier: int = tiers[name]
 			if tier <= 0:
 				continue
 			var syn: Dictionary = GameData.synergies[name]
-			var mods: Dictionary = syn["mods"][tier - 1]
-			match syn["scope"]:
-				"trait":
-					for u in allies:
-						if GameData.traits_of(u["aid"], u["pers"]).has(name):
-							_add_static(u, mods)
-				"team":
-					for u in allies:
-						_add_static(u, mods)
-				"enemy":
-					for u in enemies:
-						_add_static(u, mods)
+			var levels: Array = syn.get("levels", [])
+			if tier - 1 >= levels.size():
+				continue
+			var members := []
+			for u in allies:
+				if GameData.traits_of(u["aid"]).has(name):
+					members.append(u)
+			if members.is_empty():
+				continue
+			var spec: Dictionary = levels[tier - 1]
+			if spec.has("by_pers"):
+				# 공명/이면: 시너지 사도가 고른 성격에 따라 (첫 사도 기준)
+				spec = spec["by_pers"].get(members[0]["pers"], spec["by_pers"].values()[0])
+			_apply_synergy(side, name, spec, members, allies, enemies)
 		# 어사이드 3성 (간이)
 		for src in allies:
 			if src["star"] < 3:
@@ -134,6 +142,62 @@ func _apply_team_effects() -> void:
 	for u in units:
 		u["hp"] = _raw_max_hp(u)
 		u["hp"] = max_hp(u)
+
+
+## 시너지 한 단계의 효과를 적용 (tools/import_group.py 의 levels 형식)
+func _apply_synergy(side: int, name: String, spec: Dictionary, members: Array, allies: Array, enemies: Array) -> void:
+	for u in members:
+		_add_static(u, spec.get("mods", {}))
+		var n_arts: int = u["arts"].size()
+		if spec.has("per_art") and n_arts > 0:
+			var pm := {}
+			for k in spec["per_art"]:
+				pm[k] = float(spec["per_art"][k]) * n_arts
+			_add_static(u, pm)
+		if spec.has("per_ally"):
+			var others := allies.size() - members.size()
+			var pa := {}
+			for k in spec["per_ally"]:
+				pa[k] = float(spec["per_ally"][k]) * others
+			_add_static(u, pa)
+		if spec.has("row_counter"):
+			u["row_counter"] = spec["row_counter"]
+		for fx in spec.get("fx", []):
+			var f: Dictionary = fx.duplicate(true)
+			f["syn"] = name
+			for act in f.get("do", []):
+				if act.get("to", "") == "trait":
+					act["trait"] = name
+			if f["t"] == "cond":
+				u["conds"].append(f)
+			else:
+				f["k"] = u["fx"].size()
+				u["fx"].append(f)
+	for u in allies:
+		_add_static(u, spec.get("team_mods", {}))
+	for u in enemies:
+		_add_static(u, spec.get("enemy_mods", {}))
+	if spec.has("team_arts"):
+		var total := 0
+		for u in allies:
+			total += u["arts"].size()
+		if total >= int(spec["team_arts"]["n"]):
+			for u in members:
+				_add_static(u, spec["team_arts"]["mods"])
+	if spec.has("row_mods"):
+		var rows := {}
+		for u in members:
+			rows[u["row"]] = true
+		for u in allies:
+			if rows.has(u["row"]):
+				_add_static(u, spec["row_mods"])
+	if spec.has("side_timer"):
+		var st: Dictionary = spec["side_timer"].duplicate(true)
+		side_timers.append({"side": side, "syn": name, "sec": float(st["sec"]), "t": float(st["sec"]), "do": st["do"]})
+	if spec.get("guardian", false):
+		guardian[side] = true
+	if spec.has("revive"):
+		revive[side] = {"syn": name, "pct": float(spec["revive"]["pct"]), "delay": float(spec["revive"]["delay"])}
 
 
 func _add_static(u: Dictionary, mods: Dictionary) -> void:
@@ -188,6 +252,10 @@ func _cond_ok(u: Dictionary, cond: String, target) -> bool:
 			return u.get("hp", 0.0) / _raw_max_hp(u) * 100.0 >= float(parts[1])
 		"has_shield":
 			return not u["shields"].is_empty()
+		"hp_lt":
+			return u.get("hp", 0.0) / _raw_max_hp(u) * 100.0 < float(parts[1])
+		"vs_elem":
+			return target != null and (target["status"].has("shock") or target["status"].has("burn"))
 		"enemies_ge":
 			return _alive_count(1 - u["side"]) >= int(parts[1])
 		"enemies_eq":
@@ -263,6 +331,7 @@ func run() -> Dictionary:
 	while time < limit:
 		_tick_count += 1
 		time = _tick_count * DT
+		_tick_side()
 		for u in units:
 			if u["alive"]:
 				_update_unit(u)
@@ -280,6 +349,33 @@ func run() -> Dictionary:
 	var survivors := a_alive if winner == 0 else (b_alive if winner == 1 else 0)
 	_emit("end", -1, -1, winner)
 	return {"winner": winner, "survivors": survivors, "end_time": time, "events": events, "units": unit_snapshots()}
+
+
+## 진영 단위 주기 효과·부활
+func _tick_side() -> void:
+	for st in side_timers:
+		st["t"] -= DT
+		if st["t"] > 0.0:
+			continue
+		st["t"] += st["sec"]
+		for u in units:
+			if u["side"] == st["side"] and u["alive"] and GameData.traits_of(u["aid"]).has(st["syn"]):
+				_run_actions(u, st["do"], null, {})
+				break
+	var keep := []
+	for r in pending_revive:
+		if time >= r["at"]:
+			var u: Dictionary = units[r["i"]]
+			u["alive"] = true
+			u["status"] = {}
+			u["buffs"] = []
+			u["shields"] = []
+			u["hp"] = max_hp(u) * r["pct"] / 100.0
+			deaths[u["side"]] -= 1
+			_emit("revive", u["i"], u["i"], 0, "", u["hp"], 0.0)
+		else:
+			keep.append(r)
+	pending_revive = keep
 
 
 func unit_snapshots() -> Array:
@@ -320,7 +416,14 @@ func _update_unit(u: Dictionary) -> void:
 		for f in u["fx"]:
 			if f["t"] == "per_sec":
 				_run_actions(u, f["do"], null, {})
-	if u["status"].has("stun"):
+	for f in u["fx"]:
+		if f["t"] == "interval":
+			var key := "iv_%d" % f["k"]
+			u["counters"][key] = float(u["counters"].get(key, float(f["sec"]))) - DT
+			if u["counters"][key] <= 0.0:
+				u["counters"][key] += float(f["sec"])
+				_run_actions(u, f["do"], null, {})
+	if u["status"].has("stun") or u["status"].has("freeze"):
 		return
 	# SP
 	u["sp"] += float(B["sp_regen"]) * maxf(0.0, 1.0 + mod(u, "sp_regen") / 100.0) * DT
@@ -485,6 +588,12 @@ func _normal_attack(u: Dictionary, target: Dictionary) -> void:
 	if dealt <= 0.0:
 		return
 	u["n_normal_hits"] += 1
+	# 주변 적에게 튀는 공격 (splash %)
+	var splash := mod(u, "splash")
+	if splash > 0.0:
+		for e in _enemies_in_row(u, target["row"]):
+			if e != target and absi(int(e["slot"]) - int(target["slot"])) == 1:
+				deal(u, e, mult * splash / 100.0, "extra", {})
 	# 일반 공격 적중 효과
 	for f in u["fx"]:
 		match f["t"]:
@@ -665,9 +774,31 @@ func _apply_damage(src: Dictionary, dst: Dictionary, amt: float, kind: String, c
 			for f in src["fx"]:
 				if f["t"] == "skill_hits_n" and src["n_skill_hits"] % int(f["n"]) == 0 and dst["alive"]:
 					_run_actions(src, f["do"], dst, {})
+	if dst["hp"] <= 0.0 and guardian[dst["side"]]:
+		# 세계수의 가호: 처음 쓰러질 아군을 HP 1로 버티게 함
+		guardian[dst["side"]] = false
+		dst["hp"] = 1.0
+		dst["invuln"] = maxf(dst["invuln"], 1.5)
+		_emit("buff", dst["i"], dst["i"], 0, "세계수의 가호")
 	if dst["hp"] <= 0.0:
 		_kill(src, dst)
 		return amt
+	# 빙결: 다시 공격받으면 깨지며 추가 피해
+	if direct and dst["status"].has("freeze") and src["side"] != dst["side"]:
+		var fz: Dictionary = dst["status"]["freeze"]
+		dst["status"].erase("freeze")
+		var caster: Dictionary = units[fz["src"]]
+		if caster["alive"]:
+			deal(caster, dst, 80.0, "extra", {})
+		if not dst["alive"]:
+			return amt
+	# 같은 열 반격 (뜨거운 도시)
+	if direct and kind != "counter" and src["alive"] and src["side"] != dst["side"]:
+		for m in units:
+			if m["alive"] and m["side"] == dst["side"] and m["row"] == dst["row"] and m.has("row_counter"):
+				if rng.randf() * 100.0 < float(m["row_counter"]["chance"]):
+					deal(m, src, float(m["row_counter"]["pct"]), "counter", {})
+					break
 	# 피격 효과
 	for f in dst["fx"]:
 		match f["t"]:
@@ -691,6 +822,20 @@ func _kill(src: Dictionary, dst: Dictionary) -> void:
 	dst["hp"] = 0.0
 	deaths[dst["side"]] += 1
 	_emit("death", src["i"], dst["i"], 0)
+	# 쓰러질 때 효과 / 아군이 쓰러졌을 때 효과
+	for f in dst["fx"]:
+		if f["t"] == "death_self":
+			_run_actions(dst, f["do"], src, {"dead_ok": true})
+	for u in units:
+		if u["alive"] and u["side"] == dst["side"]:
+			for f in u["fx"]:
+				if f["t"] == "ally_death":
+					_run_actions(u, f["do"], dst, {})
+	# 유령 늪: 처음 쓰러진 시너지 사도 부활
+	var rv: Dictionary = revive[dst["side"]]
+	if not rv.is_empty() and GameData.traits_of(dst["aid"]).has(rv["syn"]):
+		revive[dst["side"]] = {}
+		pending_revive.append({"i": dst["i"], "at": time + rv["delay"], "pct": rv["pct"]})
 	for u in units:
 		if not u["alive"] or u["side"] == dst["side"]:
 			continue
@@ -747,7 +892,7 @@ func _add_buff(src: Dictionary, dst: Dictionary, mods: Dictionary, dur: float, k
 func _add_status(src: Dictionary, dst: Dictionary, s: String, dur: float) -> void:
 	if not dst["alive"]:
 		return
-	if dst["invuln"] > 0.0 and s == "stun":
+	if dst["invuln"] > 0.0 and (s == "stun" or s == "freeze"):
 		return
 	dst["status"][s] = {"until": time + dur, "src": src["i"]}
 	_emit("status", src["i"], dst["i"], dur, s)
@@ -778,7 +923,7 @@ func _mark(u: Dictionary, f: Dictionary) -> void:
 
 # ─────────────────────────────── 효과 실행 ───────────────────────────────
 
-func _resolve_to(u: Dictionary, to: String, target) -> Array:
+func _resolve_to(u: Dictionary, to: String, target, trait_name: String = "") -> Array:
 	match to:
 		"self":
 			return [u]
@@ -790,6 +935,21 @@ func _resolve_to(u: Dictionary, to: String, target) -> Array:
 			return out
 		"allies":
 			return _allies(u)
+		"lowest":
+			var lo = _lowest_ally(u)
+			return [lo] if lo != null else []
+		"enemies":
+			var out := []
+			for e in units:
+				if e["side"] != u["side"] and e["alive"]:
+					out.append(e)
+			return out
+		"trait":
+			var out := []
+			for a in _allies(u):
+				if GameData.traits_of(a["aid"]).has(String(trait_name)):
+					out.append(a)
+			return out
 		"target":
 			return [target] if target != null and target["alive"] else []
 	return [u]
@@ -797,15 +957,15 @@ func _resolve_to(u: Dictionary, to: String, target) -> Array:
 
 func _run_actions(u: Dictionary, actions: Array, target, ctx: Dictionary) -> void:
 	for act in actions:
-		if not u["alive"] and act["a"] != "debuff":
+		if not u["alive"] and act["a"] != "debuff" and not ctx.get("dead_ok", false):
 			return
 		match act["a"]:
 			"buff":
-				for d in _resolve_to(u, act.get("to", "self"), target):
+				for d in _resolve_to(u, act.get("to", "self"), target, act.get("trait", "")):
 					_add_buff(u, d, act["mods"], float(act["dur"]), act.get("key", ""), int(act.get("stack", 1)), false, act.get("max_bonus", {}))
 					_emit("buff", u["i"], d["i"], 0, GameData.artifact(act.get("key", "")).get("name", ""))
 			"debuff":
-				for d in _resolve_to(u, act.get("to", "target"), target):
+				for d in _resolve_to(u, act.get("to", "target"), target, act.get("trait", "")):
 					_add_buff(u, d, act["mods"], float(act["dur"]), act.get("key", ""), int(act.get("stack", 1)), true)
 			"clear_buff":
 				var keep := []
@@ -814,10 +974,10 @@ func _run_actions(u: Dictionary, actions: Array, target, ctx: Dictionary) -> voi
 						keep.append(b)
 				u["buffs"] = keep
 			"shield":
-				for d in _resolve_to(u, act.get("to", "self"), target):
+				for d in _resolve_to(u, act.get("to", "self"), target, act.get("trait", "")):
 					_add_shield(u, d, max_hp(d) * float(act["pct"]) / 100.0, float(act["dur"]), false)
 			"heal":
-				for d in _resolve_to(u, act.get("to", "self"), target):
+				for d in _resolve_to(u, act.get("to", "self"), target, act.get("trait", "")):
 					_heal(u, d, max_hp(d) * float(act["pct"]) / 100.0, false, float(act.get("overflow_shield", 0.0)))
 			"lifesteal":
 				_heal(u, u, float(ctx.get("dealt", 0.0)) * float(act["pct"]) / 100.0, false)
@@ -833,7 +993,7 @@ func _run_actions(u: Dictionary, actions: Array, target, ctx: Dictionary) -> voi
 				if target != null and target["alive"]:
 					deal(u, target, float(act["pct"]), "extra", {})
 			"status":
-				for d in _resolve_to(u, act.get("to", "target"), target):
+				for d in _resolve_to(u, act.get("to", "target"), target, act.get("trait", "")):
 					_add_status(u, d, act["s"], float(act["dur"]))
 			"next_normal":
 				u["pending_normal"].append(act)
@@ -852,6 +1012,17 @@ func _run_actions(u: Dictionary, actions: Array, target, ctx: Dictionary) -> voi
 				if target != null and target["alive"] and target["hp"] / max_hp(target) * 100.0 <= float(act["below"]) and target["invuln"] <= 0.0:
 					_emit("execute", u["i"], target["i"], 0)
 					_kill(u, target)
+			"status_rand":
+				var choices: Array = act["s"]
+				for d in _resolve_to(u, act.get("to", "target"), target, act.get("trait", "")):
+					_add_status(u, d, choices[rng.randi() % choices.size()], float(act["dur"]))
+			"shield_atk":
+				for d in _resolve_to(u, act.get("to", "self"), target, act.get("trait", "")):
+					_add_shield(u, d, atk(u) * float(act["pct"]) / 100.0, float(act["dur"]), false)
+			"strike":
+				var t = _pick_target(u, act.get("mode", "back"))
+				if t != null:
+					deal(u, t, float(act["pct"]), "extra", {})
 			"aura_damage":
 				var t = _pick_target(u, "front")
 				if t != null:

@@ -285,8 +285,15 @@ func _apply(e: Array) -> void:
 		"death":
 			_hp[dst] = 0.0
 			_anim[dst]["dead"] = true
+		"revive":
+			_hp[dst] = float(e[6])
+			_sh[dst] = 0.0
+			_anim[dst]["dead"] = false
+			if _tiles.has(dst):
+				_tiles[dst].modulate = Color.WHITE
+			_float(dst, "부활!", Color("d9b3ff"), 30, -30, true)
 		"status":
-			var names := {"stun": "기절", "burn": "화상", "bitter": "쓰라림", "shock": "감전", "blind": "눈가림"}
+			var names := {"stun": "기절", "burn": "화상", "bitter": "쓰라림", "shock": "감전", "blind": "눈가림", "freeze": "빙결"}
 			_float(dst, names.get(String(e[5]), String(e[5])), Color("ffb3e6"), 18)
 		"buff":
 			if String(e[5]) != "":

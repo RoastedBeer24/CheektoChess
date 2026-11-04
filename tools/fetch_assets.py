@@ -176,7 +176,7 @@ def make_eldyne_icon(out):
 
 def write_report(arts, have_art, apostles, have_portrait):
     grade_name = {"legend": "전설", "rare": "희귀", "advanced": "고급", "common": "일반"}
-    roster = {e["id"] for e in json.load(open(os.path.join(ROOT, "data", "roster.json"), encoding="utf-8"))["pool"]}
+    roster = {u["id"] for g in json.load(open(os.path.join(ROOT, "data", "groups.json"), encoding="utf-8"))["groups"] for u in g["units"]}
     lines = [
         "# 에셋 현황",
         "",

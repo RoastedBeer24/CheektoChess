@@ -3,7 +3,7 @@ extends RefCounted
 ## 전투/UI 가 함께 쓰는 공용 규칙: 시너지 계산, 사도 기본 능력치, 어사이드 해석.
 
 
-## 보드 위 유닛 목록(각 원소 {aid, pers})으로 시너지 인원 수를 센다.
+## 보드 위 유닛 목록(각 원소 {aid, pers})으로 시너지 인원 수를 센다 (그룹 시너지).
 ## 같은 사도는 한 번만 센다.
 static func count_traits(units: Array) -> Dictionary:
 	var seen := {}
@@ -11,11 +11,9 @@ static func count_traits(units: Array) -> Dictionary:
 	for u in units:
 		var key: String = u["aid"]
 		if seen.has(key):
-			# 공명/이면 사도가 서로 다른 성격을 골랐다면 각각 따로 센다
-			if u.get("pers", "") == seen[key]:
-				continue
-		seen[key] = u.get("pers", "")
-		for t in GameData.traits_of(u["aid"], u.get("pers", "")):
+			continue
+		seen[key] = true
+		for t in GameData.traits_of(key):
 			if t == "":
 				continue
 			counts[t] = counts.get(t, 0) + 1

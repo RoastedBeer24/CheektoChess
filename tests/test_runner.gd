@@ -7,6 +7,7 @@ func _ready() -> void:
 	var fails := 0
 	fails += _test_battle()
 	fails += _test_match()
+	fails += _test_group_synergies()
 	fails += await _test_ui()
 	print("TESTS DONE, failures=%d" % fails)
 	get_tree().quit(1 if fails > 0 else 0)
@@ -14,15 +15,15 @@ func _ready() -> void:
 
 func _test_battle() -> int:
 	var a := [
-		{"aid":"ed","star":2,"row":0,"slot":1,"arts":["soft_vest","emergency_belt"],"pers":""},
+		{"aid":"mayo","star":2,"row":0,"slot":1,"arts":["soft_vest","emergency_belt"],"pers":""},
 		{"aid":"aya","star":1,"row":1,"slot":0,"arts":["belita_staff"],"pers":""},
 		{"aid":"sylla","star":1,"row":2,"slot":2,"arts":["sylla_arrow","toy_telescope","rim_scythe"],"pers":""},
 		{"aid":"hilde","star":1,"row":1,"slot":2,"arts":["hilde_uniform"],"pers":""},
 	]
 	var b := [
-		{"aid":"rudd","star":2,"row":0,"slot":0,"arts":["levi_dagger","dokkaebi_hat"],"pers":""},
+		{"aid":"rohne","star":2,"row":0,"slot":0,"arts":["levi_dagger","dokkaebi_hat"],"pers":""},
 		{"aid":"joanne","star":1,"row":0,"slot":2,"arts":["madness_mask"],"pers":"우울"},
-		{"aid":"uros","star":3,"row":2,"slot":1,"arts":["fire_bow","greed_ring"],"pers":"광기"},
+		{"aid":"vela","star":3,"row":2,"slot":1,"arts":["fire_bow","greed_ring"],"pers":"광기"},
 		{"aid":"belita","star":1,"row":2,"slot":0,"arts":["kettlebell","dragonlight_sword"],"pers":""},
 	]
 	var r1 = BattleSim.new(a, b, 12345).run()
@@ -39,6 +40,74 @@ func _test_battle() -> int:
 
 
 ## 봇 8명으로 한 판을 끝까지 돌려본다
+## 그룹 시너지: 6명 단계 효과가 실제로 동작하는지 (이벤트로 확인)
+func _army(ids: Array, arts: Dictionary = {}) -> Array:
+	var out := []
+	var slots := {}
+	for aid in ids:
+		var a := GameData.apostle(aid)
+		var row: int = {"front": 0, "mid": 1, "back": 2}.get(a.get("row", "mid"), 1)
+		var sl: int = slots.get(row, 0)
+		if sl >= 3:
+			row = (row + 1) % 3
+			sl = slots.get(row, 0)
+		slots[row] = sl + 1
+		out.append({"aid": aid, "star": 1, "row": row, "slot": sl, "arts": arts.get(aid, []), "pers": "순수" if aid == "joanne" else ""})
+	return out
+
+
+func _count_ev(res: Dictionary, kind: String, extra: String = "") -> int:
+	var n := 0
+	for e in res["events"]:
+		if e[1] == kind and (extra == "" or String(e[5]) == extra):
+			n += 1
+	return n
+
+
+func _test_group_synergies() -> int:
+	var fails := 0
+	var enemy := _army(["mayo", "bana", "rohne", "festa", "bigwood", "speaki", "opal", "levi", "marie"])
+	# 유령 늪 6: 부활
+	var swamp := _army(["speaki", "kishya", "barong", "selene", "alice", "shaydi"])
+	var counts := Rules.active_tiers(Rules.count_traits(swamp))
+	if counts.get("유령 늪", 0) != 3:
+		print("FAIL: 유령 늪 6단계가 아님 %s" % counts); fails += 1
+	var found_revive := false
+	for seed in range(1, 8):
+		var r := BattleSim.new(swamp, enemy, seed).run()
+		if _count_ev(r, "revive") > 0:
+			found_revive = true
+			break
+	print("유령 늪 부활 이벤트: %s" % found_revive)
+	if not found_revive:
+		print("FAIL: 유령 늪 부활 없음"); fails += 1
+	# 세계수 교단 6: 가호 (버티기)
+	var tree := _army(["picora", "kyarot", "ner", "skea", "polan", "joanne"])
+	var guard := false
+	for seed in range(1, 8):
+		var r := BattleSim.new(tree, enemy, seed).run()
+		if _count_ev(r, "buff", "세계수의 가호") > 0:
+			guard = true
+			break
+	print("세계수의 가호 발동: %s" % guard)
+	if not guard:
+		print("FAIL: 세계수의 가호 없음"); fails += 1
+	# 결정론: 같은 seed 같은 결과
+	var r1 := BattleSim.new(tree, swamp, 42).run()
+	var r2 := BattleSim.new(tree, swamp, 42).run()
+	if r1["events"].size() != r2["events"].size() or r1["winner"] != r2["winner"]:
+		print("FAIL: 그룹 시너지 전투가 결정론적이지 않음"); fails += 1
+	# 폐쇄적인 수집가: 아티팩트 수에 비례한 HP
+	var col := _army(["opal", "sist"], {"opal": ["life_gem", "life_gem"]})
+	var sim := BattleSim.new(col, enemy, 1)
+	var opal_hp: float = sim.max_hp(sim.units[0])
+	var plain := BattleSim.new(_army(["opal"], {"opal": ["life_gem", "life_gem"]}), enemy, 1)
+	print("수집가 HP %.0f vs 시너지 없음 %.0f" % [opal_hp, plain.max_hp(plain.units[0])])
+	if opal_hp <= plain.max_hp(plain.units[0]):
+		print("FAIL: 수집가 아티팩트 비례 효과 없음"); fails += 1
+	return fails
+
+
 func _test_match() -> int:
 	var players := []
 	for i in 8:
@@ -60,14 +129,14 @@ func _test_match() -> int:
 	t.start()
 	var pa = t.player("a")
 	pa["gold"] = 100
-	pa["shop"] = ["ed","ed","ed","joanne","rudd"]
+	pa["shop"] = ["mayo","mayo","mayo","joanne","rohne"]
 	for i in 3:
 		var e = t.command("a", {"t":"buy","i":i})
 		if e != "":
 			print("FAIL buy: ", e); return 1
 	var two := 0
 	for u in pa["bench"]:
-		if u != null and u["aid"] == "ed" and u["star"] == 2:
+		if u != null and u["aid"] == "mayo" and u["star"] == 2:
 			two += 1
 	if two != 1:
 		print("FAIL: 3명 합성 실패"); return 1

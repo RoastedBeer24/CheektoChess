@@ -279,6 +279,65 @@ static func trait_icon(key: String) -> Texture2D:
 	return _find_tex("icons", TRAIT_ICON[key])
 
 
+## 그룹 시너지 짧은 이름 (좁은 곳)
+static func syn_short(name: String) -> String:
+	return String(GameData.synergies.get(name, {}).get("short", name))
+
+
+## 그룹 시너지 색
+static func syn_color(name: String) -> Color:
+	var syn: Dictionary = GameData.synergies.get(name, {})
+	return Color(syn.get("color", "c0c4d6"))
+
+
+## 그룹 시너지 표시: 색 원 + 첫 글자 (그림 아이콘이 없으므로)
+static func syn_badge(name: String, size: float = 30.0, dim: bool = false) -> PanelContainer:
+	var col := syn_color(name)
+	var p := PanelContainer.new()
+	var s := StyleBoxFlat.new()
+	s.bg_color = col.darkened(0.45) if not dim else col.darkened(0.75)
+	s.border_color = col if not dim else col.darkened(0.4)
+	s.set_border_width_all(2)
+	s.set_corner_radius_all(int(size / 2.0))
+	if GameData.synergies.get(name, {}).get("kind", "") == "unique":
+		s.set_corner_radius_all(int(size / 5.0))   # 고유 시너지는 네모
+	s.anti_aliasing = true
+	p.add_theme_stylebox_override("panel", s)
+	p.custom_minimum_size = Vector2(size, size)
+	p.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var l := Label.new()
+	l.text = name.substr(0, 1)
+	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	l.add_theme_font_size_override("font_size", int(size * 0.55))
+	l.add_theme_color_override("font_color", Color.WHITE if not dim else Color(1, 1, 1, 0.5))
+	l.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.8))
+	l.add_theme_constant_override("outline_size", 4)
+	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	p.add_child(l)
+	return p
+
+
+static var _TIER_RE := RegEx.create_from_string("^(\\d+)명\\s*:\\s*(.*)$")
+
+
+## 시너지 효과 글 → [컨셉 줄, {필요 인원: 그 단계 효과 글}]
+static func syn_lines(name: String) -> Array:
+	var syn: Dictionary = GameData.synergies.get(name, {})
+	var head := ""
+	var tiers := {}
+	for line in String(syn.get("effect", "")).split("\n"):
+		var t := String(line).strip_edges()
+		if t == "":
+			continue
+		var m := _TIER_RE.search(t)
+		if m:
+			tiers[int(m.get_string(1))] = m.get_string(2)
+		else:
+			head = (head + " " + t).strip_edges()
+	return [head, tiers]
+
+
 ## 아티팩트 아이콘 (assets/artifacts/<id>.png|webp)
 static func artifact_icon(id: String) -> Texture2D:
 	return _find_tex("artifacts", id)
@@ -351,6 +410,11 @@ static func unit_tip(u: Dictionary, extra: String = "") -> String:
 	if a.get("eldyne", false):
 		tr.append("[color=#e0b84f]엘다인[/color]")
 	out += "\n" + " · ".join(tr)
+	var syns := []
+	for t in GameData.traits_of(aid):
+		syns.append("[color=#%s]%s[/color]" % [syn_color(t).to_html(false), t])
+	if not syns.is_empty():
+		out += "\n시너지: " + ", ".join(syns)
 	out += "\n" + mark("%s · %s · %s" % [GameData.ROW_NAME[a["row"]], GameData.ROLE_NAME[a["role"]], GameData.DAMAGE_NAME[a["damage"]]])
 	var arts: Array = u.get("arts", [])
 	if not arts.is_empty():

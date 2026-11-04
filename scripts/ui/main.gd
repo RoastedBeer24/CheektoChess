@@ -5,6 +5,7 @@ var _screen: Control
 var _toast: VBoxContainer          # 알림 여러 개를 위에서부터 차례로 쌓는다 (최대 3개)
 const TOAST_MAX := 3
 var _rooms_box: VBoxContainer
+var _group_box: HBoxContainer
 var _lobby_list: GridContainer
 var _lobby_count: Label
 var _start_btn: Button
@@ -292,6 +293,10 @@ func _show_lobby() -> void:
 		info.add_child(UI.label("내 IP  %s     같은 와이파이에서 이 IP로 참가할 수 있습니다" % (", ".join(ips) if not ips.is_empty() else "확인 불가"), 26, UI.TEXT))
 	else:
 		info.add_child(UI.label("방장이 게임을 시작할 때까지 기다리는 중...", 26, UI.TEXT))
+	# 그룹 (판에 쓰는 사도·시너지 묶음)
+	_group_box = HBoxContainer.new()
+	_group_box.add_theme_constant_override("separation", 10)
+	v.add_child(_group_box)
 	_lobby_list = GridContainer.new()
 	_lobby_list.columns = 4
 	_lobby_list.add_theme_constant_override("h_separation", 14)
@@ -322,9 +327,29 @@ func _show_lobby() -> void:
 	_on_lobby_changed()
 
 
+func _refresh_group_box() -> void:
+	if _group_box == null or not is_instance_valid(_group_box):
+		return
+	UI.clear(_group_box)
+	_group_box.add_child(UI.label("그룹", 26, UI.ACCENT))
+	var host := App.session.mode == "host"
+	for gv in GameData.groups:
+		var g: Dictionary = gv
+		var on: bool = g["id"] == GameData.group_id
+		var txt := "%s  (사도 %d명 · 시너지 %d개)" % [g.get("name", g["id"]), g.get("units", []).size(), g.get("synergies", []).size()]
+		if host and GameData.groups.size() > 1:
+			var b := UI.button(txt, 22, Vector2(0, 60), UI.ACCENT.darkened(0.6) if on else UI.PANEL_LIGHT)
+			var gid: String = g["id"]
+			b.pressed.connect(func(): App.session.set_group(gid))
+			_group_box.add_child(b)
+		elif on:
+			_group_box.add_child(UI.chip(txt, UI.ACCENT, 22))
+
+
 func _on_lobby_changed() -> void:
 	if _lobby_list == null or not is_instance_valid(_lobby_list):
 		return
+	_refresh_group_box()
 	UI.clear(_lobby_list)
 	var n := App.session.lobby.size()
 	_lobby_count.text = "%d / %d명  (최소 %d명)" % [n, App.session.MAX_PLAYERS, App.session.MIN_PLAYERS]

@@ -55,6 +55,8 @@ static func apostle(box: Control, u: Dictionary, on_art: Callable = Callable(), 
 	hv.add_child(chips)   # 초상화 오른쪽에 (세로 공간 절약)
 	var pers: String = a["personality"] + (" → " + u["pers"] if u.get("pers", "") != "" else "")
 	var picon: String = u["pers"] if u.get("pers", "") != "" else a["personality"]
+	for t in GameData.traits_of(aid):
+		chips.add_child(UI.chip(t, UI.syn_color(t), 16))
 	chips.add_child(UI.chip(pers, UI.pers_color(aid, u.get("pers", "")), 16, UI.trait_icon(picon)))
 	chips.add_child(UI.chip(a["race"], Color("8fb7ff"), 16, UI.trait_icon(a["race"])))
 	if a.get("eldyne", false):
@@ -234,7 +236,7 @@ static func mods_text(mods: Dictionary) -> String:
 	return ", ".join(parts)
 
 
-## 시너지 정보: 단계별 효과, 보드의 해당 사도, 전체 해당 사도(코스트)
+## 시너지 정보: 컨셉, 단계별 효과, 보드의 해당 사도, 그룹의 해당 사도(코스트)
 static func synergy(box: Control, name: String, count: int, board_aids: Array) -> void:
 	var syn: Dictionary = GameData.synergies.get(name, {})
 	if syn.is_empty():
@@ -244,28 +246,35 @@ static func synergy(box: Control, name: String, count: int, board_aids: Array) -
 	for i in tiers.size():
 		if count >= int(tiers[i]):
 			active = i + 1
-	var col: Color = UI.PERS_COLOR.get(name, Color("e0b84f") if name == "엘다인" else Color("8fb7ff"))
+	var col := UI.syn_color(name)
 	var th := HBoxContainer.new()
 	th.add_theme_constant_override("separation", 10)
-	th.add_child(UI.tex_rect(UI.trait_icon(name), Vector2(44, 44)))
-	th.add_child(UI.label("%s  %d명" % [name, count], 28, col))
+	th.add_child(UI.syn_badge(name, 44))
+	var tl := UI.label("%s  %d명" % [name, count], 26, col)
+	tl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	tl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	th.add_child(tl)
 	box.add_child(th)
-	box.add_child(UI.rich_desc("%s · 적용: %s" % [syn.get("desc", ""), SCOPE_NAME.get(syn.get("scope", ""), "")], 18, UI.SUB, Color("ffd98a"), false))
+	var kind_name: String = {"origin": "계열", "cls": "직업", "unique": "고유"}.get(syn.get("kind", ""), "")
+	var lines: Array = UI.syn_lines(name)
+	if lines[0] != "":
+		box.add_child(UI.rich_desc(("[%s] " % kind_name if kind_name != "" else "") + String(lines[0]), 18, UI.SUB, Color("ffd98a"), false))
 	for i in tiers.size():
 		var on := i < active
+		var txt: String = lines[1].get(int(tiers[i]), "")
+		if txt == "":
+			continue
 		var h := HBoxContainer.new()
 		h.add_theme_constant_override("separation", 8)
 		h.add_child(UI.chip("%d명" % int(tiers[i]), col if on else Color("777b8f"), 16))
-		var l := UI.rich_desc(mods_text(syn["mods"][i]), 18, UI.TEXT if on else UI.DIM, Color("ffd98a") if on else UI.DIM, false)
+		var l := UI.rich_desc(txt, 18, UI.TEXT if on else UI.DIM, Color("ffd98a") if on else UI.DIM, false)
 		l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		h.add_child(l)
 		box.add_child(h)
 	# 해당 사도 목록
 	var members := []
 	for aid in GameData.roster:
-		var a := GameData.apostle(aid)
-		var opts: Array = a.get("personality_options", [])
-		if GameData.traits_of(aid, "").has(name) or opts.has(name):
+		if GameData.traits_of(aid).has(name):
 			members.append(aid)
 	members.sort_custom(func(x, y): return GameData.cost_of[x] * 1000 + (0 if board_aids.has(x) else 1) < GameData.cost_of[y] * 1000 + (0 if board_aids.has(y) else 1))
 	section(box, "해당 사도 %d명  (초록 = 내 보드)" % members.size())
