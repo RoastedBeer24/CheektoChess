@@ -1,3 +1,4 @@
+class_name SessionNode
 extends Node
 ## 한 판의 세션. 방장(또는 오프라인)일 때 Match 를 직접 돌리고,
 ## 참가자일 때는 방장에게 명령을 보내고 상태를 받아 화면에 넘긴다.
@@ -7,6 +8,8 @@ signal state_changed
 signal toast(msg: String)
 signal game_started
 signal left(reason: String)
+signal update_progress(text: String, ratio: float)   # 방장에게서 업데이트 받는 중
+signal update_done
 
 const MAX_PLAYERS := 8
 const MIN_PLAYERS := 4
@@ -23,14 +26,17 @@ var peer_to_pid := {}
 var _dirty := false
 var _timer_send := 0.0
 var _bot_seq := 0
+var _incoming := {}   # 방장에게서 받는 중인 묶음: 이름 -> {meta, data: PackedByteArray}
+var _host_meta := {}
+const CHUNK := 48 * 1024
 
 
 func _ready() -> void:
 	_load_profile()
-	Net.connected_to_host.connect(_on_connected)
-	Net.connection_failed.connect(func(): _leave_with("방에 연결하지 못했습니다."))
-	Net.host_lost.connect(func(): _leave_with("방장과의 연결이 끊어졌습니다."))
-	Net.peer_left.connect(_on_peer_left)
+	App.net.connected_to_host.connect(_on_connected)
+	App.net.connection_failed.connect(func(): _leave_with("방에 연결하지 못했습니다."))
+	App.net.host_lost.connect(func(): _leave_with("방장과의 연결이 끊어졌습니다."))
+	App.net.peer_left.connect(_on_peer_left)
 
 
 func _load_profile() -> void:
@@ -72,7 +78,7 @@ func start_offline(bots: int) -> void:
 
 func host_room() -> Error:
 	_reset()
-	var err := Net.host("%s의 방" % my_name)
+	var err := App.net.host("%s의 방" % my_name)
 	if err != OK:
 		return err
 	mode = "host"
@@ -86,7 +92,7 @@ func join_room(ip: String) -> Error:
 	_reset()
 	mode = "client"
 	my_pid = token
-	return Net.join(ip)
+	return App.net.join(ip)
 
 
 func leave() -> void:
@@ -94,7 +100,7 @@ func leave() -> void:
 
 
 func _leave_with(reason: String) -> void:
-	Net.stop()
+	App.net.stop()
 	_reset()
 	left.emit(reason)
 
@@ -132,7 +138,7 @@ func can_start() -> bool:
 
 
 func _lobby_updated() -> void:
-	Net.room_info = {"players": lobby.size(), "max": MAX_PLAYERS, "started": in_game()}
+	App.net.room_info = {"players": lobby.size(), "max": MAX_PLAYERS, "started": in_game()}
 	if mode == "host":
 		_rpc_lobby.rpc(lobby)
 	lobby_changed.emit()
@@ -148,7 +154,7 @@ func start_game() -> void:
 	game.state_changed.connect(func(): _dirty = true)
 	game.start()
 	state = game.state
-	Net.room_info["started"] = true
+	App.net.room_info["started"] = true
 	if mode == "host":
 		_rpc_game_started.rpc()
 	game_started.emit()
@@ -190,7 +196,22 @@ func _flush() -> void:
 
 
 func _on_connected() -> void:
-	_rpc_hello.rpc_id(1, token, my_name)
+	_rpc_hello.rpc_id(1, token, my_name, App.build)
+
+
+# ─────────────────────────────── 버전 맞추기 ───────────────────────────────
+# LAN 대전은 모두 같은 콘텐츠여야 전투 결과가 일치한다.
+# 참가자가 방장보다 낮은 빌드면 방장 기기의 묶음 파일을 직접 받는다.
+
+## 방장이 보낼 수 있는 묶음 정보 (설치된 묶음 파일이 있을 때만)
+func _host_packs() -> Dictionary:
+	var inst := App.installed()
+	if int(inst.get("build", 0)) != App.build:
+		return {}
+	for name in inst.get("packs", {}):
+		if not FileAccess.file_exists(App.PACK_DIR + inst["packs"][name]["file"]):
+			return {}
+	return inst
 
 
 func _on_peer_left(peer_id: int) -> void:
@@ -211,10 +232,21 @@ func _on_peer_left(peer_id: int) -> void:
 # ─────────────────────────────── RPC ───────────────────────────────
 
 @rpc("any_peer", "reliable")
-func _rpc_hello(their_token: String, their_name: String) -> void:
+func _rpc_hello(their_token: String, their_name: String, their_build: int = 0) -> void:
 	if mode != "host":
 		return
 	var peer := multiplayer.get_remote_sender_id()
+	# 버전 확인 (개발 실행(빌드 0)끼리는 검사하지 않음)
+	if App.build != their_build and App.build > 0 and their_build > 0:
+		if their_build > App.build:
+			_rpc_reject.rpc_id(peer, "방장의 게임 버전이 더 낮습니다 (방장 %d, 나 %d). 방장이 인터넷에 연결해 업데이트하면 참가할 수 있습니다." % [App.build, their_build])
+			return
+		var packs := _host_packs()
+		if packs.is_empty():
+			_rpc_reject.rpc_id(peer, "게임 버전이 다릅니다 (방장 %d, 나 %d). 인터넷에 연결해 업데이트해 주세요." % [App.build, their_build])
+			return
+		_rpc_offer_update.rpc_id(peer, packs)
+		return
 	if game != null:
 		if game.can_rejoin(their_token):
 			peer_to_pid[peer] = their_token
@@ -281,6 +313,77 @@ func _rpc_timer(t: float) -> void:
 @rpc("authority", "reliable")
 func _rpc_toast(msg: String) -> void:
 	toast.emit(msg)
+
+
+## (참가자) 방장이 업데이트를 제안함 → 다른 묶음만 요청
+@rpc("authority", "reliable")
+func _rpc_offer_update(host_inst: Dictionary) -> void:
+	_host_meta = host_inst
+	_incoming.clear()
+	var mine: Dictionary = App.installed().get("packs", {})
+	var need := []
+	for name in host_inst["packs"]:
+		if mine.get(name, {}).get("sha256", "") != host_inst["packs"][name]["sha256"]:
+			need.append(name)
+			_incoming[name] = {"meta": host_inst["packs"][name], "data": PackedByteArray()}
+	update_progress.emit("방장 기기에서 업데이트 받는 중...", 0.0)
+	if need.is_empty():
+		_finish_update()
+		return
+	_rpc_request_packs.rpc_id(1, need)
+
+
+## (방장) 요청한 묶음 파일을 나눠서 보낸다
+@rpc("any_peer", "reliable")
+func _rpc_request_packs(names: Array) -> void:
+	if mode != "host":
+		return
+	var peer := multiplayer.get_remote_sender_id()
+	var inst := _host_packs()
+	for name in names:
+		if not inst.get("packs", {}).has(name):
+			continue
+		var bytes := FileAccess.get_file_as_bytes(App.PACK_DIR + inst["packs"][name]["file"])
+		var off := 0
+		while off < bytes.size():
+			_rpc_pack_chunk.rpc_id(peer, name, off, bytes.slice(off, off + CHUNK), bytes.size())
+			off += CHUNK
+			await get_tree().process_frame
+
+
+## (참가자) 조각 받기
+@rpc("authority", "reliable")
+func _rpc_pack_chunk(name: String, _offset: int, chunk: PackedByteArray, total: int) -> void:
+	if not _incoming.has(name):
+		return
+	_incoming[name]["data"].append_array(chunk)
+	var got := 0
+	var all := 0
+	for n in _incoming:
+		got += _incoming[n]["data"].size()
+		all += int(_incoming[n]["meta"]["size"])
+	update_progress.emit("방장 기기에서 업데이트 받는 중... %.1f / %.1f MB" % [got / 1048576.0, all / 1048576.0], float(got) / maxf(1.0, all))
+	if got >= all:
+		_finish_update()
+
+
+func _finish_update() -> void:
+	DirAccess.make_dir_recursive_absolute(App.PACK_DIR)
+	var packs: Dictionary = App.installed().get("packs", {}).duplicate(true)
+	for name in _incoming:
+		var meta: Dictionary = _incoming[name]["meta"]
+		var path: String = App.PACK_DIR + meta["file"]
+		var f := FileAccess.open(path + ".download", FileAccess.WRITE)
+		f.store_buffer(_incoming[name]["data"])
+		f.close()
+		if FileAccess.get_sha256(path + ".download") != meta["sha256"]:
+			_leave_with("업데이트 파일이 손상되었습니다. 다시 참가해 주세요.")
+			return
+		DirAccess.rename_absolute(path + ".download", path)
+		packs[name] = meta
+	App.save_installed({"build": int(_host_meta["build"]), "version": _host_meta.get("version", ""), "packs": packs})
+	App.net.stop()
+	update_done.emit()
 
 
 @rpc("authority", "reliable")

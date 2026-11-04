@@ -15,9 +15,9 @@ dest_files=["res://.godot/imported/shoupan.webp-1eecbff249ea80b36e0d533c9b589cbf
 
 [params]
 
-compress/mode=0
+compress/mode=1
 compress/high_quality=false
-compress/lossy_quality=0.7
+compress/lossy_quality=0.85
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0
 compress/hdr_compression=1

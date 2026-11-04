@@ -1,0 +1,58 @@
+class_name App
+extends RefCounted
+## 게임 시작점. boot 화면이 업데이트 묶음을 불러온 뒤 App.start() 를 호출한다.
+## 네트워크(App.net)와 세션(App.session)은 모든 기기에서 같은 경로(/root/Net, /root/Session)에 둔다 (RPC 경로 일치).
+
+## 묶음 폴더 (테스트에서는 환경 변수 CHEEKTO_PACK_DIR 로 바꿀 수 있음)
+static var PACK_DIR: String = OS.get_environment("CHEEKTO_PACK_DIR") if OS.get_environment("CHEEKTO_PACK_DIR") != "" else "user://packs/"
+static var INSTALLED: String = PACK_DIR + "installed.json"
+
+static var net: NetNode
+static var session: SessionNode
+static var build := 0              # 콘텐츠 빌드 번호 (0 = 개발 실행)
+static var version := "dev"
+static var started := false
+
+
+static func start(root: Node) -> void:
+	if started:
+		return
+	started = true
+	GameData.load_all()
+	var v := _read_json("res://version.json")
+	build = int(v.get("build", 0))
+	if OS.get_environment("CHEEKTO_BUILD") != "":
+		build = int(OS.get_environment("CHEEKTO_BUILD"))   # 테스트용
+	version = str(v.get("version", "dev"))
+	net = NetNode.new()
+	net.name = "Net"
+	session = SessionNode.new()
+	session.name = "Session"
+	# 다른 노드가 준비 중일 수 있으므로 지연 추가 (호출한 쪽은 한 프레임 기다린 뒤 사용)
+	root.add_child.call_deferred(net)
+	root.add_child.call_deferred(session)
+
+
+## 설치된 묶음 정보 {build, packs: {이름: {file, sha256, size}}}
+static func installed() -> Dictionary:
+	return _read_json(INSTALLED)
+
+
+static func save_installed(d: Dictionary) -> void:
+	DirAccess.make_dir_recursive_absolute(PACK_DIR)
+	var f := FileAccess.open(INSTALLED, FileAccess.WRITE)
+	f.store_string(JSON.stringify(d, " "))
+
+
+static func _read_json(path: String) -> Dictionary:
+	if not FileAccess.file_exists(path):
+		return {}
+	var d = JSON.parse_string(FileAccess.get_file_as_string(path))
+	return d if typeof(d) == TYPE_DICTIONARY else {}
+
+
+## 앱 재시작 (데스크톱은 자동, 안드로이드는 사용자가 다시 실행)
+static func restart(tree: SceneTree) -> void:
+	if not OS.has_feature("android"):
+		OS.set_restart_on_exit(true)
+	tree.quit()

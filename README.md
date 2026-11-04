@@ -25,9 +25,34 @@
 - 보관함 아티팩트를 누르고 사도를 누르면 장착.
 - 아티팩트를 고르고 **합성** → 같은 등급의 다른 아티팩트를 누르면 합성.
 
+## 안드로이드 설치 · 자동 업데이트
+
+- APK를 한 번 설치하면, 이후 게임 내용(코드·데이터·그림)은 **실행할 때 자동으로 업데이트**됩니다.
+  - 게임은 시작할 때 GitHub 릴리스의 `manifest.json`을 확인하고, **바뀐 묶음만** 받습니다 (core ≈ 0.5MB, art ≈ 2.5MB).
+  - 인터넷이 없으면 마지막으로 받은 버전으로 실행합니다.
+- **LAN**: 방에 들어갈 때 방장보다 버전이 낮으면, 방장 기기에서 바뀐 묶음만 직접 받습니다 (인터넷 불필요). 받은 뒤 앱을 다시 실행합니다.
+- APK 자체를 다시 설치해야 하는 경우: Godot 엔진 버전 변경, 앱 권한 변경, 시작 화면(`boot/`) 변경. 이때는 `boot/boot.gd`의 `BASE_VERSION`을 올리고 묶음의 `min_base`도 맞춥니다.
+
+### 업데이트 배포 (자동)
+
+`scripts/`, `scenes/`, `data/`, `assets/portraits|artifacts/`가 바뀌어 푸시되면 GitHub Actions(`.github/workflows/content-release.yml`)가
+묶음을 만들어 `content-<빌드번호>` 릴리스로 올립니다. 게임은 항상 최신 릴리스를 봅니다.
+
+### 직접 빌드
+
+```bash
+# 묶음만
+tools/build_release.sh 1
+# 묶음 + APK (서명 키 환경 변수 필요)
+GODOT_ANDROID_KEYSTORE_RELEASE_PATH=... GODOT_ANDROID_KEYSTORE_RELEASE_USER=cheektochess GODOT_ANDROID_KEYSTORE_RELEASE_PASSWORD=... tools/build_release.sh 1 android
+```
+
+필요한 것: Godot 4.7 + 내보내기 템플릿, Android SDK(build-tools), JDK 17 이상. 서명 키는 저장소에 넣지 않습니다.
+
 ## 폴더 구조
 
 ```
+boot/                시작 화면 + 자동 업데이트 (APK 에 들어가는 유일한 게임 스크립트)
 data/                게임 데이터 (JSON)
   apostles.json      사도 125명 (tools/build_apostles.py 로 생성)
   roster.json        상점에 나오는 사도 목록과 코스트 ← 사도 풀은 여기서 바꿈
@@ -35,6 +60,7 @@ data/                게임 데이터 (JSON)
   synergies.json     시너지 단계/효과
   balance.json       경제·전투·확률 수치
   raw/               원본 참고 데이터
+scripts/app.gd       게임 시작점 (App.session / App.net)
 scripts/core/        규칙 (네트워크·화면과 무관)
   match.gd           게임 진행·명령 처리 (방장에서만 실행)
   battle_sim.gd      결정론적 자동 전투
@@ -46,7 +72,7 @@ assets/fonts/        Noto Sans KR (SIL OFL)
 assets/portraits/    사도 초상화 (<사도 id>.webp)
 assets/artifacts/    아티팩트 아이콘 (<아티팩트 id>.png)
 tests/               자동 테스트
-tools/               데이터 변환 / 에셋 받기 스크립트 (fetch_assets.py)
+tools/               데이터 변환, 에셋 받기(fetch_assets.py), 묶음 만들기(build_packs.gd), 릴리스 빌드(build_release.sh)
 ```
 
 ## 테스트
@@ -55,7 +81,8 @@ tools/               데이터 변환 / 에셋 받기 스크립트 (fetch_assets
 godot --headless --path . res://tests/tests.tscn
 ```
 
-전투 결정론, 합성, 열 제한, 아티팩트 합성, 봇 8명 한 판, 화면을 띄운 오프라인 진행을 확인합니다.
+전투 결정론, 합성, 열 제한, 아티팩트 합성, 끊김 탈락, 봇 8명 한 판, 화면을 띄운 오프라인 진행을 확인합니다.
+LAN 업데이트(방장 기기에서 받기) 테스트는 `tests/lan_update_test.gd` 상단 주석 참고.
 
 LAN 테스트 (같은 기기에서 두 프로세스):
 

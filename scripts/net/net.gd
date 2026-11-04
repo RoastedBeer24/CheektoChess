@@ -1,3 +1,4 @@
+class_name NetNode
 extends Node
 ## LAN 네트워크: 방 만들기(ENet 서버), 참가, 같은 와이파이 안의 방 자동 찾기(UDP 브로드캐스트).
 

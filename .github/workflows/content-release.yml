@@ -1,0 +1,64 @@
+# 콘텐츠 업데이트 자동 배포
+# 게임 코드·데이터·그림이 바뀌어 푸시되면 업데이트 묶음(core.pck, art.pck)을 만들어
+# GitHub 릴리스로 올린다. 게임은 실행할 때 releases/latest 의 manifest.json 을 확인해 바뀐 묶음만 받는다.
+name: content-release
+
+on:
+  push:
+    branches: [main, claude/modest-cray-ga0tz9]
+    paths:
+      - "scripts/**"
+      - "scenes/**"
+      - "data/**"
+      - "assets/portraits/**"
+      - "assets/artifacts/**"
+      - "tools/build_packs.gd"
+      - ".github/workflows/content-release.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: content-release
+  cancel-in-progress: false
+
+env:
+  GODOT_VERSION: "4.7-stable"
+  BUILD_OFFSET: "1000"   # APK 에 들어간 기본 묶음(빌드 1)보다 항상 크게
+
+jobs:
+  packs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Godot 받기
+        run: |
+          curl -sSL -o godot.zip "https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}/Godot_v${GODOT_VERSION}_linux.x86_64.zip"
+          unzip -q godot.zip
+          mv "Godot_v${GODOT_VERSION}_linux.x86_64" godot
+          ./godot --headless --version
+
+      - name: 가져오기(import)
+        run: |
+          ./godot --headless --path . --import || true
+          ./godot --headless --path . --import || true
+
+      - name: 업데이트 묶음 만들기
+        run: |
+          BUILD=$((BUILD_OFFSET + GITHUB_RUN_NUMBER))
+          echo "BUILD=$BUILD" >> "$GITHUB_ENV"
+          ./godot --headless --path . -s res://tools/build_packs.gd -- out "$BUILD"
+          cat out/manifest.json
+
+      - name: 릴리스 올리기
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION=$(python3 -c "import json;print(json.load(open('out/manifest.json'))['version'])")
+          gh release create "content-${BUILD}" out/manifest.json out/core.pck out/art.pck \
+            --title "콘텐츠 업데이트 ${VERSION}" \
+            --notes "자동 생성된 게임 콘텐츠 업데이트 (빌드 ${BUILD}, 커밋 ${GITHUB_SHA::7}). 게임 실행 시 자동으로 받습니다." \
+            --target "${GITHUB_SHA}" \
+            --latest

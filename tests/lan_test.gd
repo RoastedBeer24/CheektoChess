@@ -7,6 +7,8 @@ var role := ""
 
 
 func _ready() -> void:
+	App.start(get_tree().root)
+	await get_tree().process_frame
 	role = OS.get_cmdline_user_args()[0]
 	if role == "host":
 		await _host()
@@ -20,32 +22,32 @@ func _log(msg: String) -> void:
 
 
 func _host() -> void:
-	Session.my_name = "방장"
-	Session.token = "host-token"
-	var err := Session.host_room()
-	_log("host_room -> %d, ips=%s" % [err, Net.local_ips()])
+	App.session.my_name = "방장"
+	App.session.token = "host-token"
+	var err := App.session.host_room()
+	_log("host_room -> %d, ips=%s" % [err, App.net.local_ips()])
 	for i in 2:
-		Session.add_bot()
+		App.session.add_bot()
 	# 참가자 대기
 	var t := 0
-	while Session.lobby.size() < 4 and t < 600:
+	while App.session.lobby.size() < 4 and t < 600:
 		await get_tree().create_timer(0.05).timeout
 		t += 1
-	_log("lobby: %s" % [Session.lobby.map(func(p): return p["name"])])
-	Session.start_game()
+	_log("lobby: %s" % [App.session.lobby.map(func(p): return p["name"])])
+	App.session.start_game()
 	# 참가자가 구매했는지 확인
 	t = 0
 	var client_pid := ""
-	for p in Session.lobby:
+	for p in App.session.lobby:
 		if p["name"] == "참가자":
 			client_pid = p["id"]
 	while t < 400:
 		await get_tree().create_timer(0.05).timeout
 		t += 1
-		var cp = Session.state["players"][client_pid]
+		var cp = App.session.state["players"][client_pid]
 		if cp["gold"] < 6:
 			break
-	var cp = Session.state["players"][client_pid]
+	var cp = App.session.state["players"][client_pid]
 	_log("client gold after buy = %d, bench0=%s" % [cp["gold"], cp["bench"][0]])
 	# 끊김 → 재접속 확인
 	t = 0
@@ -53,39 +55,39 @@ func _host() -> void:
 	while t < 400:
 		await get_tree().create_timer(0.05).timeout
 		t += 1
-		cp = Session.state["players"][client_pid]
+		cp = App.session.state["players"][client_pid]
 		if not cp["connected"]:
 			saw_dc = true
 		if saw_dc and cp["connected"]:
 			break
-	_log("disconnect seen=%s, reconnected=%s, alive=%s round=%d" % [saw_dc, cp["connected"], cp["alive"], Session.state["round"]])
+	_log("disconnect seen=%s, reconnected=%s, alive=%s round=%d" % [saw_dc, cp["connected"], cp["alive"], App.session.state["round"]])
 	await get_tree().create_timer(1.0).timeout
-	Session.leave()
+	App.session.leave()
 
 
 func _client() -> void:
-	Session.my_name = "참가자"
-	Session.token = "client-token"
+	App.session.my_name = "참가자"
+	App.session.token = "client-token"
 	await get_tree().create_timer(0.5).timeout
-	var err := Session.join_room("127.0.0.1")
+	var err := App.session.join_room("127.0.0.1")
 	_log("join -> %d" % err)
 	var t := 0
-	while Session.state.is_empty() and t < 600:
+	while App.session.state.is_empty() and t < 600:
 		await get_tree().create_timer(0.05).timeout
 		t += 1
-	_log("got state: round=%s phase=%s my_pid=%s players=%d" % [Session.state.get("round"), Session.state.get("phase"), Session.my_pid, Session.state.get("players", {}).size()])
-	Session.submit({"t": "buy", "i": 0})
+	_log("got state: round=%s phase=%s my_pid=%s players=%d" % [App.session.state.get("round"), App.session.state.get("phase"), App.session.my_pid, App.session.state.get("players", {}).size()])
+	App.session.submit({"t": "buy", "i": 0})
 	await get_tree().create_timer(1.0).timeout
-	var me = Session.state["players"][Session.my_pid]
+	var me = App.session.state["players"][App.session.my_pid]
 	_log("after buy: gold=%d bench0=%s" % [me["gold"], me["bench"][0]])
 	# 연결 끊기 후 같은 라운드 안에 재접속
-	Net.stop()
+	App.net.stop()
 	_log("disconnected")
 	await get_tree().create_timer(1.0).timeout
-	err = Session.join_room("127.0.0.1")
+	err = App.session.join_room("127.0.0.1")
 	t = 0
-	while Session.state.is_empty() and t < 200:
+	while App.session.state.is_empty() and t < 200:
 		await get_tree().create_timer(0.05).timeout
 		t += 1
-	_log("rejoin -> err=%d state_round=%s mode=%s" % [err, Session.state.get("round"), Session.mode])
+	_log("rejoin -> err=%d state_round=%s mode=%s" % [err, App.session.state.get("round"), App.session.mode])
 	await get_tree().create_timer(2.0).timeout

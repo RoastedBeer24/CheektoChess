@@ -7,14 +7,9 @@ config_version=5
 
 config/name="CheektoChess"
 config/description="트릭컬 팬게임 - 오토체스"
-run/main_scene="res://scenes/main.tscn"
+config/icon="res://assets/icon.png"
+run/main_scene="res://boot/boot.tscn"
 config/features=PackedStringArray("4.7", "GL Compatibility")
-
-[autoload]
-
-GameData="*res://scripts/core/game_data.gd"
-Net="*res://scripts/net/net.gd"
-Session="*res://scripts/net/session.gd"
 
 [display]
 

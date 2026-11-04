@@ -1,5 +1,7 @@
 extends Node
 func _ready():
+	App.start(get_tree().root)
+	await get_tree().process_frame
 	var players := []
 	for i in 8:
 		players.append({"id": "p%d" % i, "name": "봇%d" % i, "bot": true})

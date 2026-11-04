@@ -2,6 +2,8 @@ extends Node
 ## 헤드리스 테스트: godot --headless --path . res://tests/tests.tscn
 
 func _ready() -> void:
+	App.start(get_tree().root)
+	await get_tree().process_frame
 	var fails := 0
 	fails += _test_battle()
 	fails += _test_match()
@@ -103,37 +105,37 @@ func _test_ui() -> int:
 	var main = load("res://scenes/main.tscn").instantiate()
 	add_child(main)
 	await get_tree().process_frame
-	Session.start_offline(7)
+	App.session.start_offline(7)
 	Engine.time_scale = 30.0
 	var frames := 0
 	var seen_battle := false
 	var me := ""
-	while frames < 3000 and Session.state.get("phase", "") != "over":
+	while frames < 3000 and App.session.state.get("phase", "") != "over":
 		await get_tree().process_frame
 		frames += 1
-		if Session.state.get("phase", "") == "battle":
+		if App.session.state.get("phase", "") == "battle":
 			seen_battle = true
 		# 사람 플레이어 대신 간단히 행동: 첫 칸 구매 후 보드에 올리기
-		if Session.state.get("phase", "") == "prep" and frames % 30 == 0:
-			var p = Session.state["players"][Session.my_pid]
+		if App.session.state.get("phase", "") == "prep" and frames % 30 == 0:
+			var p = App.session.state["players"][App.session.my_pid]
 			if not p["art_offer"].is_empty():
-				Session.submit({"t": "art_reroll", "i": 1})
-				Session.submit({"t": "art_pick", "i": 0})
-			Session.submit({"t": "buy", "i": 0})
+				App.session.submit({"t": "art_reroll", "i": 1})
+				App.session.submit({"t": "art_pick", "i": 0})
+			App.session.submit({"t": "buy", "i": 0})
 			for i in p["bench"].size():
 				if p["bench"][i] != null:
 					var aid = p["bench"][i]["aid"]
 					for r in 3:
 						if GameData.can_place(aid, r):
-							Session.submit({"t": "move", "from": {"bench": i}, "to": {"board": Match.key_of(r, i % 3)}, "pers": ""})
+							App.session.submit({"t": "move", "from": {"bench": i}, "to": {"board": Match.key_of(r, i % 3)}, "pers": ""})
 							break
 			if not p["inv"].is_empty() and not p["board"].is_empty():
-				Session.submit({"t": "equip", "art": p["inv"][0]["uid"], "loc": {"board": p["board"].keys()[0]}})
+				App.session.submit({"t": "equip", "art": p["inv"][0]["uid"], "loc": {"board": p["board"].keys()[0]}})
 	Engine.time_scale = 1.0
-	var st = Session.state
-	var p = st["players"][Session.my_pid]
+	var st = App.session.state
+	var p = st["players"][App.session.my_pid]
 	print("ui: frames=%d round=%d phase=%s my_hp=%d board=%d inv=%d battle_seen=%s" % [frames, st["round"], st["phase"], p["hp"], p["board"].size(), p["inv"].size(), seen_battle])
-	Session.leave()
+	App.session.leave()
 	await get_tree().process_frame
 	main.queue_free()
 	return 0 if seen_battle else 1

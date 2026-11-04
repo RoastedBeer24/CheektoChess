@@ -3,7 +3,7 @@ extends Control
 ## 전투 재생 화면. 방장과 같은 입력(군대 + seed)으로 이 기기에서 전투를 다시 계산해 보여준다.
 ## 결과(승패/피해)는 방장의 계산이 기준이다.
 
-const TILE := Vector2(132, 132)
+const TILE := Vector2(150, 150)
 const GAP := 12.0
 
 var _tiles := {}          # 유닛 index -> UnitTile
@@ -20,15 +20,27 @@ var _banner: Label
 var _field: Control
 var _speed_btn: Button
 var _playing := false
+var _divider: ColorRect
+var _left_tag: Label
+var _right_tag: Label
+var _dtype := {}          # 유닛 index -> "physical"/"magic"
 var _anim := {}           # 유닛 index -> {lunge, dir, flash, pulse, dead} (임시 모션)
 var _clock := 0.0
 
 
 func _ready() -> void:
-	_title = UI.label("", 26, UI.TEXT, HORIZONTAL_ALIGNMENT_CENTER)
+	_title = UI.outlined("", 30, UI.TEXT, 8)
 	_title.set_anchors_preset(Control.PRESET_TOP_WIDE)
-	_title.offset_top = 4
+	_title.offset_top = 6
 	add_child(_title)
+	_divider = ColorRect.new()
+	_divider.color = Color(1, 1, 1, 0.08)
+	_divider.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_divider)
+	_left_tag = UI.label("우리 편", 22, UI.GOOD, HORIZONTAL_ALIGNMENT_CENTER)
+	add_child(_left_tag)
+	_right_tag = UI.label("상대", 22, UI.BAD, HORIZONTAL_ALIGNMENT_CENTER)
+	add_child(_right_tag)
 	_field = Control.new()
 	_field.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_field.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -69,12 +81,15 @@ func setup(bt: Dictionary, my_side: int, name_a: String, name_b: String) -> void
 	var left := name_a if my_side == 0 else name_b
 	var right := name_b if my_side == 0 else name_a
 	_title.text = "%s   VS   %s" % [left, right]
+	_left_tag.text = left
+	_right_tag.text = right
 	for u in _units:
 		var tile := UnitTile.new(TILE)
 		tile.set_unit({"aid": u["aid"], "star": u["star"], "pers": u["pers"]})
 		tile.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		_field.add_child(tile)
 		_tiles[u["i"]] = tile
+		_dtype[u["i"]] = GameData.apostle(u["aid"]).get("damage", "physical")
 		_anim[u["i"]] = {"lunge": 0.0, "dir": Vector2.ZERO, "flash": 0.0, "pulse": 0.0, "dead": false}
 		tile.pivot_offset = TILE / 2.0
 		_hp[u["i"]] = float(u["max_hp"])
@@ -96,6 +111,16 @@ func _cell_pos(u: Dictionary) -> Vector2:
 
 
 func _layout() -> void:
+	var total_w := 6 * TILE.x + 5 * GAP + 60.0
+	var x0 := (size.x - total_w) / 2.0
+	var total_h := 3 * TILE.y + 2 * GAP
+	var y0 := (size.y - total_h) / 2.0 + 20.0
+	_divider.position = Vector2(x0 + 3 * TILE.x + 2.5 * GAP + 30.0 - 1.0, y0 - 10)
+	_divider.size = Vector2(2, total_h + 20)
+	_left_tag.position = Vector2(x0, y0 - 46)
+	_left_tag.size = Vector2(3 * TILE.x + 2 * GAP, 32)
+	_right_tag.position = Vector2(x0 + 3 * TILE.x + 3 * GAP + 60.0, y0 - 46)
+	_right_tag.size = Vector2(3 * TILE.x + 2 * GAP, 32)
 	for u in _units:
 		if _tiles.has(u["i"]):
 			_tiles[u["i"]].position = _cell_pos(u)
@@ -137,7 +162,13 @@ func _apply(e: Array) -> void:
 			_anim[dst]["flash"] = 0.18
 			_sh[dst] = float(e[7])
 			var crit := String(e[5]).ends_with("!")
-			_float(dst, str(int(e[4])) + ("!" if crit else ""), UI.ACCENT if crit else Color.WHITE, 30 if crit else 22)
+			var dkind := String(e[5]).trim_suffix("!")
+			var col := Color("ffb27a") if _dtype.get(src, "physical") == "physical" else Color("8cc4ff")
+			if dkind == "status" or dkind == "reflect":
+				col = Color("d9a6ff")
+			if crit:
+				col = UI.ACCENT
+			_float(dst, str(int(e[4])) + ("!" if crit else ""), col, 34 if crit else (26 if dkind == "fresh" or dkind == "senior" else 22))
 		"heal":
 			_hp[dst] = float(e[6])
 			_float(dst, "+" + str(int(e[4])), UI.GOOD, 22)
@@ -148,7 +179,7 @@ func _apply(e: Array) -> void:
 			_lunge(src, dst)
 		"skill":
 			_anim[src]["pulse"] = 0.35
-			_float(src, String(e[5]), UI.ACCENT if int(e[4]) == 1 else Color("9fd3ff"), 22, -40)
+			_float(src, String(e[5]), UI.ACCENT if int(e[4]) == 1 else Color("9fd3ff"), 24, -50)
 		"death":
 			_hp[dst] = 0.0
 			_anim[dst]["dead"] = true
