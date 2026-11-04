@@ -57,8 +57,18 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           VERSION=$(python3 -c "import json;print(json.load(open('out/manifest.json'))['version'])")
-          gh release create "content-${BUILD}" out/manifest.json out/core.pck out/art.pck \
-            --title "콘텐츠 업데이트 ${VERSION}" \
-            --notes "자동 생성된 게임 콘텐츠 업데이트 (빌드 ${BUILD}, 커밋 ${GITHUB_SHA::7}). 게임 실행 시 자동으로 받습니다." \
-            --target "${GITHUB_SHA}" \
-            --latest
+          TAG="content-${BUILD}"
+          # GitHub 일시 오류(5xx)에 대비해 재시도. 릴리스가 이미 생겼으면 파일만 다시 올린다.
+          for i in 1 2 3 4 5; do
+            if gh release view "$TAG" >/dev/null 2>&1; then
+              gh release upload "$TAG" out/manifest.json out/core.pck out/art.pck --clobber && gh release edit "$TAG" --latest && exit 0
+            else
+              gh release create "$TAG" out/manifest.json out/core.pck out/art.pck \
+                --title "콘텐츠 업데이트 ${VERSION}" \
+                --notes "자동 생성된 게임 콘텐츠 업데이트 (빌드 ${BUILD}, 커밋 ${GITHUB_SHA::7}). 게임 실행 시 자동으로 받습니다." \
+                --target "${GITHUB_SHA}" \
+                --latest && exit 0
+            fi
+            echo "재시도 $i..."; sleep $((i * 10))
+          done
+          exit 1
