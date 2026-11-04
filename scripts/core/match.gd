@@ -10,6 +10,7 @@ var state: Dictionary = {}
 var rng := RandomNumberGenerator.new()
 var B: Dictionary
 var phase_left := 0.0
+var _bot_second_done := false
 
 
 func _init(players: Array, seed: int) -> void:
@@ -25,7 +26,7 @@ func _init(players: Array, seed: int) -> void:
 			"id": p["id"], "name": p["name"], "bot": p.get("bot", false),
 			"hp": int(B["player_hp"]), "gold": 0, "level": int(B["start_level"]), "xp": 0,
 			"streak": 0, "alive": true, "place": 0,
-			"shop": [], "bench": _empty_bench(), "board": {}, "inv": [],
+			"shop": [], "locks": [], "bench": _empty_bench(), "board": {}, "inv": [],
 			"art_offer": {}, "connected": true, "dc_round": 0, "last_opp": "", "ready": false,
 		}
 	state = {
@@ -77,14 +78,38 @@ func advance(dt: float) -> void:
 	state["phase_end"] = maxf(0.0, phase_left)
 	match state["phase"]:
 		"prep":
+			# 봇은 준비 단계 중간에 한 번 더 행동한다
+			if not _bot_second_done and phase_left <= float(B["prep_time"]) * 0.5:
+				_bot_second_done = true
+				for pid in alive_players():
+					if player(pid)["bot"]:
+						Bot.play(self, pid, true)
 			if phase_left <= 0.0 or _all_humans_ready():
 				_start_battle()
 		"battle":
-			if phase_left <= 0.0:
+			if phase_left <= 0.0 or _all_humans_skipped():
 				_end_battle()
 		"result":
 			if phase_left <= 0.0:
 				_start_prep()
+
+
+func _is_human(pid: String) -> bool:
+	var p := player(pid)
+	return not p.is_empty() and not p["bot"] and p["connected"]
+
+
+## 전투를 보고 있는 사람이 모두 "결과 보기"를 눌렀는지
+func _all_humans_skipped() -> bool:
+	var any_human := false
+	for pid in state["players"]:
+		var p := player(pid)
+		if p["bot"] or not p["connected"] or not p["alive"]:
+			continue
+		any_human = true
+		if not p.get("skip", false):
+			return false
+	return any_human
 
 
 func _all_humans_ready() -> bool:
@@ -136,6 +161,7 @@ func _start_prep() -> void:
 		if is_artifact_round(r):
 			p["art_offer"] = {"options": _roll_artifacts(r, int(B["artifact_choices"])), "rerolled": [false, false, false]}
 	_log("라운드 %d 준비 시작" % r)
+	_bot_second_done = false
 	for pid in alive_players():
 		if player(pid)["bot"]:
 			Bot.play(self, pid)
@@ -193,7 +219,7 @@ func _start_battle() -> void:
 		var ghost_of: String = others[rng.randi_range(0, others.size() - 1)] if not others.is_empty() else a
 		pairs.append([a, "", ghost_of])
 	var battles := []
-	var longest := 0.0
+	var longest := 0.0   # 사람이 참여한 전투 중 가장 긴 시간 (봇끼리의 전투는 기다리지 않음)
 	for pr in pairs:
 		var a: String = pr[0]
 		var b: String = pr[1]
@@ -202,14 +228,19 @@ func _start_battle() -> void:
 		var army_b := army_of(b if ghost == "" else ghost)
 		var seed := rng.randi()
 		var result := BattleSim.new(army_a, army_b, seed).run()
-		longest = maxf(longest, float(result["end_time"]))
+		if _is_human(a) or (b != "" and _is_human(b)):
+			longest = maxf(longest, float(result["end_time"]))
 		battles.append({"a": a, "b": b, "ghost": ghost, "seed": seed, "army_a": army_a, "army_b": army_b,
 			"winner": result["winner"], "survivors": result["survivors"], "end_time": result["end_time"]})
 		player(a)["last_opp"] = b if ghost == "" else ghost
 		if b != "":
 			player(b)["last_opp"] = a
 	state["battles"] = battles
-	phase_left = longest + 2.0
+	# 사람이 참여한 전투가 없으면(전원 봇·관전) 짧게 넘어간다
+	phase_left = (longest + 2.5) if longest > 0.0 else 3.0
+	state["battle_len"] = phase_left
+	for pid in state["players"]:
+		player(pid)["skip"] = false
 	_log("라운드 %d 전투 시작" % state["round"])
 	state_changed.emit()
 
@@ -373,14 +404,28 @@ func _set_at(p: Dictionary, loc: Dictionary, u) -> void:
 
 # ─────────────────────────────── 상점 ───────────────────────────────
 
+## 상점 갱신. 잠근 칸은 그대로 둔다.
 func _refresh_shop(p: Dictionary) -> void:
-	for aid in p["shop"]:
-		if aid != "":
-			state["pool"][aid] += 1
-	p["shop"] = []
+	var n := int(B["shop_size"])
+	var locks: Array = p.get("locks", [])
+	locks.resize(n)
+	var old: Array = p["shop"]
+	var shop := []
+	for i in n:
+		var keep: bool = locks[i] == true and i < old.size() and old[i] != ""
+		if keep:
+			shop.append(old[i])
+		else:
+			locks[i] = false
+			if i < old.size() and old[i] != "":
+				state["pool"][old[i]] += 1
+			shop.append("")
 	var odds: Array = B["shop_odds"][clampi(int(p["level"]), 1, 9) - 1]
-	for i in int(B["shop_size"]):
-		p["shop"].append(_roll_unit(odds))
+	for i in n:
+		if shop[i] == "":
+			shop[i] = _roll_unit(odds)
+	p["shop"] = shop
+	p["locks"] = locks
 
 
 func _roll_unit(odds: Array) -> String:
@@ -439,6 +484,22 @@ func command(pid: String, cmd: Dictionary) -> String:
 	if p.is_empty() or not p["alive"]:
 		return "참가 중이 아님"
 	var t: String = cmd.get("t", "")
+	if t == "lock":
+		var li := int(cmd.get("i", -1))
+		if li < 0 or li >= p["shop"].size() or p["shop"][li] == "":
+			return "빈 칸"
+		var locks: Array = p.get("locks", [])
+		locks.resize(p["shop"].size())
+		locks[li] = bool(cmd.get("on", true))
+		p["locks"] = locks
+		state_changed.emit()
+		return ""
+	if t == "skip":
+		if state["phase"] != "battle":
+			return "전투 중이 아님"
+		p["skip"] = true
+		state_changed.emit()
+		return ""
 	var prep_only := ["buy", "sell", "move", "reroll", "buy_xp", "art_reroll", "art_pick", "equip", "art_merge", "ready"]
 	if prep_only.has(t) and state["phase"] != "prep":
 		return "준비 단계가 아님"
@@ -484,6 +545,8 @@ func _cmd_buy(p: Dictionary, cmd: Dictionary) -> String:
 		return "대기석이 가득 참"
 	p["gold"] -= cost
 	p["shop"][i] = ""
+	if i < p.get("locks", []).size():
+		p["locks"][i] = false
 	var u := {"uid": _uid(), "aid": aid, "star": 1, "arts": [], "pers": ""}
 	if not dest.is_empty():
 		_set_at(p, dest, u)

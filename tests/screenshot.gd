@@ -58,7 +58,7 @@ func _ready() -> void:
 		await get_tree().process_frame
 	Engine.time_scale = 1.0
 	await get_tree().create_timer(2.5).timeout
-	print("DEBUG phase=", App.session.state["phase"], " lbl=", gs._phase_lbl.text, " processing=", gs.is_processing(), " end=", App.session.state["phase_end"])
+	print("DEBUG el=", gs._battle_view.elapsed(), " playing=", gs._battle_view._playing, " phase=", App.session.state["phase"], " lbl=", gs._phase_lbl.text, " processing=", gs.is_processing(), " end=", App.session.state["phase_end"])
 	await _shot("05_battle")
 	get_tree().quit()
 

@@ -31,7 +31,7 @@
  ],
  "prep_time": 30,
  "first_prep_time": 45,
- "battle_time_limit": 45,
+ "battle_time_limit": 60,
  "result_time": 3,
  "damage_base": 2,
  "damage_per_round_div": 3,

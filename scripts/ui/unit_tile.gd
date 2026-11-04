@@ -29,6 +29,8 @@ var _hp_bg: ColorRect
 var _hp: ColorRect
 var _shield: ColorRect
 var _hint: Label
+var _lock: PanelContainer
+var locked := false
 
 
 func _init(size: Vector2 = Vector2(140, 140)) -> void:
@@ -122,6 +124,12 @@ func _init(size: Vector2 = Vector2(140, 140)) -> void:
 	_drop_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_drop_lbl.visible = false
 	add_child(_drop_lbl)
+	# 잠금 표시 (상점)
+	_lock = UI.chip("잠금", Color("8fd0ff"), 16)
+	_lock.set_anchors_preset(Control.PRESET_CENTER_TOP)
+	_lock.position = Vector2(-30, 4)
+	_lock.visible = false
+	add_child(_lock)
 	button_down.connect(func(): held.emit(self))
 	set_empty("")
 
@@ -139,6 +147,8 @@ func set_empty(hint: String = "") -> void:
 	_badge.text = ""
 	UI.clear(_arts)
 	_hp_bg.visible = false
+	locked = false
+	_lock.visible = false
 	_refresh_style()
 
 
@@ -156,6 +166,7 @@ func set_unit(unit: Dictionary, sub_text: String = "", border: Color = Color.TRA
 	_sub.text = sub_text
 	_sub.visible = sub_text != ""
 	_stars.text = UI.stars(int(unit.get("star", 0)))
+	_stars.add_theme_color_override("font_color", UI.ACCENT)
 	_badge.text = ""
 	UI.clear(_arts)
 	for art in unit.get("arts", []):
@@ -177,6 +188,18 @@ func set_unit(unit: Dictionary, sub_text: String = "", border: Color = Color.TRA
 			frame.add_child(dot)
 		_arts.add_child(frame)
 	_refresh_style()
+
+
+func set_locked(on: bool) -> void:
+	locked = on
+	_lock.visible = on
+	_lock.position = Vector2((size.x if size.x > 0 else custom_minimum_size.x) / 2.0 - 30, 4)
+	_refresh_style()
+
+
+func set_corner(text: String, color: Color = UI.ACCENT) -> void:
+	_stars.text = text
+	_stars.add_theme_color_override("font_color", color)
 
 
 func set_badge(text: String, color: Color = Color.WHITE) -> void:
@@ -211,6 +234,9 @@ func set_dim(on: bool) -> void:
 func _refresh_style() -> void:
 	var border := UI.ACCENT if selected else (Color("7fffd4") if highlight else _border)
 	var bw := 5 if selected or highlight else 3
+	if locked and _drop_state == "":
+		border = Color("8fd0ff")
+		bw = 5
 	match _drop_state:
 		"ok":
 			border = Color("5ee39b")

@@ -26,6 +26,8 @@ var _right_tag: Label
 var _dtype := {}          # 유닛 index -> "physical"/"magic"
 var _anim := {}           # 유닛 index -> {lunge, dir, flash, pulse, dead} (임시 모션)
 var _clock := 0.0
+var _stats := {}          # 유닛 index -> {dealt, taken, heal}
+var _stats_panel: Control
 
 
 func _ready() -> void:
@@ -68,6 +70,10 @@ func setup(bt: Dictionary, my_side: int, name_a: String, name_b: String) -> void
 	UI.clear(_field)
 	_tiles.clear()
 	_anim.clear()
+	_stats.clear()
+	if _stats_panel and is_instance_valid(_stats_panel):
+		_stats_panel.queue_free()
+	_stats_panel = null
 	_hp.clear()
 	_sh.clear()
 	_banner.text = ""
@@ -133,6 +139,96 @@ func _update_bars() -> void:
 		_tiles[u["i"]].set_hp(_hp[u["i"]] / mh, _sh[u["i"]] / mh)
 
 
+## 남은 이벤트를 모두 바로 적용 (건너뛰기)
+func skip_to_end() -> void:
+	while _ev_i < _events.size():
+		_apply(_events[_ev_i])
+		_ev_i += 1
+	_t = float(_events[-1][0]) if not _events.is_empty() else _t
+	_update_bars()
+	_playing = false
+
+
+func _stat(i: int, key: String, v: float) -> void:
+	if i < 0:
+		return
+	if not _stats.has(i):
+		_stats[i] = {"dealt": 0.0, "taken": 0.0, "heal": 0.0}
+	_stats[i][key] += v
+
+
+## 전투가 끝나면 우리 편 사도별 피해 통계
+func _show_stats() -> void:
+	if _stats_panel and is_instance_valid(_stats_panel):
+		return
+	var mine := []
+	for u in _units:
+		if u["side"] == _my_side:
+			mine.append(u)
+	if mine.is_empty():
+		return
+	mine.sort_custom(func(a, b): return _stats.get(a["i"], {}).get("dealt", 0.0) > _stats.get(b["i"], {}).get("dealt", 0.0))
+	var top := 1.0
+	for u in mine:
+		var st: Dictionary = _stats.get(u["i"], {})
+		top = maxf(top, maxf(st.get("dealt", 0.0), maxf(st.get("taken", 0.0), st.get("heal", 0.0))))
+	var panel := UI.panel(Color(0.06, 0.07, 0.11, 0.94), 14, UI.LINE, 2)
+	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 6)
+	panel.add_child(v)
+	var head := HBoxContainer.new()
+	v.add_child(head)
+	var t := UI.label("전투 통계", 24, UI.ACCENT)
+	t.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	head.add_child(t)
+	head.add_child(UI.label("■ 준 피해  ", 16, Color("ffb27a")))
+	head.add_child(UI.label("■ 받은 피해  ", 16, Color("ff7b7b")))
+	head.add_child(UI.label("■ 회복", 16, UI.GOOD))
+	for u in mine:
+		var st: Dictionary = _stats.get(u["i"], {"dealt": 0.0, "taken": 0.0, "heal": 0.0})
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 8)
+		v.add_child(row)
+		row.add_child(UI.tex_rect(UI.portrait(u["aid"]), Vector2(44, 44), true))
+		var nl := UI.label(u["name"] + " " + UI.stars(int(u["star"])), 18, UI.TEXT)
+		nl.custom_minimum_size.x = 170
+		nl.clip_text = true
+		row.add_child(nl)
+		var bars := VBoxContainer.new()
+		bars.add_theme_constant_override("separation", 1)
+		bars.custom_minimum_size.x = 420
+		row.add_child(bars)
+		for pair in [["dealt", Color("ffb27a")], ["taken", Color("ff7b7b")], ["heal", UI.GOOD]]:
+			var val: float = st.get(pair[0], 0.0)
+			if pair[0] == "heal" and val <= 0.0:
+				continue
+			var bh := HBoxContainer.new()
+			var b := UI.bar(pair[1], 10)
+			b.value = 100.0 * val / top
+			b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			b.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+			bh.add_child(b)
+			var vl := UI.label(str(int(val)), 15, UI.SUB, HORIZONTAL_ALIGNMENT_RIGHT)
+			vl.custom_minimum_size.x = 64
+			bh.add_child(vl)
+			bars.add_child(bh)
+	add_child(panel)
+	panel.reset_size()
+	panel.position = Vector2((size.x - panel.size.x) / 2.0, maxf(110.0, (size.y - panel.size.y) / 2.0 + 30.0))
+	panel.modulate.a = 0.0
+	create_tween().tween_property(panel, "modulate:a", 1.0, 0.3)
+	_stats_panel = panel
+
+
+func elapsed() -> float:
+	return _t
+
+
+func finished() -> bool:
+	return not _playing
+
+
 func _process(delta: float) -> void:
 	if not visible:
 		return
@@ -158,6 +254,8 @@ func _apply(e: Array) -> void:
 	var dst: int = e[3]
 	match kind:
 		"dmg":
+			_stat(src, "dealt", float(e[4]))
+			_stat(dst, "taken", float(e[4]))
 			_hp[dst] = float(e[6])
 			_anim[dst]["flash"] = 0.18
 			_sh[dst] = float(e[7])
@@ -170,6 +268,7 @@ func _apply(e: Array) -> void:
 				col = UI.ACCENT
 			_float(dst, str(int(e[4])) + ("!" if crit else ""), col, 34 if crit else (26 if dkind == "fresh" or dkind == "senior" else 22))
 		"heal":
+			_stat(src, "heal", float(e[4]))
 			_hp[dst] = float(e[6])
 			_float(dst, "+" + str(int(e[4])), UI.GOOD, 22)
 		"shield":
@@ -204,7 +303,8 @@ func _apply(e: Array) -> void:
 			else:
 				_banner.text = "패배"
 			_banner.size.x = size.x
-			_banner.position = Vector2(0, size.y / 2.0 - 40)
+			_banner.position = Vector2(0, 40)
+			_show_stats()
 
 
 func _float(i: int, text: String, color: Color, fsize: int, dy: float = 0.0) -> void:

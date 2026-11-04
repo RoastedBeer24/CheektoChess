@@ -1,26 +1,33 @@
 class_name Bot
 extends RefCounted
-## 간단한 봇. 준비 단계 시작 시 한 번 행동한다. 모든 행동은 일반 플레이어와 같은 command() 를 거친다.
+## 간단한 봇. 준비 단계 시작 시와 중간에 한 번 더 행동한다.
+## 모든 행동은 일반 플레이어와 같은 command() 를 거친다.
 
 
-static func play(m: Match, pid: String) -> void:
+static func play(m: Match, pid: String, second: bool = false) -> void:
 	var p := m.player(pid)
 	var r: int = m.state["round"]
-	_pick_artifact(m, pid)
-	# 1) 이미 가진 사도(합성 재료) 우선 구매, 그다음 싼 사도
-	_buy_pass(m, pid, true)
-	# 2) 레벨업: 이자 구간을 지키면서
-	var keep := 10 if r < 10 else 0
-	while p["gold"] - int(m.B["xp_cost"]) >= keep + 4 and p["level"] < _target_level(r):
+	if not second:
+		_pick_artifact(m, pid)
+	# 1) 합성 재료 우선 구매
+	_buy_pass(m, pid, "owned")
+	# 2) 보드를 채울 사도가 모자라면 시너지 맞는 사도 → 아무 사도
+	_buy_pass(m, pid, "synergy")
+	_buy_pass(m, pid, "fill")
+	# 3) 레벨업: 초반에는 보드 채우기 우선, 이후 이자 구간(10골드)을 지키면서
+	var keep := 0 if r <= 3 else (10 if r < 12 else 0)
+	# 레벨을 올려도 채울 사도가 있을 때만 (1라운드는 사도 구매 우선)
+	while r >= 2 and p["gold"] - int(m.B["xp_cost"]) >= keep and p["level"] < _target_level(r) and _unit_count(p) > p["level"]:
 		if m.command(pid, {"t": "buy_xp"}) != "":
 			break
-	_buy_pass(m, pid, false)
-	# 3) 후반에는 남는 골드로 새로고침
+	_buy_pass(m, pid, "fill")
+	# 4) 후반에는 남는 골드로 새로고침
 	var guard := 0
 	while r >= 8 and p["gold"] >= 30 + int(m.B["reroll_cost"]) and guard < 5:
 		guard += 1
 		m.command(pid, {"t": "reroll"})
-		_buy_pass(m, pid, true)
+		_buy_pass(m, pid, "owned")
+		_buy_pass(m, pid, "synergy")
 	_arrange(m, pid)
 	_equip(m, pid)
 	_merge_artifacts(m, pid)
@@ -30,6 +37,14 @@ static func play(m: Match, pid: String) -> void:
 
 static func _target_level(r: int) -> int:
 	return clampi(2 + r / 2, 2, 9)
+
+
+static func _unit_count(p: Dictionary) -> int:
+	var n: int = p["board"].size()
+	for u in p["bench"]:
+		if u != null:
+			n += 1
+	return n
 
 
 static func _owned(p: Dictionary, aid: String) -> int:
@@ -43,20 +58,45 @@ static func _owned(p: Dictionary, aid: String) -> int:
 	return n
 
 
-static func _buy_pass(m: Match, pid: String, only_owned: bool) -> void:
+## 보드 사도들의 성격·종족과 겹치는지
+static func _fits(p: Dictionary, aid: String) -> bool:
+	var mine := {}
+	for k in p["board"]:
+		for t in GameData.traits_of(p["board"][k]["aid"], p["board"][k]["pers"]):
+			mine[t] = true
+	for t in GameData.traits_of(aid, ""):
+		if mine.has(t):
+			return true
+	return false
+
+
+## mode: owned(합성 재료) / synergy(시너지 맞는 사도) / fill(보드 채우기)
+static func _buy_pass(m: Match, pid: String, mode: String) -> void:
 	var p := m.player(pid)
-	var keep := 10 if m.state["round"] < 10 else 2
+	var r: int = m.state["round"]
 	for i in p["shop"].size():
 		var aid: String = p["shop"][i]
 		if aid == "":
 			continue
 		var cost: int = GameData.cost_of[aid]
+		if p["gold"] < cost:
+			continue
 		var owned := _owned(p, aid)
-		if only_owned and owned == 0:
-			continue
-		if not only_owned and cost > maxi(1, p["level"] / 2 + 1):
-			continue
-		if p["gold"] - cost < keep and owned == 0:
+		var need: bool = _unit_count(p) < int(p["level"]) + 1
+		match mode:
+			"owned":
+				if owned == 0:
+					continue
+			"synergy":
+				if owned > 0 or not _fits(p, aid) or cost > int(p["level"]) / 2 + 2:
+					continue
+				# 이자 구간을 지키되 보드가 비면 무시
+				if not need and p["gold"] - cost < (10 if r >= 4 else 0):
+					continue
+			"fill":
+				if not need or cost > maxi(1, int(p["level"]) / 2 + 1):
+					continue
+		if p["bench"].find(null) < 0 and owned < 2:
 			continue
 		m.command(pid, {"t": "buy", "i": i})
 
@@ -81,16 +121,16 @@ static func _arrange(m: Match, pid: String) -> void:
 				m.command(pid, {"t": "move", "from": e["loc"], "to": {"bench": free}})
 	# 성격: 보드에서 가장 많은 성격으로
 	var pers := _main_personality(p)
-	for e in want:
-		if e["loc"].has("board"):
-			continue
+	for e in units:
+		if p["board"].size() >= int(p["level"]):
+			break
 		var u: Dictionary = e["u"]
 		var from := _find(p, u["uid"])
-		if from.is_empty():
+		if from.is_empty() or from.has("board"):
 			continue
 		var cell := _free_cell(m, p, u["aid"])
 		if cell == "":
-			continue
+			continue   # 그 열이 가득 차면 다음 사도로
 		var opts := GameData.personality_options(u["aid"])
 		var chosen: String = pers if opts.has(pers) else (opts[0] if not opts.is_empty() else "")
 		m.command(pid, {"t": "move", "from": from, "to": {"board": cell}, "pers": chosen})

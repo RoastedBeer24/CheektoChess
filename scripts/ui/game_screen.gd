@@ -28,6 +28,9 @@ var _time_bar: ProgressBar
 var _hp_lbl: Label
 var _hp_bar: ProgressBar
 var _gold_lbl: Label
+var _income_lbl: Label
+var _star_seen := {}
+var _star_init := false          # 합성 알림용: "사도id:성급" -> 개수
 var _lvl_lbl: Label
 var _xp_bar: ProgressBar
 var _ready_btn: Button
@@ -154,9 +157,14 @@ func _build_top() -> Control:
 	_hp_bar = UI.bar(UI.GOOD, 10)
 	hpv.add_child(_hp_bar)
 	var gold := UI.panel(Color("4a3a12"), 10, UI.ACCENT, 2)
+	var gv := VBoxContainer.new()
+	gv.add_theme_constant_override("separation", -4)
+	gold.add_child(gv)
 	_gold_lbl = UI.label("", 26, UI.ACCENT, HORIZONTAL_ALIGNMENT_CENTER)
-	_gold_lbl.custom_minimum_size.x = 120
-	gold.add_child(_gold_lbl)
+	_gold_lbl.custom_minimum_size.x = 150
+	gv.add_child(_gold_lbl)
+	_income_lbl = UI.label("", 15, Color("e8d9a8"), HORIZONTAL_ALIGNMENT_CENTER)
+	gv.add_child(_income_lbl)
 	h.add_child(gold)
 	var lv := VBoxContainer.new()
 	lv.custom_minimum_size.x = 200
@@ -171,8 +179,11 @@ func _build_top() -> Control:
 		_offer_hidden = false
 		refresh())
 	h.add_child(_offer_btn)
+	var codex := UI.button("도감", 22, Vector2(100, 58), Color("4f3586"))
+	codex.pressed.connect(func(): add_child(Codex.new()))
+	h.add_child(codex)
 	_ready_btn = UI.button("준비 완료", 22, Vector2(160, 58), Color("2f6b4a"))
-	_ready_btn.pressed.connect(func(): App.session.submit({"t": "ready", "on": not me().get("ready", false)}))
+	_ready_btn.pressed.connect(_on_ready_btn)
 	h.add_child(_ready_btn)
 	var quit := UI.button("나가기", 22, Vector2(110, 58), Color("6b3535"))
 	quit.pressed.connect(_confirm_quit)
@@ -328,13 +339,23 @@ func _build_shop() -> Control:
 # ─────────────────────────────── 갱신 ───────────────────────────────
 
 func _process(_delta: float) -> void:
+	_check_long_press()
 	var st := App.session.state
 	if st.is_empty():
 		return
 	var phase: String = st.get("phase", "")
 	var left := float(st.get("phase_end", 0.0))
-	_phase_lbl.text = "%s  %d초" % [PHASE_NAME.get(phase, phase), ceili(left)] if phase != "over" else "게임 종료"
-	_time_bar.value = 100.0 * left / maxf(1.0, _phase_total)
+	if phase == "battle" and _battle_view.visible:
+		# 내 전투 경과 시간 / 최대 시간 (전투마다 같은 기준)
+		var limit := float(B()["battle_time_limit"])
+		var el := minf(_battle_view.elapsed(), limit)
+		_phase_lbl.text = "전투  %d / %d초" % [int(el), int(limit)]
+		_time_bar.value = 100.0 * (1.0 - el / limit)
+		if _battle_view.finished() and not me().get("skip", false) and _ready_btn.text != "결과 보기 ▶":
+			_ready_btn.text = "결과 보기 ▶"
+	else:
+		_phase_lbl.text = "%s  %d초" % [PHASE_NAME.get(phase, phase), ceili(left)] if phase != "over" else "게임 종료"
+		_time_bar.value = 100.0 * left / maxf(1.0, _phase_total)
 
 
 func refresh() -> void:
@@ -351,14 +372,21 @@ func refresh() -> void:
 		_hp_lbl.text = "♥ %d" % maxi(0, int(p["hp"]))
 		_hp_bar.value = 100.0 * maxi(0, int(p["hp"])) / float(B()["player_hp"])
 		_gold_lbl.text = "%d G" % int(p["gold"])
+		var inc := _income_parts(p)
+		_income_lbl.text = "다음 +%d  (이자 %d%s)" % [inc[0], inc[1], ("· %s %d" % ["연승" if int(p["streak"]) > 0 else "연패", absi(int(p["streak"]))]) if absi(int(p["streak"])) >= 2 else ""]
+		_gold_lbl.get_parent().get_parent().tooltip_text = "기본 %d + 이자 %d (10골드당 1, 최대 %d) + 연승·연패 %d" % [int(B()["base_income"]), inc[1], int(B()["interest_max"]), inc[2]]
+		_check_merge_fx(p)
 		var maxed := int(p["level"]) >= int(B()["max_level"])
 		var need := 0 if maxed else int(B()["xp_to_next"][int(p["level"]) - 1])
 		_lvl_lbl.text = "Lv %d  %s" % [int(p["level"]), "MAX" if maxed else "%d/%d" % [int(p["xp"]), need]]
 		_xp_bar.value = 100.0 if maxed else 100.0 * int(p["xp"]) / maxf(1.0, need)
-		_ready_btn.text = "준비 취소" if p.get("ready", false) else "준비 완료"
+		if phase == "battle":
+			_ready_btn.text = "기다리는 중" if p.get("skip", false) else ("결과 보기 ▶" if _battle_view.finished() else "건너뛰기 ▶")
+		else:
+			_ready_btn.text = "준비 취소" if p.get("ready", false) else "준비 완료"
 	var prep: bool = phase == "prep" and p.get("alive", false)
 	var gold := int(p.get("gold", 0))
-	_ready_btn.disabled = not prep
+	_ready_btn.disabled = not (prep or (phase == "battle" and p.get("alive", false) and not p.get("skip", false)))
 	_reroll_btn.disabled = not prep or gold < int(B()["reroll_cost"])
 	_xp_btn.disabled = not prep or gold < int(B()["xp_cost"]) or int(p.get("level", 1)) >= int(B()["max_level"])
 	_sell_btn.disabled = not prep
@@ -439,6 +467,12 @@ func _refresh_players() -> void:
 		rank += 1
 		var mine: bool = p["id"] == App.session.my_pid
 		var row := UI.panel(Color(UI.ACCENT, 0.12) if mine else UI.BG2, 8, UI.ACCENT if mine else Color.TRANSPARENT, 2 if mine else 0)
+		var pid: String = p["id"]
+		row.mouse_filter = Control.MOUSE_FILTER_STOP
+		row.tooltip_text = "눌러서 보드 보기"
+		row.gui_input.connect(func(ev):
+			if ev is InputEventMouseButton and ev.button_index == MOUSE_BUTTON_LEFT and not ev.pressed:
+				_show_player(pid))
 		var sb: StyleBoxFlat = row.get_theme_stylebox("panel")
 		sb.content_margin_top = 4
 		sb.content_margin_bottom = 4
@@ -488,7 +522,12 @@ func _refresh_synergy() -> void:
 		var active: int = tiers.get(n, 0)
 		var col: Color = UI.PERS_COLOR.get(n, Color("e0b84f") if n == "엘다인" else Color("8fb7ff"))
 		var row := UI.panel(col.darkened(0.7) if active > 0 else UI.BG2, 10, col if active > 0 else UI.LINE, 2)
-		row.tooltip_text = syn.get("desc", "")
+		# 꾹 누르면(PC는 마우스를 올리면) 시너지 상세 팝업
+		row.mouse_filter = Control.MOUSE_FILTER_STOP
+		var syn_name: String = n
+		var syn_count: int = counts[n]
+		row.mouse_entered.connect(func(): _show_syn_popup(row, syn_name, syn_count))
+		row.mouse_exited.connect(_hide_syn_popup)
 		var v := VBoxContainer.new()
 		v.add_theme_constant_override("separation", 0)
 		row.add_child(v)
@@ -582,8 +621,12 @@ func _refresh_bench_shop() -> void:
 		t.set_unit({"aid": aid}, traits, UI.cost_color(aid))
 		t.set_badge("%dG" % cost, UI.cost_color(aid).lightened(0.3))
 		var owned := _owned_count(p, aid)
-		if owned > 0:
-			t._stars.text = "보유 %d/3" % owned
+		if owned >= 2:
+			t.set_corner("★ 합성!", Color("ffe066"))
+		elif owned > 0:
+			t.set_corner("보유 %d/3" % owned, UI.ACCENT)
+		var locks: Array = p.get("locks", [])
+		t.set_locked(i < locks.size() and locks[i] == true)
 		t.set_dim(gold < cost)
 		t.disabled = not prep
 
@@ -616,6 +659,10 @@ func _refresh_detail() -> void:
 		if u != null:
 			_detail_unit(u)
 			return
+	if sel.has("shop_aid"):
+		_detail_box.add_child(UI.label("상점 사도", 18, UI.SUB))
+		Info.apostle(_detail_box, {"aid": sel["shop_aid"], "star": 1, "arts": [], "pers": ""}, Callable(), -1, false)
+		return
 	if sel.has("art"):
 		var where := _find_art(int(sel["art"]))
 		if not where.is_empty():
@@ -623,14 +670,15 @@ func _refresh_detail() -> void:
 			return
 	_detail_box.add_child(UI.label("도움말", 26, UI.ACCENT))
 	for line in [
-		"상점 카드를 누르면 구매합니다. 테두리 색은 코스트(회색 1 → 금색 5).",
-		"사도를 누른 뒤 빈칸을 누르거나, 끌어다 놓아 이동합니다.",
-		"사도는 자기 열에만 놓을 수 있습니다. 놓을 수 있는 칸이 빛납니다.",
-		"같은 사도 3명이 모이면 자동으로 ★ 합성. 합성·판매 시 아티팩트는 보관함으로.",
+		"상점 카드를 누르면 구매, 끌어다 놓으면 그 칸에 구매. 테두리 색은 코스트(회색 1 → 금색 5).",
+		"상점 카드를 꾹 누르면 잠금 — 새로고침·다음 라운드에도 남습니다. 다시 꾹 누르면 해제.",
+		"사도를 끌어다 놓아 이동. 놓을 수 있는 칸은 초록, 손가락 옆에 결과가 보입니다.",
+		"사도는 자기 열(전열/중열/후열)에만 놓을 수 있습니다. 모든열은 어디든.",
+		"같은 사도 3명이 모이면 자동 ★ 합성. '★ 합성!' 표시된 상점 카드를 사면 바로 합성됩니다.",
 		"보관함 아티팩트를 누르고 사도를 누르면 장착 (최대 3개, 임의 해제 불가).",
-		"아티팩트를 고르고 [합성] → 같은 등급 다른 아티팩트를 누르면 다음 등급 무작위 1개.",
-		"공명·이면 사도는 보드에 올릴 때 성격을 고릅니다.",
-		"판매: 사도를 고르고 [판매], 또는 판매 칸으로 끌어다 놓기.",
+		"시너지를 꾹 누르면 단계별 효과와 해당 사도 목록을 볼 수 있습니다.",
+		"왼쪽 플레이어 이름을 누르면 그 플레이어의 보드를 볼 수 있습니다.",
+		"PC 단축키: D 새로고침 · F 경험치 · E 마우스 아래 사도 판매 · 스페이스 준비/건너뛰기",
 	]:
 		var row := HBoxContainer.new()
 		row.add_theme_constant_override("separation", 8)
@@ -641,137 +689,12 @@ func _refresh_detail() -> void:
 		_detail_box.add_child(row)
 
 
-func _section(title: String) -> void:
-	var l := UI.label(title, 20, UI.ACCENT)
-	_detail_box.add_child(UI.hsep())
-	_detail_box.add_child(l)
-
-
 func _detail_unit(u: Dictionary) -> void:
-	var aid: String = u["aid"]
-	var a := GameData.apostle(aid)
-	var star := int(u.get("star", 1))
-	var head := HBoxContainer.new()
-	head.add_theme_constant_override("separation", 12)
-	_detail_box.add_child(head)
-	var pf := UI.panel(UI.pers_color(aid, u.get("pers", "")).darkened(0.55), 12, UI.pers_color(aid, u.get("pers", "")), 3)
-	pf.add_child(UI.tex_rect(UI.portrait(aid), Vector2(112, 112), true))
-	head.add_child(pf)
-	var hv := VBoxContainer.new()
-	hv.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	head.add_child(hv)
-	hv.add_child(UI.label(a["name"], 30, UI.TEXT))
-	hv.add_child(UI.label(UI.stars(star) + "  ·  %d골드" % GameData.cost_of.get(aid, 1), 22, UI.ACCENT))
-	var chips := HFlowContainer.new()
-	chips.add_theme_constant_override("h_separation", 6)
-	chips.add_theme_constant_override("v_separation", 6)
-	_detail_box.add_child(chips)
-	var pers: String = a["personality"] + (" → " + u["pers"] if u.get("pers", "") != "" else "")
-	chips.add_child(UI.chip(pers, UI.pers_color(aid, u.get("pers", ""))))
-	chips.add_child(UI.chip(a["race"], Color("8fb7ff")))
-	if a.get("eldyne", false):
-		chips.add_child(UI.chip("엘다인", Color("e0b84f")))
-	chips.add_child(UI.chip(GameData.ROW_NAME[a["row"]], Color("c0c4d6")))
-	chips.add_child(UI.chip(GameData.ROLE_NAME[a["role"]], Color("c0c4d6")))
-	chips.add_child(UI.chip(GameData.DAMAGE_NAME[a["damage"]], Color("ff9f6b") if a["damage"] == "physical" else Color("7fb8ff")))
-	var bs := Rules.base_stats(aid, star)
-	var grid := GridContainer.new()
-	grid.columns = 4
-	grid.add_theme_constant_override("h_separation", 10)
-	_detail_box.add_child(grid)
-	for pair in [["HP", "%d" % bs["hp"]], ["공격력", "%d" % bs["atk"]], ["방어력", "%d" % bs["def"]], ["공속", "%.2f" % bs["aspd"]]]:
-		grid.add_child(UI.label(pair[0], 17, UI.SUB))
-		grid.add_child(UI.label(pair[1], 19, UI.TEXT))
-	_section("스킬")
-	_detail_box.add_child(UI.wrap_label("현재는 역할별 공통 스킬로 동작합니다 (원작 스킬 구현 예정).", 15, UI.SUB))
-	for k in ["fresh", "senior", "passive"]:
-		var sk: Dictionary = a.get("skills", {}).get(k, {})
-		if sk.is_empty():
-			continue
-		var kn: String = {"fresh": "저학년 · SP", "senior": "고학년 · 재사용 대기", "passive": "패시브"}[k]
-		var h := HBoxContainer.new()
-		h.add_theme_constant_override("separation", 8)
-		h.add_child(UI.chip(kn, Color("9fd3ff") if k == "fresh" else (UI.ACCENT if k == "senior" else Color("c0c4d6")), 15))
-		var nl := UI.label(sk["name"], 19, UI.TEXT)
-		nl.clip_text = true
-		nl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		h.add_child(nl)
-		_detail_box.add_child(h)
-		_detail_box.add_child(UI.wrap_label(sk["desc"], 15))
-	_section("어사이드")
-	for n in ["1", "2", "3"]:
-		var asd: Dictionary = a.get("aside", {}).get(n, {})
-		if asd.is_empty():
-			continue
-		var on := star >= int(n)
-		var h := HBoxContainer.new()
-		h.add_theme_constant_override("separation", 8)
-		h.add_child(UI.chip("%s성 %s" % [n, "적용" if on else "잠김"], UI.GOOD if on else Color("777b8f"), 15))
-		var nl := UI.label(asd["name"], 19, UI.TEXT if on else UI.SUB)
-		nl.clip_text = true
-		nl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		h.add_child(nl)
-		_detail_box.add_child(h)
-		_detail_box.add_child(UI.wrap_label(asd["desc"], 15, UI.SUB if on else Color(1, 1, 1, 0.35)))
-	if a.get("aside", {}).is_empty():
-		_detail_box.add_child(UI.label("어사이드 정보 없음", 16, UI.SUB))
-	_section("아티팩트  %d / %d" % [u.get("arts", []).size(), int(B()["artifact_slots"])])
-	for art in u.get("arts", []):
-		var info := GameData.artifact(art["id"])
-		var fav := "  ♥애착" if info.get("owner", "") == a["name"] else ""
-		var b := UI.artifact_button(art["id"], Vector2(0, 58), 18, sel.get("art", -1) == int(art["uid"]))
-		b.text = "%s%s" % [info["name"], fav]
-		var uid := int(art["uid"])
-		b.pressed.connect(func(): _on_art(uid))
-		_detail_box.add_child(b)
-	if u.get("arts", []).is_empty():
-		_detail_box.add_child(UI.label("보관함의 아티팩트를 누른 뒤 이 사도를 누르면 장착", 16, UI.SUB))
-	_detail_box.add_child(UI.label("판매 가격  %d골드" % _sell_value(u), 18, UI.SUB))
+	Info.apostle(_detail_box, u, _on_art, int(sel.get("art", -1)), sel.has("unit"))
 
 
 func _detail_art(art_id: String, in_inv: bool) -> void:
-	var a := GameData.artifact(art_id)
-	var col: Color = UI.GRADE_COLOR[a["grade"]]
-	var hb := HBoxContainer.new()
-	hb.add_theme_constant_override("separation", 12)
-	_detail_box.add_child(hb)
-	var frame := UI.panel(col.darkened(0.6), 12, col, 3)
-	var ic := UI.artifact_icon(art_id)
-	if ic != null:
-		frame.add_child(UI.tex_rect(ic, Vector2(96, 96)))
-	else:
-		frame.add_child(UI.label("?", 48, col, HORIZONTAL_ALIGNMENT_CENTER))
-		frame.custom_minimum_size = Vector2(120, 120)
-	hb.add_child(frame)
-	var hv := VBoxContainer.new()
-	hv.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	hb.add_child(hv)
-	var nl := UI.label(a["name"], 26, col)
-	nl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	hv.add_child(nl)
-	var chips := HFlowContainer.new()
-	chips.add_theme_constant_override("h_separation", 6)
-	hv.add_child(chips)
-	chips.add_child(UI.chip(GameData.grade_name(a["grade"]), col))
-	if a.get("region", "") == "global":
-		chips.add_child(UI.chip("글로벌 전용", Color("c0c4d6")))
-	chips.add_child(UI.chip("보관함" if in_inv else "장착 중", UI.GOOD if in_inv else Color("c0c4d6")))
-	_section("능력치")
-	for k in a.get("stats", {}):
-		_detail_box.add_child(UI.label("%s  +%s%%" % [STAT_NAME.get(k, k), str(a["stats"][k])], 20, UI.TEXT))
-	_section("효과")
-	_detail_box.add_child(UI.wrap_label(a.get("text", ""), 18, UI.TEXT))
-	if a.get("nostack", false):
-		_detail_box.add_child(UI.label("※ 부가 효과는 한 사도에 중첩되지 않음", 15, UI.SUB))
-	if a.get("owner", "") != "":
-		_section("애착: %s" % a["owner"])
-		_detail_box.add_child(UI.wrap_label(a.get("fav", ""), 16))
-		_detail_box.add_child(UI.label("※ 애착 효과는 다음 단계에서 구현 예정", 15, UI.SUB))
-	_detail_box.add_child(UI.hsep())
-	if in_inv:
-		_detail_box.add_child(UI.wrap_label("사도를 누르면 장착합니다. [합성]을 누르면 같은 등급 아티팩트와 합칠 수 있습니다.", 16))
-	else:
-		_detail_box.add_child(UI.wrap_label("장착 중인 아티팩트는 뺄 수 없지만 [합성] 재료로는 쓸 수 있습니다.", 16))
+	Info.artifact(_detail_box, art_id, "inv" if in_inv else "equipped")
 
 
 # ─────────────────────────────── 조작 ───────────────────────────────
@@ -841,6 +764,132 @@ func _local_move(from: Dictionary, to: Dictionary, pers: String) -> void:
 	if to.has("board") and pers != "":
 		a["pers"] = pers
 	refresh()
+
+
+## PC 단축키: D 새로고침, F 경험치, E 마우스 아래 사도 판매, 스페이스 준비/건너뛰기
+func _hotkey(e: InputEventKey) -> void:
+	if _overlay_kind != "":
+		return
+	match e.keycode:
+		KEY_D:
+			if _is_prep():
+				App.session.submit({"t": "reroll"})
+		KEY_F:
+			if _is_prep():
+				App.session.submit({"t": "buy_xp"})
+		KEY_E:
+			if _is_prep():
+				var tgt = _target_at(get_global_mouse_position())
+				if tgt != null and not tgt.has("sell") and _unit_at(tgt) != null:
+					App.session.submit({"t": "sell", "loc": tgt})
+		KEY_SPACE:
+			if not _ready_btn.disabled:
+				_on_ready_btn()
+
+
+## [합계, 이자, 연승·연패 보너스]
+func _income_parts(p: Dictionary) -> Array:
+	var interest := mini(int(p["gold"]) / int(B()["interest_per"]), int(B()["interest_max"]))
+	var s := absi(int(p["streak"]))
+	var bonus := 0
+	for pair in B()["streak_bonus"]:
+		if s >= int(pair[0]):
+			bonus = int(pair[1])
+	return [int(B()["base_income"]) + interest + bonus, interest, bonus]
+
+
+## 새로 ★합성된 사도가 생기면 알림 + 진동
+func _check_merge_fx(p: Dictionary) -> void:
+	var now := {}
+	var units := []
+	for u in p.get("bench", []):
+		if u != null:
+			units.append(u)
+	for k in p.get("board", {}):
+		units.append(p["board"][k])
+	for u in units:
+		if int(u["star"]) >= 2:
+			var key := "%s:%d" % [u["aid"], int(u["star"])]
+			now[key] = now.get(key, 0) + 1
+	if _star_init:
+		for key in now:
+			if now[key] > _star_seen.get(key, 0):
+				var parts: PackedStringArray = key.split(":")
+				_show_banner("%s  %s 합성!" % [UI.stars(int(parts[1])), GameData.apostle(parts[0])["name"]], Color("ffe066"))
+				_vibrate(60)
+				break
+	_star_seen = now
+	_star_init = true
+
+
+## 다른 플레이어 보드 보기 (정찰)
+func _show_player(pid: String) -> void:
+	var p: Dictionary = App.session.state["players"].get(pid, {})
+	if p.is_empty():
+		return
+	var v := _modal("%s" % p["name"], "scout")
+	var info := "Lv %d  ·  ♥ %d  ·  %d골드" % [int(p["level"]), maxi(0, int(p["hp"])), int(p["gold"])]
+	if absi(int(p["streak"])) >= 2:
+		info += "  ·  %s %d" % ["연승" if int(p["streak"]) > 0 else "연패", absi(int(p["streak"]))]
+	if not p["alive"]:
+		info += "  ·  %d위 탈락" % int(p["place"])
+	v.add_child(UI.label(info, 22, UI.SUB, HORIZONTAL_ALIGNMENT_CENTER))
+	var h := HBoxContainer.new()
+	h.add_theme_constant_override("separation", 24)
+	v.add_child(h)
+	var grid := GridContainer.new()
+	grid.columns = 3
+	grid.add_theme_constant_override("h_separation", 8)
+	grid.add_theme_constant_override("v_separation", 8)
+	h.add_child(grid)
+	for sl in int(B()["board_slots"]):
+		for r in [2, 1, 0]:
+			var t := UnitTile.new(Vector2(120, 120))
+			t.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			var u = p["board"].get(Match.key_of(r, sl))
+			if u == null:
+				t.set_empty(GameData.ROW_NAME[GameData.ROWS[r]])
+			else:
+				t.set_unit(u)
+			grid.add_child(t)
+	var syn := VBoxContainer.new()
+	syn.custom_minimum_size.x = 260
+	h.add_child(syn)
+	syn.add_child(UI.label("시너지", 22, UI.ACCENT))
+	var specs := []
+	for k in p["board"]:
+		specs.append(p["board"][k])
+	var counts := Rules.count_traits(specs)
+	var tiers := Rules.active_tiers(counts)
+	for n in counts:
+		if tiers.get(n, 0) > 0:
+			syn.add_child(UI.label("%s %d" % [n, counts[n]], 20, UI.GOOD))
+	if syn.get_child_count() == 1:
+		syn.add_child(UI.label("발동 없음", 18, UI.SUB))
+	var bench := HBoxContainer.new()
+	bench.add_theme_constant_override("separation", 6)
+	v.add_child(UI.label("대기석", 18, UI.SUB))
+	v.add_child(bench)
+	for u in p["bench"]:
+		var t := UnitTile.new(Vector2(84, 84))
+		t.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		if u == null:
+			t.set_empty("")
+		else:
+			t.set_unit(u)
+		bench.add_child(t)
+	var close := UI.button("닫기", 22, Vector2(0, 60))
+	close.pressed.connect(_close_modal)
+	v.add_child(close)
+
+
+func _on_ready_btn() -> void:
+	var phase: String = App.session.state.get("phase", "")
+	if phase == "battle":
+		_battle_view.skip_to_end()
+		App.session.submit({"t": "skip"})
+	else:
+		App.session.submit({"t": "ready", "on": not me().get("ready", false)})
 
 
 func _take_suppress() -> bool:
@@ -941,10 +990,75 @@ func _on_held(src: Dictionary) -> void:
 			star = int(unit["star"])
 	if aid == "":
 		return
-	_drag = {"src": src, "aid": aid, "star": star, "unit": unit, "start": get_global_mouse_position(), "active": false, "hover": null}
+	_drag = {"src": src, "aid": aid, "star": star, "unit": unit, "start": get_global_mouse_position(), "active": false, "hover": null, "t0": Time.get_ticks_msec()}
+
+
+const LONG_PRESS_MS := 450
+var _long_fired := false
+var _syn_popup: Control
+
+
+func _show_syn_popup(row: Control, name: String, count: int) -> void:
+	_hide_syn_popup()
+	var p := me()
+	var aids := []
+	for k in p.get("board", {}):
+		aids.append(p["board"][k]["aid"])
+	var panel := UI.panel(Color("161824"), 14, UI.LINE, 2)
+	panel.custom_minimum_size = Vector2(520, 0)
+	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 6)
+	panel.add_child(v)
+	Info.synergy(v, name, count, aids)
+	_drag_layer.add_child(panel)
+	panel.reset_size()
+	var r := row.get_global_rect()
+	var vp := get_viewport_rect().size
+	panel.position = Vector2(r.end.x + 12, clampf(r.position.y - 20, 10, vp.y - panel.size.y - 10))
+	_syn_popup = panel
+
+
+func _hide_syn_popup() -> void:
+	if _syn_popup and is_instance_valid(_syn_popup):
+		_syn_popup.queue_free()
+	_syn_popup = null
+
+
+## 꾹 누르기: 움직이지 않고 일정 시간 누르고 있으면 발동
+func _check_long_press() -> void:
+	if _drag.is_empty() or _drag.get("active", false):
+		return
+	if Time.get_ticks_msec() - int(_drag["t0"]) < LONG_PRESS_MS:
+		return
+	var src: Dictionary = _drag["src"]
+	_drag = {}
+	_long_fired = true
+	_vibrate(30)
+	if src.has("shop"):
+		var locks: Array = me().get("locks", [])
+		var on: bool = not (src["shop"] < locks.size() and locks[src["shop"]] == true)
+		App.session.submit({"t": "lock", "i": src["shop"], "on": on})
+		_toast("상점 칸 잠금 — 새로고침·다음 라운드에도 유지" if on else "잠금 해제")
+		sel = {"shop_aid": me().get("shop", [])[src["shop"]]}
+		refresh()
+	else:
+		sel = {"unit": src}
+		refresh()
 
 
 func _input(event: InputEvent) -> void:
+	# 시너지 팝업: 손을 떼면 닫힘 (모바일 '꾹 누르는 동안 보기')
+	if _syn_popup and event is InputEventMouseButton and not event.pressed:
+		_hide_syn_popup()
+	# 꾹 누르기 후 손을 떼면 버튼 클릭(구매 등)이 일어나지 않게 막는다
+	if _long_fired and event is InputEventMouseButton and not event.pressed:
+		_long_fired = false
+		_suppress_click = true
+		(func(): _suppress_click = false).call_deferred()
+		return
+	if event is InputEventKey and event.pressed and not event.echo:
+		_hotkey(event)
 	if _drag.is_empty():
 		return
 	if event is InputEventMouseMotion:
@@ -1098,6 +1212,10 @@ func _paint_drag() -> void:
 	_sell_btn.add_theme_stylebox_override("normal", UI.box(Color("8a3030") if on_sell and sell_ok else Color("5a2b2b"), 14, Color("ffb0b0") if on_sell and sell_ok else col, 6 if on_sell else 2))
 	if sell_ok:
 		_sell_btn.text = "판매\n+%d골드" % _sell_value(_drag["unit"])
+		_sell_btn.add_theme_font_size_override("font_size", 28 if on_sell else 26)
+		_sell_btn.add_theme_color_override("font_color", Color("fff3b0"))
+		if not on_sell:
+			_sell_btn.add_theme_stylebox_override("normal", UI.box(Color("6a2f2f"), 14, UI.ACCENT, 4))
 
 
 func _clear_drag_paint() -> void:
@@ -1108,6 +1226,8 @@ func _clear_drag_paint() -> void:
 		t.set_drop("")
 		t.set_dim(false)
 	_sell_btn.add_theme_stylebox_override("normal", UI.box(Color("5a2b2b"), 14, Color("b55a5a"), 2))
+	_sell_btn.add_theme_font_size_override("font_size", 22)
+	_sell_btn.remove_theme_color_override("font_color")
 
 
 func _finish_drag() -> void:
