@@ -122,7 +122,7 @@ func _start_prep() -> void:
 	state["round"] += 1
 	var r: int = state["round"]
 	state["phase"] = "prep"
-	phase_left = float(B["prep_time"])
+	phase_left = float(B.get("first_prep_time", B["prep_time"])) if r == 1 else float(B["prep_time"])
 	state["battles"] = []
 	for pid in alive_players():
 		var p := player(pid)
@@ -470,20 +470,41 @@ func _cmd_buy(p: Dictionary, cmd: Dictionary) -> String:
 	var cost: int = GameData.cost_of[aid]
 	if p["gold"] < cost:
 		return "골드 부족"
-	var free: int = p["bench"].find(null)
-	if free < 0:
+	# 놓을 곳: 지정한 칸(끌어다 놓기)이 비어 있고 놓을 수 있으면 그곳, 아니면 빈 대기석
+	var dest := {}
+	var to: Dictionary = cmd.get("to", {})
+	if not to.is_empty() and _valid_empty_target(p, aid, to):
+		dest = to
+	else:
+		var free: int = p["bench"].find(null)
+		if free >= 0:
+			dest = {"bench": free}
+	if dest.is_empty() and _count_copies(p, aid, 1) < 2:
 		# 대기석이 가득 차도 바로 합성되면 구매 가능
-		if _count_copies(p, aid, 1) < 2:
-			return "대기석이 가득 참"
+		return "대기석이 가득 참"
 	p["gold"] -= cost
 	p["shop"][i] = ""
 	var u := {"uid": _uid(), "aid": aid, "star": 1, "arts": [], "pers": ""}
-	if free >= 0:
-		p["bench"][free] = u
+	if not dest.is_empty():
+		_set_at(p, dest, u)
+		_fix_pers(u, dest, String(cmd.get("pers", "")))
 		_try_merge(p, aid, 1)
 	else:
 		_try_merge(p, aid, 1, u)
 	return ""
+
+
+## 구매한 사도를 바로 놓을 수 있는 빈칸인지
+func _valid_empty_target(p: Dictionary, aid: String, to: Dictionary) -> bool:
+	if to.has("bench"):
+		var b := int(to["bench"])
+		return b >= 0 and b < p["bench"].size() and p["bench"][b] == null
+	if to.has("board"):
+		var rs := _parse_key(String(to["board"]))
+		if rs[0] < 0 or rs[0] >= int(B["board_rows"]) or rs[1] < 0 or rs[1] >= int(B["board_slots"]):
+			return false
+		return not p["board"].has(to["board"]) and GameData.can_place(aid, rs[0]) and p["board"].size() < int(p["level"])
+	return false
 
 
 func _count_copies(p: Dictionary, aid: String, star: int) -> int:

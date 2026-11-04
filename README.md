@@ -1,6 +1,8 @@
-# CheektoChess
+# 볼토체스
 
 트릭컬 리바이브 **비공식 팬게임** · 오토체스 장르 (Godot 4.7)
+
+저장소 이름은 CheektoChess, 게임 이름은 **볼토체스**입니다.
 
 - 기획서: [docs/DESIGN.md](docs/DESIGN.md)
 - 진행 상황 / 남은 작업: [docs/STATUS.md](docs/STATUS.md)
@@ -20,7 +22,9 @@
 ### 조작 (마우스·터치 공통)
 
 - 상점 카드를 누르면 구매.
-- 사도를 누른 뒤 빈칸/다른 사도를 누르면 이동·교체. 사도를 고르면 놓을 수 있는 칸이 빛납니다.
+- 사도를 **누른 채 끌면** 손가락을 따라오고, 놓을 수 있는 칸(초록)과 없는 칸(어둡게), 놓일 모습이 표시됩니다.
+- 상점 카드를 끌어 대기석/보드에 놓으면 그 자리에 바로 구매합니다. 판매 칸에 놓으면 판매.
+- 누르기→누르기 방식(사도를 누른 뒤 빈칸을 누름)도 그대로 됩니다.
 - 사도를 고르고 **판매**.
 - 보관함 아티팩트를 누르고 사도를 누르면 장착.
 - 아티팩트를 고르고 **합성** → 같은 등급의 다른 아티팩트를 누르면 합성.
@@ -55,7 +59,7 @@ GODOT_ANDROID_KEYSTORE_RELEASE_PATH=... GODOT_ANDROID_KEYSTORE_RELEASE_USER=chee
 boot/                시작 화면 + 자동 업데이트 (APK 에 들어가는 유일한 게임 스크립트)
 data/                게임 데이터 (JSON)
   apostles.json      사도 125명 (tools/build_apostles.py 로 생성)
-  roster.json        상점에 나오는 사도 목록과 코스트 ← 사도 풀은 여기서 바꿈
+  roster.json        상점에 나오는 사도(전원)와 코스트 ← tools/build_roster.py 로 생성, 직접 수정 가능
   artifacts.json     아티팩트 105종 (효과 구조 포함)
   synergies.json     시너지 단계/효과
   balance.json       경제·전투·확률 수치

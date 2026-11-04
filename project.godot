@@ -5,7 +5,9 @@ config_version=5
 
 [application]
 
-config/name="CheektoChess"
+config/name="볼토체스"
+config/use_custom_user_dir=true
+config/custom_user_dir_name="CheektoChess"
 config/description="트릭컬 팬게임 - 오토체스"
 config/icon="res://assets/icon.png"
 run/main_scene="res://boot/boot.tscn"

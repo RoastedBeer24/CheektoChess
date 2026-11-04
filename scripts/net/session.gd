@@ -280,6 +280,8 @@ func _rpc_cmd(cmd: Dictionary) -> void:
 	var err := game.command(peer_to_pid[peer], cmd)
 	if err != "":
 		_rpc_toast.rpc_id(peer, err)
+		# 참가자 화면이 미리 바뀌었을 수 있으므로 올바른 상태를 다시 보낸다
+		_rpc_state.rpc_id(peer, game.state)
 
 
 @rpc("authority", "reliable")

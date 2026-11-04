@@ -13,14 +13,6 @@ const STAT_NAME := {
 const PHASE_NAME := {"prep": "준비", "battle": "전투", "result": "결과", "over": "게임 종료"}
 const PHASE_COLOR := {"prep": Color("2f6b4a"), "battle": Color("8a3a3a"), "result": Color("4a4f6b"), "over": Color("4a4f6b")}
 
-## 유닛을 끌어다 놓아 팔 수 있는 버튼
-class SellZone extends Button:
-	signal unit_dropped(from_loc: Dictionary)
-	func _can_drop_data(_at: Vector2, data: Variant) -> bool:
-		return typeof(data) == TYPE_DICTIONARY and data.has("unit_from")
-	func _drop_data(_at: Vector2, data: Variant) -> void:
-		unit_dropped.emit(data["unit_from"])
-
 var sel := {}                 # {"unit": loc} 또는 {"art": uid}
 var merge_mode := false
 var _last_phase := ""
@@ -55,7 +47,11 @@ var _bench_lbl: Label
 var _shop_tiles: Array = []
 var _reroll_btn: Button
 var _xp_btn: Button
-var _sell_btn: SellZone
+var _sell_btn: Button
+var _drag_layer: Control
+var _drag := {}               # 끌기 중 정보 {src, aid, star, unit, start, active, ghost, hover}
+var _suppress_click := false  # 끌기 직후 버튼 클릭 무시
+const DRAG_START := 14.0      # 이만큼 움직이면 끌기 시작 (화면 좌표)
 var _merge_btn: Button
 var _overlay: Control
 
@@ -123,6 +119,10 @@ func _build() -> void:
 	_overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_overlay)
+	_drag_layer = Control.new()
+	_drag_layer.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_drag_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_drag_layer)
 
 
 func _build_top() -> Control:
@@ -268,7 +268,7 @@ func _build_board() -> Control:
 			t.loc = {"board": key}
 			var loc: Dictionary = t.loc
 			t.pressed.connect(func(): _on_tile(loc))
-			t.dropped.connect(_on_drop)
+			t.held.connect(func(_t): _on_held(loc))
 			grid.add_child(t)
 			_board_tiles[key] = t
 	v.add_child(UI.label("적 방향  ▶▶", 20, UI.SUB, HORIZONTAL_ALIGNMENT_RIGHT))
@@ -287,10 +287,10 @@ func _build_bench() -> Control:
 		t.loc = {"bench": i}
 		var loc: Dictionary = t.loc
 		t.pressed.connect(func(): _on_tile(loc))
-		t.dropped.connect(_on_drop)
+		t.held.connect(func(_t): _on_held(loc))
 		bench.add_child(t)
 		_bench_tiles.append(t)
-	_sell_btn = SellZone.new()
+	_sell_btn = Button.new()
 	_sell_btn.text = "판매"
 	_sell_btn.custom_minimum_size = Vector2(170, 124)
 	_sell_btn.add_theme_font_size_override("font_size", 22)
@@ -298,10 +298,6 @@ func _build_bench() -> Control:
 		_sell_btn.add_theme_stylebox_override(st, UI.box(Color("5a2b2b") if st != "disabled" else Color("3a2525"), 14, Color("b55a5a"), 2))
 	_sell_btn.focus_mode = Control.FOCUS_NONE
 	_sell_btn.pressed.connect(_on_sell)
-	_sell_btn.unit_dropped.connect(func(from):
-		App.session.submit({"t": "sell", "loc": from})
-		sel = {}
-		refresh())
 	bench.add_child(_sell_btn)
 	return bench
 
@@ -313,7 +309,11 @@ func _build_shop() -> Control:
 	for i in int(B()["shop_size"]):
 		var t := UnitTile.new(Vector2(226, 124))
 		var idx := i
-		t.pressed.connect(func(): App.session.submit({"t": "buy", "i": idx}))
+		t.pressed.connect(func():
+			if _take_suppress():
+				return
+			App.session.submit({"t": "buy", "i": idx}))
+		t.held.connect(func(_t): _on_held({"shop": idx}))
 		shop.add_child(t)
 		_shop_tiles.append(t)
 	_reroll_btn = UI.button("새로고침\n%d골드" % int(B()["reroll_cost"]), 22, Vector2(170, 124), Color("2f4f86"))
@@ -373,6 +373,8 @@ func refresh() -> void:
 	_refresh_inventory()
 	_refresh_detail()
 	_refresh_overlay()
+	if not _drag.is_empty() and _drag.get("active", false):
+		_paint_drag()
 
 
 func _on_phase_changed(phase: String, rnd: int) -> void:
@@ -810,20 +812,47 @@ func _do_move(from: Dictionary, to: Dictionary) -> void:
 	if mover == null:
 		return
 	if to.has("board") and from.has("bench") and not GameData.personality_options(mover["aid"]).is_empty():
-		_ask_personality(mover["aid"], func(pers): App.session.submit({"t": "move", "from": from, "to": to, "pers": pers}))
+		_ask_personality(mover["aid"], func(pers): _send_move(from, to, pers))
 	else:
-		App.session.submit({"t": "move", "from": from, "to": to})
+		_send_move(from, to, "")
 
 
-func _on_drop(from: Dictionary, to: Dictionary) -> void:
-	if not _is_prep():
+## 이동 명령. LAN 참가자는 방장 응답을 기다리지 않고 화면에 먼저 반영한다 (거절되면 방장이 상태를 다시 보냄).
+func _send_move(from: Dictionary, to: Dictionary, pers: String) -> void:
+	if App.session.mode == "client":
+		_local_move(from, to, pers)
+	App.session.submit({"t": "move", "from": from, "to": to, "pers": pers})
+
+
+func _local_move(from: Dictionary, to: Dictionary, pers: String) -> void:
+	var p := me()
+	var a = _unit_at(from)
+	var b = _unit_at(to)
+	if a == null:
 		return
-	sel = {}
-	_do_move(from, to)
+	for pair in [[from, b], [to, a]]:
+		var loc: Dictionary = pair[0]
+		if loc.has("bench"):
+			p["bench"][int(loc["bench"])] = pair[1]
+		elif pair[1] == null:
+			p["board"].erase(loc["board"])
+		else:
+			p["board"][loc["board"]] = pair[1]
+	if to.has("board") and pers != "":
+		a["pers"] = pers
 	refresh()
 
 
+func _take_suppress() -> bool:
+	if _suppress_click:
+		_suppress_click = false
+		return true
+	return false
+
+
 func _on_tile(loc: Dictionary) -> void:
+	if _take_suppress():
+		return
 	var u = _unit_at(loc)
 	if not _is_prep():
 		# 준비 단계가 아니어도 정보는 볼 수 있다
@@ -876,12 +905,246 @@ func _on_merge_pressed() -> void:
 
 
 func _on_sell() -> void:
+	if _take_suppress():
+		return
 	if sel.has("unit") and _unit_at(sel["unit"]) != null:
 		App.session.submit({"t": "sell", "loc": sel["unit"]})
 		sel = {}
 		refresh()
 	else:
 		_toast("팔 사도를 고르거나, 판매 칸으로 끌어다 놓으세요")
+
+
+# ─────────────────────────────── 끌어다 놓기 ───────────────────────────────
+# 누른 채 움직이면 사도가 손가락을 따라오고, 모든 칸이 놓을 수 있는지(초록)/없는지(어둡게) 표시된다.
+# 손가락 아래 칸에는 놓일 모습과 결과(놓기/교체/구매/판매 또는 불가 사유)가 보인다.
+
+func _vibrate(ms: int = 20) -> void:
+	if OS.has_feature("android"):
+		Input.vibrate_handheld(ms)
+
+
+func _on_held(src: Dictionary) -> void:
+	if not _is_prep():
+		return
+	var p := me()
+	var aid := ""
+	var star := 1
+	var unit = null
+	if src.has("shop"):
+		var shop: Array = p.get("shop", [])
+		aid = shop[src["shop"]] if src["shop"] < shop.size() else ""
+	else:
+		unit = _unit_at(src)
+		if unit != null:
+			aid = unit["aid"]
+			star = int(unit["star"])
+	if aid == "":
+		return
+	_drag = {"src": src, "aid": aid, "star": star, "unit": unit, "start": get_global_mouse_position(), "active": false, "hover": null}
+
+
+func _input(event: InputEvent) -> void:
+	if _drag.is_empty():
+		return
+	if event is InputEventMouseMotion:
+		# _input 의 좌표는 화면 배율이 반영된 캔버스 좌표 (GameScreen 은 화면 전체를 덮음)
+		var pos: Vector2 = event.position
+		if not _drag["active"]:
+			if pos.distance_to(_drag["start"]) >= DRAG_START:
+				_begin_drag()
+		if _drag.get("active", false):
+			_move_drag(pos)
+	elif event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and not event.pressed:
+		if _drag.get("active", false):
+			_suppress_click = true
+			_finish_drag()
+			# 다른 칸 위에서 손을 떼면 클릭이 오지 않으므로 다음 프레임에 풀어 준다
+			(func(): _suppress_click = false).call_deferred()
+		_drag = {}
+
+
+func _begin_drag() -> void:
+	_drag["active"] = true
+	sel = {}
+	_vibrate(15)
+	var ghost := UnitTile.new(Vector2(150, 150))
+	ghost.set_unit({"aid": _drag["aid"], "star": _drag["star"], "arts": _drag["unit"]["arts"] if _drag["unit"] != null else [], "pers": _drag["unit"]["pers"] if _drag["unit"] != null else ""})
+	ghost.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	ghost.modulate = Color(1, 1, 1, 0.92)
+	ghost.pivot_offset = Vector2(75, 75)
+	ghost.scale = Vector2(1.08, 1.08)
+	_drag_layer.add_child(ghost)
+	_drag["ghost"] = ghost
+	var tag := UI.panel(Color(0, 0, 0, 0.8), 10)
+	var tag_lbl := UI.label("", 22, UI.TEXT, HORIZONTAL_ALIGNMENT_CENTER)
+	tag.add_child(tag_lbl)
+	tag.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	tag.visible = false
+	_drag_layer.add_child(tag)
+	_drag["tag"] = tag
+	_drag["tag_lbl"] = tag_lbl
+	if _drag["src"].has("shop"):
+		_shop_tiles[_drag["src"]["shop"]].set_dim(true)
+	refresh()
+
+
+func _move_drag(pos: Vector2) -> void:
+	var ghost: UnitTile = _drag["ghost"]
+	# 손가락과 아래 칸이 가리지 않도록 위쪽에 띄운다
+	ghost.position = pos - Vector2(75, 75) + Vector2(0, -140)
+	var tag: Control = _drag["tag"]
+	tag.reset_size()
+	tag.position = pos + Vector2(-tag.size.x / 2.0, -58)
+	var hover = _target_at(pos)
+	if hover != _drag["hover"]:
+		_drag["hover"] = hover
+		_paint_drag()
+
+
+## 화면 좌표 아래에 있는 놓을 곳 ({"board": key} / {"bench": i} / {"sell": true} / null)
+func _target_at(pos: Vector2):
+	for key in _board_tiles:
+		if _board_tiles[key].get_global_rect().has_point(pos):
+			return {"board": key}
+	for i in _bench_tiles.size():
+		if _bench_tiles[i].get_global_rect().has_point(pos):
+			return {"bench": i}
+	if _sell_btn.get_global_rect().has_point(pos):
+		return {"sell": true}
+	return null
+
+
+## 놓을 수 있는지 검사: {ok, text}
+func _check_drop(target: Dictionary) -> Dictionary:
+	var p := me()
+	var src: Dictionary = _drag["src"]
+	var aid: String = _drag["aid"]
+	var a := GameData.apostle(aid)
+	if target == src:
+		return {"ok": false, "text": "", "same": true}
+	if target.has("sell"):
+		if src.has("shop"):
+			return {"ok": false, "text": ""}
+		return {"ok": true, "text": "판매\n+%d골드" % _sell_value(_drag["unit"])}
+	var occupant = _unit_at(target)
+	if src.has("shop"):
+		var cost: int = GameData.cost_of.get(aid, 1)
+		if int(p.get("gold", 0)) < cost:
+			return {"ok": false, "text": "골드 부족"}
+		if occupant != null:
+			return {"ok": false, "text": "빈칸에\n놓으세요"}
+		if target.has("board"):
+			var row: int = Match._parse_key(target["board"])[0]
+			if not GameData.can_place(aid, row):
+				return {"ok": false, "text": "%s\n전용" % GameData.ROW_NAME[a["row"]]}
+			if p.get("board", {}).size() >= int(p.get("level", 1)):
+				return {"ok": false, "text": "보드 가득\n(Lv %d)" % int(p["level"])}
+			return {"ok": true, "text": "구매 후\n배치"}
+		return {"ok": true, "text": "구매"}
+	if target.has("board"):
+		var row: int = Match._parse_key(target["board"])[0]
+		if not GameData.can_place(aid, row):
+			return {"ok": false, "text": "%s\n전용" % GameData.ROW_NAME[a["row"]]}
+		if occupant == null and src.has("bench") and p.get("board", {}).size() >= int(p.get("level", 1)):
+			return {"ok": false, "text": "보드 가득\n(Lv %d)" % int(p["level"])}
+		if occupant != null and src.has("board") and not GameData.can_place(occupant["aid"], Match._parse_key(src["board"])[0]):
+			return {"ok": false, "text": "교체 불가\n(%s)" % GameData.ROW_NAME[GameData.apostle(occupant["aid"])["row"]]}
+		return {"ok": true, "text": "교체" if occupant != null else ""}
+	# 대기석
+	if occupant != null and src.has("board") and not GameData.can_place(occupant["aid"], Match._parse_key(src["board"])[0]):
+		return {"ok": false, "text": "교체 불가"}
+	return {"ok": true, "text": "교체" if occupant != null else ""}
+
+
+func _paint_drag() -> void:
+	var hover = _drag.get("hover")
+	var all := []
+	for key in _board_tiles:
+		all.append([_board_tiles[key], {"board": key}])
+	for i in _bench_tiles.size():
+		all.append([_bench_tiles[i], {"bench": i}])
+	for pair in all:
+		var t: UnitTile = pair[0]
+		var target: Dictionary = pair[1]
+		var r := _check_drop(target)
+		if r.get("same", false):
+			t.set_drop("bad")
+			t.set_dim(true)
+			continue
+		if hover != null and hover == target:
+			# 결과 글자는 손가락 옆 표시로 보여 주고, 칸에는 놓일 모습만 그린다
+			t.set_drop("hover" if r["ok"] else "hover_bad", "", _drag["aid"] if r["ok"] and _unit_at(target) == null else "")
+		else:
+			t.set_drop("ok" if r["ok"] else "bad")
+	# 손가락 옆 결과 표시
+	var tag_text := ""
+	var tag_ok := true
+	if hover != null:
+		var hr := _check_drop(hover)
+		if not hr.get("same", false):
+			tag_ok = hr["ok"]
+			tag_text = String(hr["text"]).replace("\n", " ")
+			if tag_text == "":
+				tag_text = "놓기"
+	if _drag.has("tag"):
+		_drag["tag"].visible = tag_text != ""
+		_drag["tag_lbl"].text = tag_text
+		_drag["tag_lbl"].add_theme_color_override("font_color", UI.GOOD if tag_ok else UI.BAD)
+	# 판매 칸
+	var sell_ok: bool = not _drag["src"].has("shop")
+	var on_sell: bool = hover != null and hover.has("sell")
+	var col := Color("b55a5a") if sell_ok else Color("3a2525")
+	_sell_btn.add_theme_stylebox_override("normal", UI.box(Color("8a3030") if on_sell and sell_ok else Color("5a2b2b"), 14, Color("ffb0b0") if on_sell and sell_ok else col, 6 if on_sell else 2))
+	if sell_ok:
+		_sell_btn.text = "판매\n+%d골드" % _sell_value(_drag["unit"])
+
+
+func _clear_drag_paint() -> void:
+	for key in _board_tiles:
+		_board_tiles[key].set_drop("")
+		_board_tiles[key].set_dim(false)
+	for t in _bench_tiles:
+		t.set_drop("")
+		t.set_dim(false)
+	_sell_btn.add_theme_stylebox_override("normal", UI.box(Color("5a2b2b"), 14, Color("b55a5a"), 2))
+
+
+func _finish_drag() -> void:
+	var target = _drag.get("hover")
+	var src: Dictionary = _drag["src"]
+	var aid: String = _drag["aid"]
+	if _drag.has("ghost"):
+		_drag["ghost"].queue_free()
+	if _drag.has("tag"):
+		_drag["tag"].queue_free()
+	for t in _shop_tiles:
+		t.set_dim(false)
+	var info := {}
+	if target != null:
+		info = _check_drop(target)
+	_drag["active"] = false   # 이후 refresh 에서 다시 칠하지 않도록
+	_clear_drag_paint()
+	if target == null or info.get("same", false):
+		refresh()
+		return
+	if not info["ok"]:
+		if info["text"] != "":
+			_toast(String(info["text"]).replace("\n", " "))
+		refresh()
+		return
+	_vibrate(25)
+	if target.has("sell"):
+		App.session.submit({"t": "sell", "loc": src})
+	elif src.has("shop"):
+		var i: int = src["shop"]
+		if target.has("board") and not GameData.personality_options(aid).is_empty():
+			_ask_personality(aid, func(pers): App.session.submit({"t": "buy", "i": i, "to": target, "pers": pers}))
+		else:
+			App.session.submit({"t": "buy", "i": i, "to": target})
+	else:
+		_do_move(src, target)
+	refresh()
 
 
 # ─────────────────────────────── 팝업 ───────────────────────────────

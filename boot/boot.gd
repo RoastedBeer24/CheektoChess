@@ -37,7 +37,7 @@ func _build_ui() -> void:
 	v.add_theme_constant_override("separation", 18)
 	add_child(v)
 	var title := Label.new()
-	title.text = "CheektoChess"
+	title.text = "볼토체스"
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title.add_theme_font_size_override("font_size", 80)
 	title.add_theme_color_override("font_color", Color("ffc857"))

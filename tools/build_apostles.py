@@ -28,7 +28,7 @@ SKILL_KIND = {
     "Normal ATK": "normal", "Passive": "passive",
 }
 # 원본 데이터 오류 보정 (영문 이름 -> 한글 이름)
-NAME_FIX = {"Yomi": "요미"}
+NAME_FIX = {"Yomi": "요미", "Ronnie": "Ronnie"}  # Ronnie: 원본 데이터에 한글 이름이 "오로라"로 잘못 들어가 있음 (확인 필요)
 
 
 def fill_values(entry):

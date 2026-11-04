@@ -30,6 +30,7 @@
   [10,15,30,30,15]
  ],
  "prep_time": 30,
+ "first_prep_time": 45,
  "battle_time_limit": 45,
  "result_time": 3,
  "damage_base": 2,

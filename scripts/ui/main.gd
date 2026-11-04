@@ -129,7 +129,7 @@ func _show_title() -> void:
 	left.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	left.add_theme_constant_override("separation", 18)
 	h.add_child(left)
-	var logo := UI.outlined("CheektoChess", 96, UI.ACCENT, 14, HORIZONTAL_ALIGNMENT_LEFT)
+	var logo := UI.outlined("볼토체스", 104, UI.ACCENT, 14, HORIZONTAL_ALIGNMENT_LEFT)
 	left.add_child(logo)
 	left.add_child(UI.label("트릭컬 팬게임 · 오토체스  (비공식)", 28, UI.TEXT))
 	left.add_child(UI.label("버전 %s" % App.version, 18, UI.SUB))
