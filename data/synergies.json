@@ -1,0 +1,23 @@
+{
+ "_note": "시너지 정의(임시 수치). tiers=발동 인원(보드 위 서로 다른 사도 수), mods=단계별 효과(%), scope=trait(해당 시너지 사도만) / team(아군 전체) / enemy(적 전체에 적용되는 약화). start_shield=전투 시작 보호막(최대 HP %).",
+ "personality": {
+  "순수": {"tiers":[2,4,6], "scope":"trait", "desc":"받는 회복·보호막 효과 증가", "mods":[{"heal_in":20,"shield_in":20},{"heal_in":40,"shield_in":40,"hp":10},{"heal_in":70,"shield_in":70,"hp":20}]},
+  "냉정": {"tiers":[2,4,6], "scope":"trait", "desc":"스킬 피해량 증가", "mods":[{"skill_dmg":15},{"skill_dmg":35},{"skill_dmg":60}]},
+  "광기": {"tiers":[2,4,6], "scope":"trait", "desc":"피해량 증가", "mods":[{"dmg":10},{"dmg":25},{"dmg":45}]},
+  "활발": {"tiers":[2,4,6], "scope":"trait", "desc":"공격 속도 증가", "mods":[{"aspd":15},{"aspd":35},{"aspd":60}]},
+  "우울": {"tiers":[2,4,6], "scope":"trait", "desc":"치명타·치명 피해 증가", "mods":[{"crit":20,"critdmg":10},{"crit":45,"critdmg":20},{"crit":80,"critdmg":35}]}
+ },
+ "race": {
+  "수인": {"tiers":[2,4,6], "scope":"trait", "desc":"일반·강화 공격 피해 증가", "mods":[{"normal_dmg":20,"enh_dmg":20},{"normal_dmg":45,"enh_dmg":45},{"normal_dmg":80,"enh_dmg":80}]},
+  "엘프": {"tiers":[2,4,6], "scope":"team", "desc":"아군 전체 기본 SP 회복량 증가", "mods":[{"sp_regen":10},{"sp_regen":25},{"sp_regen":45}]},
+  "정령": {"tiers":[2,4,6], "scope":"trait", "desc":"받는 피해량 감소", "mods":[{"dmg_taken":-10},{"dmg_taken":-20},{"dmg_taken":-35}]},
+  "요정": {"tiers":[2,4,6], "scope":"team", "desc":"전투 시작 시 아군 전체 보호막(최대 HP %)", "mods":[{"start_shield":10},{"start_shield":20},{"start_shield":35}]},
+  "유령": {"tiers":[2,4,6], "scope":"trait", "desc":"치명 피해 증가", "mods":[{"critdmg":20},{"critdmg":45},{"critdmg":80}]},
+  "용족": {"tiers":[2,4,6], "scope":"trait", "desc":"최대 HP 증가", "mods":[{"hp":15},{"hp":35},{"hp":60}]},
+  "마녀": {"tiers":[2,4,6], "scope":"enemy", "desc":"적 전체 물리·마법 방어력 감소", "mods":[{"def":-10},{"def":-25},{"def":-45}]},
+  "미스틱": {"tiers":[1,2], "scope":"trait", "desc":"공격력·최대 HP 증가", "mods":[{"atk":10,"hp":10},{"atk":25,"hp":25}]}
+ },
+ "special": {
+  "엘다인": {"tiers":[3,5,7], "scope":"trait", "desc":"피해량·공격 속도 증가", "mods":[{"dmg":10,"aspd":5},{"dmg":25,"aspd":10},{"dmg":45,"aspd":20}]}
+ }
+}

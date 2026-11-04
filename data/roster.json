@@ -1,0 +1,13 @@
+{
+ "_note": "임시 사도 풀(24명). 첫 24명 선정은 보류 상태이므로 시스템 테스트용으로 고른 목록이다. id 는 data/apostles.json 의 키, cost 는 상점 코스트(1~5). 이 파일만 고치면 사도 풀을 바꿀 수 있다.",
+ "pool": [
+  {"id":"ed","cost":1}, {"id":"rudd","cost":1}, {"id":"neti","cost":1},
+  {"id":"picora","cost":1}, {"id":"naia","cost":1}, {"id":"rim","cost":1},
+  {"id":"sylla","cost":2}, {"id":"ner","cost":2}, {"id":"tig","cost":2},
+  {"id":"hilde","cost":2}, {"id":"chloe","cost":2}, {"id":"daya","cost":2},
+  {"id":"aya","cost":3}, {"id":"renewa","cost":3}, {"id":"epica","cost":3},
+  {"id":"ui","cost":3}, {"id":"belita","cost":3},
+  {"id":"erpin","cost":4}, {"id":"vivi","cost":4}, {"id":"xxionx","cost":4}, {"id":"yomi","cost":4},
+  {"id":"uros","cost":5}, {"id":"joanne","cost":5}, {"id":"vivi_divine","cost":5}
+ ]
+}
