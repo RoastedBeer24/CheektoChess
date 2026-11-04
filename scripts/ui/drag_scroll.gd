@@ -111,19 +111,24 @@ func _input(event: InputEvent) -> void:
 
 ## 이미 눌린 버튼이 손을 뗄 때 눌리지 않도록, 화면 밖에서 놓은 것으로 처리한다
 func _cancel_press() -> void:
+	cancel_press(get_viewport())
+
+
+## 지금 눌린 버튼이 눌리지 않도록 취소 (화면 밖에서 놓은 것으로 처리). 툴팁 꾹 누르기에서도 사용.
+static func cancel_press(vp: Viewport) -> void:
 	_injecting = true
 	var far := Vector2(-100000, -100000)
 	var mv := InputEventMouseMotion.new()
 	mv.position = far
 	mv.global_position = far
 	mv.button_mask = MOUSE_BUTTON_MASK_LEFT
-	get_viewport().push_input(mv)
+	vp.push_input(mv)
 	var up := InputEventMouseButton.new()
 	up.button_index = MOUSE_BUTTON_LEFT
 	up.pressed = false
 	up.position = far
 	up.global_position = far
-	get_viewport().push_input(up)
+	vp.push_input(up)
 	_injecting = false
 
 

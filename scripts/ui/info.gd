@@ -14,9 +14,20 @@ const TABS := {"skill": "스킬", "aside": "어사이드", "art": "아티팩트"
 static var apostle_tab := "skill"
 
 
-static func section(box: Control, title: String) -> void:
-	box.add_child(UI.hsep())
-	box.add_child(UI.label(title, 20, UI.ACCENT))
+## 제목: 위 간격 + 강조색 글자 + 짧은 색 밑줄
+static func section(box: Control, title: String, color: Color = UI.ACCENT) -> void:
+	var gap := Control.new()
+	gap.custom_minimum_size.y = 6
+	box.add_child(gap)
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 2)
+	v.add_child(UI.label(title, 22, color))
+	var bar := ColorRect.new()
+	bar.color = Color(color, 0.8)
+	bar.custom_minimum_size = Vector2(56, 3)
+	bar.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	v.add_child(bar)
+	box.add_child(v)
 
 
 ## 사도 정보. on_art: 장착 아티팩트를 눌렀을 때 (uid) 호출, sel_art: 선택된 아티팩트 uid
@@ -239,13 +250,13 @@ static func synergy(box: Control, name: String, count: int, board_aids: Array) -
 	th.add_child(UI.tex_rect(UI.trait_icon(name), Vector2(44, 44)))
 	th.add_child(UI.label("%s  %d명" % [name, count], 28, col))
 	box.add_child(th)
-	box.add_child(UI.wrap_label("%s · 적용: %s" % [syn.get("desc", ""), SCOPE_NAME.get(syn.get("scope", ""), "")], 17, UI.SUB))
+	box.add_child(UI.rich_desc("%s · 적용: %s" % [syn.get("desc", ""), SCOPE_NAME.get(syn.get("scope", ""), "")], 18, UI.SUB, Color("ffd98a"), false))
 	for i in tiers.size():
 		var on := i < active
 		var h := HBoxContainer.new()
 		h.add_theme_constant_override("separation", 8)
 		h.add_child(UI.chip("%d명" % int(tiers[i]), col if on else Color("777b8f"), 16))
-		var l := UI.wrap_label(mods_text(syn["mods"][i]), 17, UI.TEXT if on else UI.SUB)
+		var l := UI.rich_desc(mods_text(syn["mods"][i]), 18, UI.TEXT if on else UI.DIM, Color("ffd98a") if on else UI.DIM, false)
 		l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		h.add_child(l)
 		box.add_child(h)

@@ -206,6 +206,8 @@ func _build_top() -> Control:
 	hpv.add_child(_hp_lbl)
 	_hp_bar = UI.bar(UI.GOOD, 10)
 	hpv.add_child(_hp_bar)
+	hpv.mouse_filter = Control.MOUSE_FILTER_STOP
+	Tips.set_tip(hpv, _hp_tip)
 	var gold := UI.panel(Color("4a3a12"), 10, UI.ACCENT, 2)
 	var gv := VBoxContainer.new()
 	gv.add_theme_constant_override("separation", -4)
@@ -216,6 +218,7 @@ func _build_top() -> Control:
 	_income_lbl = UI.label("", 15, Color("e8d9a8"), HORIZONTAL_ALIGNMENT_CENTER)
 	gv.add_child(_income_lbl)
 	h.add_child(gold)
+	Tips.set_tip(gold, _gold_tip)
 	var lv := VBoxContainer.new()
 	lv.custom_minimum_size.x = 200
 	lv.add_theme_constant_override("separation", 2)
@@ -224,6 +227,8 @@ func _build_top() -> Control:
 	lv.add_child(_lvl_lbl)
 	_xp_bar = UI.bar(UI.BLUE, 10)
 	lv.add_child(_xp_bar)
+	lv.mouse_filter = Control.MOUSE_FILTER_STOP
+	Tips.set_tip(lv, _level_tip)
 	_offer_btn = UI.button("아티팩트 선택", 22, Vector2(190, 58), Color("8a5a1f"))
 	_offer_btn.pressed.connect(func():
 		_offer_hidden = false
@@ -232,8 +237,10 @@ func _build_top() -> Control:
 	var codex := UI.button("도감", 22, Vector2(100, 58), Color("4f3586"))
 	codex.pressed.connect(func(): add_child(Codex.new()))
 	h.add_child(codex)
+	Tips.set_tip(codex, "[b]도감[/b]\n모든 사도·아티팩트·시너지·용어를 찾아볼 수 있습니다.")
 	_ready_btn = UI.button("준비 완료", 22, Vector2(160, 58), Color("2f6b4a"))
 	_ready_btn.pressed.connect(_on_ready_btn)
+	Tips.set_tip(_ready_btn, "[b]준비 완료[/b]  [color=#8a8fa6]［스페이스］[/color]\n사람 플레이어가 모두 준비하면 시간이 남아도 바로 전투합니다.\n전투 중에는 [b]건너뛰기[/b] — 모두 누르면 바로 다음 라운드.")
 	h.add_child(_ready_btn)
 	var quit := UI.button("나가기", 22, Vector2(110, 58), Color("6b3535"))
 	quit.pressed.connect(_confirm_quit)
@@ -286,6 +293,7 @@ func _build_right() -> Control:
 	invh.add_child(_inv_title)
 	_merge_btn = UI.button("합성", 20, Vector2(120, 48), Color("5a3f86"))
 	_merge_btn.pressed.connect(_on_merge_pressed)
+	Tips.set_tip(_merge_btn, "[b]아티팩트 합성[/b]\n" + UI.mark("같은 등급 아티팩트 2개 → 한 등급 위 아티팩트 1개 (보관함으로). 전설은 합성할 수 없습니다.\n아티팩트를 다른 아티팩트 위로 끌어다 놓아도 됩니다."))
 	invh.add_child(_merge_btn)
 	var iscroll := DragScroll.new(UI.PANEL)
 	iscroll.vertical_only = true   # 가로로 끌면 아티팩트 끌어다 놓기
@@ -333,6 +341,7 @@ func _build_board() -> Control:
 			var loc: Dictionary = t.loc
 			t.pressed.connect(func(): _on_tile(loc))
 			t.held.connect(func(_t): _on_held(loc))
+			Tips.set_tip(t, func(): return _tile_tip(loc))
 			grid.add_child(t)
 			_board_tiles[key] = t
 	# 적 방향 표시는 열 이름 줄 오른쪽에 (아래에 두면 좁은 화면에서 대기석과 겹침)
@@ -357,6 +366,7 @@ func _build_bench() -> Control:
 		var loc: Dictionary = t.loc
 		t.pressed.connect(func(): _on_tile(loc))
 		t.held.connect(func(_t): _on_held(loc))
+		Tips.set_tip(t, func(): return _tile_tip(loc))
 		bench.add_child(t)
 		_bench_tiles.append(t)
 	_sell_btn = Button.new()
@@ -367,6 +377,7 @@ func _build_bench() -> Control:
 		_sell_btn.add_theme_stylebox_override(st, UI.box(Color("5a2b2b") if st != "disabled" else Color("3a2525"), 14, Color("b55a5a"), 2))
 	_sell_btn.focus_mode = Control.FOCUS_NONE
 	_sell_btn.pressed.connect(_on_sell)
+	Tips.set_tip(_sell_btn, "[b]판매[/b]  [color=#8a8fa6]［E］[/color]\n사도를 여기로 끌어다 놓거나, 사도를 고른 뒤 누르면 판매합니다.\n판매 가격 = 코스트 × (★1: 1, ★2: 3, ★3: 9). 장착한 아티팩트는 보관함으로 돌아옵니다.")
 	bench.add_child(_sell_btn)
 	return bench
 
@@ -383,13 +394,16 @@ func _build_shop() -> Control:
 				return
 			App.session.submit({"t": "buy", "i": idx}))
 		t.held.connect(func(_t): _on_held({"shop": idx}))
+		Tips.set_tip(t, func(): return _shop_tip(idx))
 		shop.add_child(t)
 		_shop_tiles.append(t)
 	_reroll_btn = UI.button("새로고침\n%d골드" % int(B()["reroll_cost"]), 22, Vector2(170, 124), Color("2f4f86"))
 	_reroll_btn.pressed.connect(func(): App.session.submit({"t": "reroll"}))
+	Tips.set_tip(_reroll_btn, func(): return "[b]새로고침[/b]  [color=#8a8fa6]［D］[/color]\n상점의 사도 5명을 새로 뽑습니다 ([color=#ffd25e]%d골드[/color]).\n잠근 칸은 그대로 남습니다 (상점 카드 꾹 누르기)." % int(B()["reroll_cost"]) + _lack_text(int(B()["reroll_cost"])))
 	shop.add_child(_reroll_btn)
 	_xp_btn = UI.button("경험치 +%d\n%d골드" % [int(B()["xp_amount"]), int(B()["xp_cost"])], 22, Vector2(170, 124), Color("4f3586"))
 	_xp_btn.pressed.connect(func(): App.session.submit({"t": "buy_xp"}))
+	Tips.set_tip(_xp_btn, func(): return "[b]경험치 구매[/b]  [color=#8a8fa6]［F］[/color]\n[color=#ffd25e]%d골드[/color]로 경험치 +%d.\n" % [int(B()["xp_cost"]), int(B()["xp_amount"])] + _level_tip() + _lack_text(int(B()["xp_cost"])))
 	shop.add_child(_xp_btn)
 	return shop
 
@@ -434,7 +448,6 @@ func refresh() -> void:
 		_gold_lbl.text = "%d G" % int(p["gold"])
 		var inc := _income_parts(p)
 		_income_lbl.text = "다음 +%d  (이자 %d%s)" % [inc[0], inc[1], ("· %s %d" % ["연승" if int(p["streak"]) > 0 else "연패", absi(int(p["streak"]))]) if absi(int(p["streak"])) >= 2 else ""]
-		_gold_lbl.get_parent().get_parent().tooltip_text = "기본 %d + 이자 %d (10골드당 1, 최대 %d) + 연승·연패 %d" % [int(B()["base_income"]), inc[1], int(B()["interest_max"]), inc[2]]
 		_check_merge_fx(p)
 		var maxed := int(p["level"]) >= int(B()["max_level"])
 		var need := 0 if maxed else int(B()["xp_to_next"][int(p["level"]) - 1])
@@ -448,7 +461,13 @@ func refresh() -> void:
 	var gold := int(p.get("gold", 0))
 	_ready_btn.disabled = not (prep or (phase == "battle" and p.get("alive", false) and not p.get("skip", false)))
 	_reroll_btn.disabled = not prep or gold < int(B()["reroll_cost"])
-	_xp_btn.disabled = not prep or gold < int(B()["xp_cost"]) or int(p.get("level", 1)) >= int(B()["max_level"])
+	var lv_max := int(p.get("level", 1)) >= int(B()["max_level"])
+	_xp_btn.disabled = not prep or gold < int(B()["xp_cost"]) or lv_max
+	# 누를 수 없을 때는 이유를 버튼에 적는다 (골드 부족은 빨간 글씨)
+	_reroll_btn.text = "새로고침\n%d골드%s" % [int(B()["reroll_cost"]), "  부족" if gold < int(B()["reroll_cost"]) else ""]
+	_xp_btn.text = "경험치 +%d\n%s" % [int(B()["xp_amount"]), "최대 레벨" if lv_max else ("%d골드%s" % [int(B()["xp_cost"]), "  부족" if gold < int(B()["xp_cost"]) else ""])]
+	for b in [_reroll_btn, _xp_btn]:
+		b.add_theme_color_override("font_disabled_color", Color("ff9a9a", 0.85) if prep and b.text.ends_with("부족") else Color(1, 1, 1, 0.35))
 	_sell_btn.disabled = not prep
 	_merge_btn.disabled = not prep
 	_offer_btn.visible = prep and not p.get("art_offer", {}).is_empty() and _offer_hidden
@@ -529,7 +548,8 @@ func _refresh_players() -> void:
 		var row := UI.panel(Color(UI.ACCENT, 0.12) if mine else UI.BG2, 8, UI.ACCENT if mine else Color.TRANSPARENT, 2 if mine else 0)
 		var pid: String = p["id"]
 		row.mouse_filter = Control.MOUSE_FILTER_STOP
-		row.tooltip_text = "눌러서 보드 보기"
+		var pp: Dictionary = p
+		Tips.set_tip(row, func(): return _player_tip(pp))
 		row.gui_input.connect(func(ev):
 			if ev is InputEventMouseButton and ev.button_index == MOUSE_BUTTON_LEFT and not ev.pressed \
 					and Rect2(Vector2.ZERO, row.size).has_point(ev.position) and not DragScroll.scrolling:
@@ -608,9 +628,19 @@ func _refresh_synergy() -> void:
 		h.add_child(nl)
 		var tl: Array = syn["tiers"]
 		for i in tl.size():
-			h.add_child(UI.label(str(int(tl[i])), 18, col if i < active else Color(1, 1, 1, 0.3)))
+			var tlab := UI.label(str(int(tl[i])), 18, col if i < active else Color(1, 1, 1, 0.3))
+			if i == active:
+				tlab.add_theme_color_override("font_color", Color(1, 1, 1, 0.6))
+			h.add_child(tlab)
+		# 다음 단계까지 1명 남았으면 강조
+		if active < tl.size() and int(tl[active]) - int(counts[n]) == 1 and int(counts[n]) >= 2:
+			var more := UI.chip("1명 더!", Color("ffe066"), 18)
+			more.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+			h.add_child(more)
+			h.move_child(more, 3)
+			row.add_theme_stylebox_override("panel", UI.box(col.darkened(0.75), 10, Color("ffe066").darkened(0.15), 2))
 		if active > 0:
-			v.add_child(UI.wrap_label(syn.get("desc", ""), 15, UI.SUB))
+			v.add_child(UI.wrap_label(syn.get("desc", ""), 18, UI.SUB))
 		_syn_box.add_child(row)
 	if names.is_empty():
 		_syn_box.add_child(UI.wrap_label("보드에 사도를 올리면 시너지가 표시됩니다.", 18))
@@ -690,7 +720,8 @@ func _refresh_bench_shop() -> void:
 		var cost: int = GameData.cost_of[aid]
 		var traits: String = "%s %s · %s" % [a["personality"], a["race"], GameData.ROW_NAME[a["row"]]]
 		t.set_unit({"aid": aid}, traits, UI.cost_color(aid))
-		t.set_badge("%dG" % cost, UI.cost_color(aid).lightened(0.3))
+		t.set_badge("%dG" % cost, UI.cost_color(aid).lightened(0.35), 24)
+		t.set_name_color(UI.cost_color(aid).lightened(0.45))
 		var owned := _owned_count(p, aid)
 		if owned >= 2:
 			t.set_corner("★ 합성!", Color("ffe066"))
@@ -700,6 +731,103 @@ func _refresh_bench_shop() -> void:
 		t.set_locked(i < locks.size() and locks[i] == true)
 		t.set_dim(gold < cost)
 		t.disabled = not prep
+
+
+# ─────────────────────────────── 툴팁 글 ───────────────────────────────
+
+func _lack_text(cost: int) -> String:
+	var g := int(me().get("gold", 0))
+	if App.session.state.get("phase", "") != "prep":
+		return "\n[color=#ff7070]준비 시간에만 할 수 있습니다[/color]"
+	if g < cost:
+		return "\n[color=#ff7070]골드 %d 부족[/color]" % (cost - g)
+	return ""
+
+
+func _gold_tip() -> String:
+	var p := me()
+	if p.is_empty():
+		return ""
+	var inc := _income_parts(p)
+	var stk := int(p.get("streak", 0))
+	var out := "[b][color=#ffd25e]골드 %d[/color][/b]\n다음 라운드 수입 [color=#ffd25e]+%d[/color]\n" % [int(p["gold"]), inc[0]]
+	out += "• 기본 [color=#ffd25e]%d[/color]\n" % int(B()["base_income"])
+	out += "• 이자 [color=#ffd25e]%d[/color]  (가진 골드 10마다 1, 최대 %d)\n" % [inc[1], int(B()["interest_max"])]
+	out += "• %s [color=#ffd25e]%d[/color]  (지금 %s)" % ["연승" if stk >= 0 else "연패", inc[2], ("%d연승" % stk) if stk > 0 else (("%d연패" % -stk) if stk < 0 else "없음")]
+	var nxt := (int(p["gold"]) / 10 + 1) * 10
+	if inc[1] < int(B()["interest_max"]):
+		out += "\n[color=#8a8fa6]%d골드까지 모으면 이자 +1[/color]" % nxt
+	return out
+
+
+func _hp_tip() -> String:
+	var p := me()
+	if p.is_empty():
+		return ""
+	var r := int(App.session.state.get("round", 1))
+	var base_dmg := int(B()["damage_base"]) + r / int(B()["damage_per_round_div"])
+	return "[b][color=#5ee39b]체력 %d[/color][/b] / %d\n전투에서 지면 [color=#ff7070]%d + 살아남은 적 사도 수[/color]만큼 줄어듭니다 (라운드가 갈수록 커짐).\n0이 되면 탈락." % [maxi(0, int(p["hp"])), int(B()["player_hp"]), base_dmg]
+
+
+func _level_tip() -> String:
+	var p := me()
+	if p.is_empty():
+		return ""
+	var lv := int(p["level"])
+	var out := "[b]레벨 %d[/b] — 보드에 [color=#ffd25e]%d명[/color]까지 올릴 수 있습니다." % [lv, lv]
+	if lv < int(B()["max_level"]):
+		var need := int(B()["xp_to_next"][lv - 1])
+		out += "\n다음 레벨까지 경험치 [color=#8cc4ff]%d[/color] (라운드마다 +%d)" % [need - int(p["xp"]), int(B().get("xp_per_round", 2))]
+	var odds: Array = B()["shop_odds"][clampi(lv - 1, 0, B()["shop_odds"].size() - 1)]
+	var parts := []
+	for i in odds.size():
+		if int(odds[i]) > 0:
+			parts.append("[color=#%s]%d코 %d%%[/color]" % [UI.COST_COLOR[i].lightened(0.2).to_html(false), i + 1, int(odds[i])])
+	out += "\n상점 확률: " + "  ".join(parts)
+	return out
+
+
+func _player_tip(p: Dictionary) -> String:
+	var cur: Dictionary = App.session.state.get("players", {}).get(p["id"], p)
+	var out := "[b]%s[/b]  Lv %d\n" % [cur["name"], int(cur["level"])]
+	if not cur["alive"]:
+		return out + "[color=#8a8fa6]탈락 (%d위)[/color]" % int(cur["place"])
+	out += "체력 [color=#5ee39b]%d[/color]" % maxi(0, int(cur["hp"]))
+	var stk := int(cur.get("streak", 0))
+	if absi(stk) >= 2:
+		out += " · [color=#ffd25e]%d%s[/color]" % [absi(stk), "연승" if stk > 0 else "연패"]
+	out += " · 보드 %d명" % cur.get("board", {}).size()
+	if cur.get("bot", false):
+		out += " · 봇"
+	return out + "\n[color=#8a8fa6]눌러서 보드 보기[/color]"
+
+
+func _tile_tip(loc: Dictionary) -> String:
+	if not _drag.is_empty() and _drag.get("active", false):
+		return ""
+	var u = _unit_at(loc)
+	if u == null:
+		if loc.has("board"):
+			var r := int(String(loc["board"]).split(",")[0])
+			return UI.mark("빈 칸 — %s 사도를 놓을 수 있습니다 (모든열 사도는 어디든)." % GameData.ROW_NAME[GameData.ROWS[r]])
+		return ""
+	var extra := "[color=#8a8fa6]판매 %d골드 · 끌어서 이동 · 꾹 눌러 정보[/color]" % _sell_value(u)
+	return UI.unit_tip(u, extra)
+
+
+func _shop_tip(i: int) -> String:
+	var p := me()
+	var shop: Array = p.get("shop", [])
+	if i >= shop.size() or shop[i] == "":
+		return ""
+	var aid: String = shop[i]
+	var cost: int = GameData.cost_of[aid]
+	var owned := _owned_count(p, aid)
+	var extra := "보유 [color=#ffd25e]%d/3[/color]%s" % [owned, "  [color=#ffe066]→ 사면 ★ 합성![/color]" if owned >= 2 else ""]
+	if int(p.get("gold", 0)) < cost:
+		extra += "\n[color=#ff7070]골드 %d 부족[/color]" % (cost - int(p.get("gold", 0)))
+	extra += "\n[color=#8a8fa6]누르면 구매 · 끌어서 원하는 칸에 구매 · 꾹 눌러 잠금[/color]"
+	return UI.unit_tip({"aid": aid, "star": 1}, extra)
 
 
 func _sell_value(u: Dictionary) -> int:
@@ -759,7 +887,7 @@ func _refresh_detail() -> void:
 		var dot := UI.label("•", 18, UI.ACCENT)
 		dot.vertical_alignment = VERTICAL_ALIGNMENT_TOP
 		row.add_child(dot)
-		var l := UI.wrap_label(line, 18, UI.TEXT)
+		var l := UI.rich_desc(line, 18, UI.TEXT)
 		l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		row.add_child(l)
 		_detail_box.add_child(row)
@@ -1500,6 +1628,8 @@ func _finish_drag() -> void:
 
 func _modal(title: String, kind: String = "") -> VBoxContainer:
 	UI.clear(_overlay)
+	if Tips.inst:
+		Tips.inst.dismiss()
 	_overlay_kind = kind
 	var dim := ColorRect.new()
 	dim.color = Color(0, 0, 0, 0.65)
@@ -1603,7 +1733,7 @@ func _show_offer(offer: Dictionary) -> void:
 			chips.add_child(UI.chip("애착: " + art["owner"], Color("ff8fb8")))
 		for k in art.get("stats", {}):
 			cv.add_child(UI.label("%s  +%s%%" % [STAT_NAME.get(k, k), str(art["stats"][k])], 19, UI.TEXT))
-		var txt := UI.wrap_label(art.get("text", ""), 17, UI.SUB)
+		var txt := UI.rich_desc(art.get("text", ""), 18, UI.TEXT.darkened(0.08))
 		txt.size_flags_vertical = Control.SIZE_EXPAND_FILL
 		cv.add_child(txt)
 		var idx: int = i

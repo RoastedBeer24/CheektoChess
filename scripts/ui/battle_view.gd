@@ -266,7 +266,10 @@ func _apply(e: Array) -> void:
 				col = Color("d9a6ff")
 			if crit:
 				col = UI.ACCENT
-			_float(dst, str(int(e[4])) + ("!" if crit else ""), col, 34 if crit else (26 if dkind == "fresh" or dkind == "senior" else 22))
+			if crit:
+				_float(dst, "치명 " + str(int(e[4])) + "!", col, 36, 0.0, true)
+			else:
+				_float(dst, str(int(e[4])), col, 28 if dkind == "fresh" or dkind == "senior" else 23)
 		"heal":
 			_stat(src, "heal", float(e[4]))
 			_hp[dst] = float(e[6])
@@ -278,7 +281,7 @@ func _apply(e: Array) -> void:
 			_lunge(src, dst)
 		"skill":
 			_anim[src]["pulse"] = 0.35
-			_float(src, String(e[5]), UI.ACCENT if int(e[4]) == 1 else Color("9fd3ff"), 24, -50)
+			_float(src, "✦ " + String(e[5]), UI.ACCENT if int(e[4]) == 1 else Color("c9a7ff"), 26, -56, true)
 		"death":
 			_hp[dst] = 0.0
 			_anim[dst]["dead"] = true
@@ -307,13 +310,14 @@ func _apply(e: Array) -> void:
 			_show_stats()
 
 
-func _float(i: int, text: String, color: Color, fsize: int, dy: float = 0.0) -> void:
+## 떠오르는 글자. pop: 크게 튀어나왔다 줄어듦 (치명타·스킬)
+func _float(i: int, text: String, color: Color, fsize: int, dy: float = 0.0, pop: bool = false) -> void:
 	if not _tiles.has(i):
 		return
 	var t: UnitTile = _tiles[i]
 	var l := UI.label(text, fsize, color, HORIZONTAL_ALIGNMENT_CENTER)
 	l.add_theme_color_override("font_outline_color", Color.BLACK)
-	l.add_theme_constant_override("outline_size", 6)
+	l.add_theme_constant_override("outline_size", 9 if pop else 7)
 	l.size = Vector2(TILE.x + 60, 40)
 	l.position = t.position + Vector2(-30, 30 + dy + randf_range(-10, 10))
 	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -322,6 +326,10 @@ func _float(i: int, text: String, color: Color, fsize: int, dy: float = 0.0) -> 
 	tw.set_parallel(true)
 	tw.tween_property(l, "position:y", l.position.y - 50, 0.8)
 	tw.tween_property(l, "modulate:a", 0.0, 0.8).set_delay(0.3)
+	if pop:
+		l.pivot_offset = l.size / 2.0
+		l.scale = Vector2(1.45, 1.45)
+		tw.tween_property(l, "scale", Vector2.ONE, 0.18).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	tw.chain().tween_callback(l.queue_free)
 
 

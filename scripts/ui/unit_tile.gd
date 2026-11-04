@@ -252,6 +252,7 @@ func set_unit(unit: Dictionary, sub_text: String = "", border: Color = Color.TRA
 	_hint.text = ""
 	_strip.visible = true
 	_name.text = a.get("name", aid)
+	_name.add_theme_color_override("font_color", UI.TEXT)
 	_sub.text = sub_text
 	_sub.visible = sub_text != ""
 	_stars.text = UI.stars(int(unit.get("star", 0)))
@@ -311,9 +312,14 @@ func _process(delta: float) -> void:
 	_inner.self_modulate.a = 0.55 + 0.45 * (0.5 + 0.5 * sin(_clock * 3.2))
 
 
-func set_badge(text: String, color: Color = Color.WHITE) -> void:
+func set_badge(text: String, color: Color = Color.WHITE, fsize: int = 18) -> void:
 	_badge.text = text
 	_badge.add_theme_color_override("font_color", color)
+	_badge.add_theme_font_size_override("font_size", fsize)
+
+
+func set_name_color(color: Color) -> void:
+	_name.add_theme_color_override("font_color", color)
 
 
 func set_hp(ratio: float, shield_ratio: float = 0.0) -> void:

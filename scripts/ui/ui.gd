@@ -161,11 +161,8 @@ static func bar(color: Color, height: int = 14, bg: Color = Color(0, 0, 0, 0.45)
 	return b
 
 
-## 설명 글: 숫자(%, 초 포함)를 강조색으로, '■' 줄은 들여쓰기해 읽기 쉽게
-static var _NUM_RE := RegEx.create_from_string("([+\\-]?\\d+(?:[.,]\\d+)?\\s?(?:%|초|s\\b|회|명|칸)?)")
-
-
-static func rich_desc(text: String, size: int = 19, color: Color = SUB, num_color: Color = Color("ffd98a")) -> RichTextLabel:
+## 설명 글: 용어는 색 + 밑줄(올리거나 누르면 설명), 숫자는 강조, '■' 줄은 들여쓰기
+static func rich_desc(text: String, size: int = 19, color: Color = SUB, num_color: Color = Color("ffd98a"), links: bool = true) -> RichTextLabel:
 	var r := RichTextLabel.new()
 	r.bbcode_enabled = true
 	r.fit_content = true
@@ -173,22 +170,41 @@ static func rich_desc(text: String, size: int = 19, color: Color = SUB, num_colo
 	r.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	r.custom_minimum_size.x = 100
 	r.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	r.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	r.mouse_filter = Control.MOUSE_FILTER_PASS if links else Control.MOUSE_FILTER_IGNORE
+	r.meta_underlined = true
 	r.add_theme_font_size_override("normal_font_size", maxi(size, MIN_FONT))
 	r.add_theme_font_size_override("bold_font_size", maxi(size, MIN_FONT))
 	r.add_theme_color_override("default_color", color)
 	r.add_theme_constant_override("line_separation", 4)
 	var lines := []
-	for line in text.replace("[", "［").replace("]", "］").split("\n"):
+	for line in text.split("\n"):
 		var t := String(line).strip_edges()
 		if t == "":
 			continue
-		t = _NUM_RE.sub(t, "[color=#%s]$1[/color]" % num_color.to_html(false), true)
-		if t.begins_with("■"):
-			t = "[indent]" + t.substr(1).strip_edges() + "[/indent]"
+		var bullet := t.begins_with("■")
+		if bullet:
+			t = t.substr(1).strip_edges()
+		t = Glossary.markup(t, num_color.to_html(false), links)
+		if bullet:
+			t = "[indent]• " + t + "[/indent]"
 		lines.append(t)
 	r.text = "\n".join(lines)
+	if links:
+		r.meta_hover_started.connect(func(meta):
+			if Tips.inst and not OS.has_feature("mobile"):
+				Tips.inst.show_term(String(meta), r.get_global_mouse_position()))
+		r.meta_hover_ended.connect(func(_meta):
+			if Tips.inst and not OS.has_feature("mobile"):
+				Tips.inst.hide_tip())
+		r.meta_clicked.connect(func(meta):
+			if Tips.inst:
+				Tips.inst.show_term(String(meta), r.get_global_mouse_position()))
 	return r
+
+
+## 짧은 글에 색 규칙만 입힌 BBCode (툴팁 등)
+static func mark(text: String) -> String:
+	return Glossary.markup(text, Glossary.C_GOLD, false)
 
 
 ## 주어진 너비에 맞게 글자 크기를 줄인다 (min_size 까지)
@@ -290,7 +306,7 @@ static func artifact_button(id: String, size: Vector2 = Vector2(130, 64), font: 
 	b.add_theme_constant_override("icon_max_width", int(size.y) - 14)
 	b.alignment = HORIZONTAL_ALIGNMENT_LEFT
 	b.clip_text = true
-	b.tooltip_text = "%s [%s]\n%s" % [art.get("name", ""), GameData.grade_name(g), art.get("text", "")]
+	Tips.set_tip(b, art_tip(id))
 	# 이름이 길면 버튼 너비에 맞게 글자를 줄인다 (잘림 방지)
 	if size.x > 0:
 		var room := size.x - (size.y - 14) - 34
@@ -300,6 +316,52 @@ static func artifact_button(id: String, size: Vector2 = Vector2(130, 64), font: 
 			fs -= 1
 		b.add_theme_font_size_override("font_size", fs)
 	return b
+
+
+## 툴팁 글: 아티팩트 (이름·등급·능력치·효과)
+static func art_tip(id: String) -> String:
+	var art := GameData.artifact(id)
+	if art.is_empty():
+		return ""
+	var g: String = art.get("grade", "common")
+	var col: String = GRADE_COLOR[g].to_html(false)
+	var out := "[b][color=#%s]%s[/color][/b]  [color=#%s]%s[/color]" % [col, art.get("name", ""), col, GameData.grade_name(g)]
+	var st := []
+	for k in art.get("stats", {}):
+		st.append("%s +%s%%" % [Info.STAT_NAME.get(k, k), str(art["stats"][k])])
+	if not st.is_empty():
+		out += "\n" + mark(" · ".join(st))
+	if art.get("text", "") != "":
+		out += "\n" + mark(art["text"])
+	if art.get("owner", "") != "":
+		out += "\n[color=#ff9ec7]♥ 애착: %s[/color]" % art["owner"]
+	return out
+
+
+## 툴팁 글: 사도 (이름·★·코스트·특성·장착 아티팩트)
+static func unit_tip(u: Dictionary, extra: String = "") -> String:
+	var aid: String = u.get("aid", "")
+	if aid == "":
+		return ""
+	var a := GameData.apostle(aid)
+	var cost: int = GameData.cost_of.get(aid, 1)
+	var pers: String = u.get("pers", "") if u.get("pers", "") != "" else a.get("personality", "")
+	var out := "[b]%s[/b] [color=#ffc857]%s[/color]  [color=#%s]%d코스트[/color]" % [a.get("name", aid), stars(int(u.get("star", 1))), cost_color(aid).lightened(0.25).to_html(false), cost]
+	var tr := ["[color=#%s]%s[/color]" % [PERS_COLOR.get(pers, Color.GRAY).to_html(false), pers], a.get("race", "")]
+	if a.get("eldyne", false):
+		tr.append("[color=#e0b84f]엘다인[/color]")
+	out += "\n" + " · ".join(tr)
+	out += "\n" + mark("%s · %s · %s" % [GameData.ROW_NAME[a["row"]], GameData.ROLE_NAME[a["role"]], GameData.DAMAGE_NAME[a["damage"]]])
+	var arts: Array = u.get("arts", [])
+	if not arts.is_empty():
+		var names := []
+		for art in arts:
+			var ai := GameData.artifact(art["id"])
+			names.append("[color=#%s]%s[/color]" % [GRADE_COLOR[ai.get("grade", "common")].to_html(false), ai.get("name", "")])
+		out += "\n아티팩트: " + ", ".join(names)
+	if extra != "":
+		out += "\n" + extra
+	return out
 
 
 static func clear(node: Node) -> void:

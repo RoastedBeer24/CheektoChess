@@ -34,6 +34,8 @@ var _sort_btn: Button
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	z_index = 50
+	if Tips.inst:
+		Tips.inst.dismiss()
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	var bg := ColorRect.new()
 	bg.color = Color(UI.BG, 0.98)
@@ -52,7 +54,7 @@ func _ready() -> void:
 	top.add_theme_constant_override("separation", 12)
 	root.add_child(top)
 	top.add_child(UI.outlined("도감", 40, UI.ACCENT, 8, HORIZONTAL_ALIGNMENT_LEFT))
-	for t in [["apostle", "사도"], ["artifact", "아티팩트"], ["synergy", "시너지"]]:
+	for t in [["apostle", "사도"], ["artifact", "아티팩트"], ["synergy", "시너지"], ["terms", "용어"]]:
 		var b := UI.button(t[1], 24, Vector2(150, 60))
 		var key: String = t[0]
 		b.pressed.connect(func(): _set_tab(key))
@@ -127,7 +129,7 @@ func _set_tab(t: String) -> void:
 		var on: bool = k == t
 		_tab_btns[k].add_theme_stylebox_override("normal", UI.box(UI.ACCENT.darkened(0.55) if on else UI.PANEL_LIGHT, 12, UI.ACCENT if on else UI.PANEL_LIGHT.lightened(0.18), 2))
 	_search.visible = t != "synergy"
-	_sort_btn.visible = t != "synergy"
+	_sort_btn.visible = t != "synergy" and t != "terms"
 	_build_filters()
 	_rebuild()
 	UI.clear(_detail)
@@ -138,6 +140,13 @@ func _build_filters() -> void:
 	UI.clear(_filters_box)
 	var defs: Array = FILTERS if tab == "apostle" else (ART_FILTERS if tab == "artifact" else [])
 	if defs.is_empty():
+		if tab == "terms":
+			_filters_box.add_child(UI.label("색 규칙", 24, UI.ACCENT))
+			for pair in [["골드·숫자", Glossary.C_GOLD], ["좋음·회복·보호막·적용 중", Glossary.C_GOOD], ["위험·상태이상·부족", Glossary.C_BAD],
+					["정보·마법 피해", Glossary.C_INFO], ["물리 피해", Glossary.C_PHYS], ["스킬·SP", Glossary.C_SKILL], ["능력치", Glossary.C_STAT]]:
+				_filters_box.add_child(UI.label("■ " + pair[0], 19, Color(pair[1])))
+			_filters_box.add_child(UI.wrap_label("설명 글의 밑줄 친 단어는 PC에서는 마우스를 올리고, 모바일에서는 눌러서 뜻을 볼 수 있습니다.", 18))
+			return
 		_filters_box.add_child(UI.wrap_label("시너지를 누르면 단계별 효과와 해당 사도가 표시됩니다.", 18))
 		return
 	var head := HBoxContainer.new()
@@ -243,6 +252,8 @@ func _rebuild() -> void:
 			_list_apostles()
 		"artifact":
 			_list_artifacts()
+		"terms":
+			_list_terms()
 		_:
 			_list_synergies()
 
@@ -371,3 +382,33 @@ func _list_synergies() -> void:
 			UI.clear(_detail)
 			Info.synergy(_detail, n, 0, []))
 		_grid.add_child(b)
+
+
+## 용어 사전 (분류별 카드)
+func _list_terms() -> void:
+	_grid.columns = 2
+	_count.text = "용어 %d개 · 밑줄 친 단어는 설명 글 어디서나 눌러 볼 수 있습니다" % Glossary.TERMS.size()
+	var cats := {}
+	for term in Glossary.TERMS:
+		if query != "" and not matches(term, query):
+			continue
+		var c: String = Glossary.TERMS[term]["cat"]
+		if not cats.has(c):
+			cats[c] = []
+		cats[c].append(term)
+	for c in ["전투", "능력치", "상태이상", "사도", "시너지", "배치", "경제"]:
+		for term in cats.get(c, []):
+			var info: Dictionary = Glossary.TERMS[term]
+			var card := UI.panel(UI.BG2, 10, Color(info["c"]).darkened(0.4), 2)
+			card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			card.custom_minimum_size.x = 420
+			var v := VBoxContainer.new()
+			v.add_theme_constant_override("separation", 4)
+			card.add_child(v)
+			var h := HBoxContainer.new()
+			h.add_theme_constant_override("separation", 8)
+			h.add_child(UI.label(term, 23, Color(info["c"])))
+			h.add_child(UI.chip(c, Color("9aa0b4"), 18))
+			v.add_child(h)
+			v.add_child(UI.rich_desc(info["d"], 19, UI.TEXT.darkened(0.06), Color("ffd98a"), false))
+			_grid.add_child(card)
