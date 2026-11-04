@@ -280,10 +280,8 @@ func _list_apostles() -> void:
 	for aid in ids:
 		var a := GameData.apostle(aid)
 		var t := UnitTile.new(Vector2(150, 150))
-		t.set_unit({"aid": aid}, "%s · %s" % [a["personality"], a["race"]], UI.cost_color(aid))
+		t.set_unit({"aid": aid}, "%s · %s" % [GameData.ROW_NAME[a["row"]], GameData.ROLE_NAME[a["role"]]], UI.cost_color(aid))
 		t.set_badge("%dG" % GameData.cost_of[aid], UI.cost_color(aid).lightened(0.3))
-		if a.get("eldyne", false):
-			t.set_corner("엘다인", Color("e0b84f"))
 		var id: String = aid
 		t.pressed.connect(func(): _show_apostle(id))
 		_grid.add_child(t)
@@ -365,6 +363,9 @@ func _list_synergies() -> void:
 		b.add_theme_stylebox_override("normal", UI.box(col.darkened(0.65), 12, col, 2))
 		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
 		b.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		b.icon = UI.trait_icon(name)
+		b.expand_icon = true
+		b.add_theme_constant_override("icon_max_width", 48)
 		var n: String = name
 		b.pressed.connect(func():
 			UI.clear(_detail)

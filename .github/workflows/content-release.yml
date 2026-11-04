@@ -12,6 +12,7 @@ on:
       - "data/**"
       - "assets/portraits/**"
       - "assets/artifacts/**"
+      - "assets/icons/**"
       - "tools/build_packs.gd"
       - ".github/workflows/content-release.yml"
   workflow_dispatch:

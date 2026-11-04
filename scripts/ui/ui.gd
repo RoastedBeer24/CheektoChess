@@ -121,15 +121,24 @@ static func button(text: String, size: int = 22, min_size: Vector2 = Vector2(0, 
 
 
 ## 작은 색깔 꼬리표 (성격/종족/등급 등)
-static func chip(text: String, color: Color, size: int = 16) -> PanelContainer:
+static func chip(text: String, color: Color, size: int = 16, icon: Texture2D = null) -> PanelContainer:
 	var p := PanelContainer.new()
 	var s := box(color.darkened(0.55), 8, color, 2)
-	s.content_margin_left = 8
+	s.content_margin_left = 8 if icon == null else 4
 	s.content_margin_right = 8
 	s.content_margin_top = 1
 	s.content_margin_bottom = 1
 	p.add_theme_stylebox_override("panel", s)
-	p.add_child(label(text, size, color.lightened(0.25)))
+	var l := label(text, size, color.lightened(0.25))
+	if icon != null:
+		var h := HBoxContainer.new()
+		h.add_theme_constant_override("separation", 4)
+		h.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		h.add_child(tex_rect(icon, Vector2(size + 6, size + 6)))
+		h.add_child(l)
+		p.add_child(h)
+	else:
+		p.add_child(l)
 	p.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	return p
 
@@ -190,6 +199,25 @@ static func _find_tex(dir: String, id: String) -> Texture2D:
 ## 사도 초상화 (assets/portraits/<id>.webp|png)
 static func portrait(aid: String) -> Texture2D:
 	return _find_tex("portraits", aid)
+
+
+const TRAIT_ICON := {
+	"순수": "pers_innocence", "냉정": "pers_composed", "광기": "pers_madness", "활발": "pers_vivacious",
+	"우울": "pers_depressed", "공명": "pers_resonance", "이면": "pers_resonance",
+	"수인": "race_werebeasts", "엘프": "race_elves", "정령": "race_elementals", "요정": "race_sprites",
+	"유령": "race_phantoms", "용족": "race_dragons", "마녀": "race_witches", "미스틱": "race_mystic",
+	"엘다인": "eldyne",
+	"front": "row_front", "mid": "row_mid", "back": "row_back", "all": "row_all",
+	"dealer": "role_dealer", "tank": "role_tank", "support": "role_support",
+	"physical": "dmg_physical", "magic": "dmg_magic",
+}
+
+
+## 성격·종족·엘다인·열·역할·공격 타입 아이콘 (assets/icons)
+static func trait_icon(key: String) -> Texture2D:
+	if not TRAIT_ICON.has(key):
+		return null
+	return _find_tex("icons", TRAIT_ICON[key])
 
 
 ## 아티팩트 아이콘 (assets/artifacts/<id>.png|webp)

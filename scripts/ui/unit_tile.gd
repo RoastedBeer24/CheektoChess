@@ -31,6 +31,12 @@ var _shield: ColorRect
 var _hint: Label
 var _lock: PanelContainer
 var locked := false
+var _icons: VBoxContainer
+var _corner: Label
+var _inner: Panel
+var _stripe: ColorRect
+var _cost := 0
+var _clock := 0.0
 
 
 func _init(size: Vector2 = Vector2(140, 140)) -> void:
@@ -61,12 +67,36 @@ func _init(size: Vector2 = Vector2(140, 140)) -> void:
 	add_child(v)
 	var top := HBoxContainer.new()
 	top.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	top.add_theme_constant_override("separation", 2)
 	v.add_child(top)
-	_stars = UI.outlined("", 20, UI.ACCENT, 5, HORIZONTAL_ALIGNMENT_LEFT)
-	_stars.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	top.add_child(_stars)
+	# 성격·종족(·엘다인) 아이콘
+	_icons = VBoxContainer.new()
+	_icons.add_theme_constant_override("separation", 1)
+	_icons.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	top.add_child(_icons)
+	# 가운데 위 알림 (합성 가능·보유 수): 어두운 바탕을 깔아 초상화 위에서도 잘 읽히게
+	var cwrap := CenterContainer.new()
+	cwrap.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	cwrap.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	cwrap.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	top.add_child(cwrap)
+	_corner = UI.outlined("", 15, UI.ACCENT, 4, HORIZONTAL_ALIGNMENT_CENTER)
+	var cs := UI.box(Color(0.06, 0.07, 0.12, 0.85), 7)
+	cs.content_margin_left = 6
+	cs.content_margin_right = 6
+	cs.content_margin_top = 0
+	cs.content_margin_bottom = 1
+	_corner.add_theme_stylebox_override("normal", cs)
+	_corner.visible = false
+	cwrap.add_child(_corner)
+	var right := VBoxContainer.new()
+	right.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	right.add_theme_constant_override("separation", -4)
+	top.add_child(right)
+	_stars = UI.outlined("", 18, UI.ACCENT, 5, HORIZONTAL_ALIGNMENT_RIGHT)
+	right.add_child(_stars)
 	_badge = UI.outlined("", 18, Color.WHITE, 5, HORIZONTAL_ALIGNMENT_RIGHT)
-	top.add_child(_badge)
+	right.add_child(_badge)
 	var spacer := Control.new()
 	spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	spacer.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -108,6 +138,22 @@ func _init(size: Vector2 = Vector2(140, 140)) -> void:
 	_shield.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_hp_bg.add_child(_shield)
 	_hp_bg.visible = false
+	# 코스트 등급 띠(아래)와 안쪽 테두리
+	_stripe = ColorRect.new()
+	_stripe.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
+	_stripe.offset_top = -6
+	_stripe.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_stripe.visible = false
+	add_child(_stripe)
+	_inner = Panel.new()
+	_inner.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_inner.offset_left = 4
+	_inner.offset_top = 4
+	_inner.offset_right = -4
+	_inner.offset_bottom = -4
+	_inner.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_inner.visible = false
+	add_child(_inner)
 	# 끌어다 놓기 표시용
 	_ghost = UI.tex_rect(null, Vector2.ZERO, true)
 	_ghost.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -127,7 +173,7 @@ func _init(size: Vector2 = Vector2(140, 140)) -> void:
 	# 잠금 표시 (상점)
 	_lock = UI.chip("잠금", Color("8fd0ff"), 16)
 	_lock.set_anchors_preset(Control.PRESET_CENTER_TOP)
-	_lock.position = Vector2(-30, 4)
+	_lock.position = Vector2(-30, 36)
 	_lock.visible = false
 	add_child(_lock)
 	button_down.connect(func(): held.emit(self))
@@ -145,7 +191,14 @@ func set_empty(hint: String = "") -> void:
 	_strip.visible = false
 	_stars.text = ""
 	_badge.text = ""
+	_corner.text = ""
+	_corner.visible = false
 	UI.clear(_arts)
+	UI.clear(_icons)
+	_cost = 0
+	_stripe.visible = false
+	_inner.visible = false
+	set_process(false)
 	_hp_bg.visible = false
 	locked = false
 	_lock.visible = false
@@ -156,9 +209,25 @@ func set_empty(hint: String = "") -> void:
 func set_unit(unit: Dictionary, sub_text: String = "", border: Color = Color.TRANSPARENT) -> void:
 	aid = unit["aid"]
 	var a := GameData.apostle(aid)
-	var pc := UI.pers_color(aid, unit.get("pers", ""))
-	_bg = pc.darkened(0.6)
-	_border = border if border.a > 0 else pc.darkened(0.15)
+	# 코스트 등급 색으로 테두리·배경 (성격은 아이콘으로 구분)
+	_cost = int(GameData.cost_of.get(aid, 1))
+	var cc: Color = UI.COST_COLOR[clampi(_cost, 1, 5) - 1]
+	_bg = cc.darkened(0.7)
+	_border = border if border.a > 0 else cc
+	_stripe.color = cc
+	_stripe.visible = true
+	var ib := StyleBoxFlat.new()
+	ib.draw_center = false
+	ib.set_corner_radius_all(10)
+	ib.set_border_width_all(2)
+	ib.border_color = cc.lightened(0.45) if _cost >= 4 else Color(cc, 0.55)
+	_inner.add_theme_stylebox_override("panel", ib)
+	_inner.visible = true
+	_inner.self_modulate.a = 1.0
+	set_process(_cost >= 5)
+	_set_icons(unit)
+	_corner.text = ""
+	_corner.visible = false
 	_tex.texture = UI.portrait(aid)
 	_hint.text = ""
 	_strip.visible = true
@@ -198,8 +267,28 @@ func set_locked(on: bool) -> void:
 
 
 func set_corner(text: String, color: Color = UI.ACCENT) -> void:
-	_stars.text = text
-	_stars.add_theme_color_override("font_color", color)
+	_corner.text = text
+	_corner.visible = text != ""
+	_corner.add_theme_color_override("font_color", color)
+
+
+func _set_icons(unit: Dictionary) -> void:
+	UI.clear(_icons)
+	var a := GameData.apostle(aid)
+	var p: String = unit.get("pers", "")
+	if p == "":
+		p = a.get("personality", "")
+	var s := clampf(custom_minimum_size.x * 0.17, 16.0, 30.0)
+	for key in [p, a.get("race", ""), "엘다인" if a.get("eldyne", false) else ""]:
+		var tex := UI.trait_icon(key)
+		if tex != null:
+			_icons.add_child(UI.tex_rect(tex, Vector2(s, s)))
+
+
+func _process(delta: float) -> void:
+	# 5코스트: 안쪽 테두리가 은은하게 반짝인다
+	_clock += delta
+	_inner.self_modulate.a = 0.55 + 0.45 * (0.5 + 0.5 * sin(_clock * 3.2))
 
 
 func set_badge(text: String, color: Color = Color.WHITE) -> void:
@@ -233,7 +322,7 @@ func set_dim(on: bool) -> void:
 
 func _refresh_style() -> void:
 	var border := UI.ACCENT if selected else (Color("7fffd4") if highlight else _border)
-	var bw := 5 if selected or highlight else 3
+	var bw := 5 if selected or highlight else (4 if aid != "" else 3)
 	if locked and _drop_state == "":
 		border = Color("8fd0ff")
 		bw = 5
@@ -249,9 +338,12 @@ func _refresh_style() -> void:
 		"hover_bad":
 			border = Color("ff6b6b")
 			bw = 7
-	for st in ["normal", "pressed", "disabled", "focus"]:
-		add_theme_stylebox_override(st, UI.box(_bg, 14, border, bw))
-	add_theme_stylebox_override("hover", UI.box(_bg.lightened(0.08), 14, border.lightened(0.2), bw))
+	for st in ["normal", "pressed", "disabled", "focus", "hover"]:
+		var sb := UI.box(_bg.lightened(0.08) if st == "hover" else _bg, 14, border.lightened(0.2) if st == "hover" else border, bw)
+		if _cost >= 4 and _drop_state == "":
+			sb.shadow_color = Color(UI.COST_COLOR[_cost - 1], 0.55 if _cost == 5 else 0.4)
+			sb.shadow_size = 9 if _cost == 5 else 6
+		add_theme_stylebox_override(st, sb)
 
 
 # ─────────────────────────────── 끌어다 놓기 표시 ───────────────────────────────

@@ -282,7 +282,12 @@ func _build_board() -> Control:
 			t.held.connect(func(_t): _on_held(loc))
 			grid.add_child(t)
 			_board_tiles[key] = t
-	v.add_child(UI.label("적 방향  ▶▶", 20, UI.SUB, HORIZONTAL_ALIGNMENT_RIGHT))
+	# 적 방향 표시는 열 이름 줄 오른쪽에 (아래에 두면 좁은 화면에서 대기석과 겹침)
+	heads.add_child(UI.label("적 ▶▶", 20, UI.BAD.lightened(0.2), HORIZONTAL_ALIGNMENT_LEFT))
+	var pad := Control.new()
+	pad.custom_minimum_size.x = 40
+	heads.add_child(pad)
+	heads.move_child(pad, 0)
 	return v
 
 
@@ -534,8 +539,12 @@ func _refresh_synergy() -> void:
 		var h := HBoxContainer.new()
 		h.add_theme_constant_override("separation", 8)
 		v.add_child(h)
+		var ic := UI.tex_rect(UI.trait_icon(n), Vector2(30, 30))
+		if active == 0:
+			ic.modulate = Color(1, 1, 1, 0.45)
+		h.add_child(ic)
 		var cnt := UI.label(str(counts[n]), 22, col if active > 0 else UI.SUB, HORIZONTAL_ALIGNMENT_CENTER)
-		cnt.custom_minimum_size.x = 28
+		cnt.custom_minimum_size.x = 22
 		h.add_child(cnt)
 		var nl := UI.label(n, 21, UI.TEXT if active > 0 else UI.SUB)
 		nl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -565,16 +574,19 @@ func _refresh_board() -> void:
 			t.set_unit(u, _pers_tag(u))
 			t.set_highlight(false)
 			t.draggable = prep
+			if not _merge_pairs(u).is_empty():
+				t.set_corner("◆ 합성", Color("c9a7ff"))
 		t.set_selected(sel.get("unit", {}) == {"board": key})
 	_board_info.text = "보드 %d / %d   (레벨만큼 올릴 수 있음)" % [p.get("board", {}).size(), int(p.get("level", 1))]
 
 
+## 사도 칸 아래 작은 글씨 (성격·종족은 아이콘으로 표시하므로 공명/이면 선택만)
 func _pers_tag(u: Dictionary) -> String:
 	var a := GameData.apostle(u["aid"])
 	var p: String = a.get("personality", "")
 	if p == "공명" or p == "이면":
 		return "%s→%s" % [p, u["pers"]] if u["pers"] != "" else p
-	return "%s · %s" % [p, a.get("race", "")]
+	return ""
 
 
 func _owned_count(p: Dictionary, aid: String) -> int:
@@ -602,6 +614,8 @@ func _refresh_bench_shop() -> void:
 			used += 1
 			t.set_unit(u, _pers_tag(u))
 			t.draggable = prep
+			if not _merge_pairs(u).is_empty():
+				t.set_corner("◆ 합성", Color("c9a7ff"))
 		t.set_selected(sel.get("unit", {}) == {"bench": i})
 	_bench_lbl.text = "대기석\n%d/%d" % [used, bench.size()]
 	var su = _unit_at(sel["unit"]) if sel.has("unit") else null
@@ -617,7 +631,7 @@ func _refresh_bench_shop() -> void:
 			continue
 		var a := GameData.apostle(aid)
 		var cost: int = GameData.cost_of[aid]
-		var traits: String = "%s · %s · %s%s" % [a["personality"], a["race"], GameData.ROW_NAME[a["row"]], " · 엘다인" if a.get("eldyne", false) else ""]
+		var traits: String = "%s %s · %s" % [a["personality"], a["race"], GameData.ROW_NAME[a["row"]]]
 		t.set_unit({"aid": aid}, traits, UI.cost_color(aid))
 		t.set_badge("%dG" % cost, UI.cost_color(aid).lightened(0.3))
 		var owned := _owned_count(p, aid)
@@ -642,7 +656,9 @@ func _refresh_inventory() -> void:
 	for a in inv:
 		var b := UI.artifact_button(a["id"], Vector2(205, 62), 16, sel.get("art", -1) == int(a["uid"]))
 		var uid := int(a["uid"])
+		b.set_meta("art_uid", uid)
 		b.pressed.connect(func(): _on_art(uid))
+		b.button_down.connect(func(): _on_held({"art": uid}))
 		_inv_grid.add_child(b)
 	if inv.is_empty():
 		_inv_grid.add_child(UI.label("비어 있음", 18, UI.SUB))
@@ -690,7 +706,39 @@ func _refresh_detail() -> void:
 
 
 func _detail_unit(u: Dictionary) -> void:
+	# 같은 등급 아티팩트를 2개 이상 장착했으면 바로 합성 (결과는 보관함으로) — 스크롤 없이 보이게 맨 위에
+	var pairs := _merge_pairs(u)
+	if not pairs.is_empty() and _is_prep():
+		for pr in pairs:
+			var a1 := GameData.artifact(pr[0]["id"])
+			var a2 := GameData.artifact(pr[1]["id"])
+			var ng := GameData.next_grade(a1["grade"])
+			var b := UI.button("%s + %s\n→ %s 무작위 1개 (보관함으로)" % [a1["name"], a2["name"], GameData.grade_name(ng)], 17, Vector2(0, 72), Color("5a3f86"))
+			b.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+			var ua := int(pr[0]["uid"])
+			var ub := int(pr[1]["uid"])
+			b.pressed.connect(func():
+				App.session.submit({"t": "art_merge", "a": ua, "b": ub})
+				_vibrate(40))
+			_detail_box.add_child(b)
 	Info.apostle(_detail_box, u, _on_art, int(sel.get("art", -1)), sel.has("unit"))
+
+
+## 사도가 장착한 아티팩트 중 합성할 수 있는 쌍 (등급마다 앞의 두 개)
+func _merge_pairs(u: Dictionary) -> Array:
+	var by_grade := {}
+	for art in u.get("arts", []):
+		var g: String = GameData.artifact(art["id"]).get("grade", "")
+		if GameData.next_grade(g) == "":
+			continue
+		if not by_grade.has(g):
+			by_grade[g] = []
+		by_grade[g].append(art)
+	var out := []
+	for g in by_grade:
+		if by_grade[g].size() >= 2:
+			out.append([by_grade[g][0], by_grade[g][1]])
+	return out
 
 
 func _detail_art(art_id: String, in_inv: bool) -> void:
@@ -932,6 +980,8 @@ func _on_tile(loc: Dictionary) -> void:
 
 
 func _on_art(uid: int) -> void:
+	if _take_suppress():
+		return
 	if merge_mode and sel.has("art") and int(sel["art"]) != uid:
 		App.session.submit({"t": "art_merge", "a": int(sel["art"]), "b": uid})
 		merge_mode = false
@@ -975,6 +1025,13 @@ func _vibrate(ms: int = 20) -> void:
 
 func _on_held(src: Dictionary) -> void:
 	if not _is_prep():
+		return
+	if src.has("art"):
+		var where := _find_art(int(src["art"]))
+		if where.is_empty():
+			return
+		_drag = {"src": src, "art_id": where["art"]["id"], "in_inv": where.has("inv"), "aid": "", "star": 1, "unit": null,
+			"start": get_global_mouse_position(), "active": false, "hover": null, "t0": Time.get_ticks_msec()}
 		return
 	var p := me()
 	var aid := ""
@@ -1035,6 +1092,10 @@ func _check_long_press() -> void:
 	_drag = {}
 	_long_fired = true
 	_vibrate(30)
+	if src.has("art"):
+		sel = {"art": src["art"]}
+		refresh()
+		return
 	if src.has("shop"):
 		var locks: Array = me().get("locks", [])
 		var on: bool = not (src["shop"] < locks.size() and locks[src["shop"]] == true)
@@ -1082,8 +1143,13 @@ func _begin_drag() -> void:
 	_drag["active"] = true
 	sel = {}
 	_vibrate(15)
-	var ghost := UnitTile.new(Vector2(150, 150))
-	ghost.set_unit({"aid": _drag["aid"], "star": _drag["star"], "arts": _drag["unit"]["arts"] if _drag["unit"] != null else [], "pers": _drag["unit"]["pers"] if _drag["unit"] != null else ""})
+	var ghost: Control
+	if _drag.has("art_id"):
+		ghost = _art_ghost(_drag["art_id"])
+	else:
+		var ut := UnitTile.new(Vector2(150, 150))
+		ut.set_unit({"aid": _drag["aid"], "star": _drag["star"], "arts": _drag["unit"]["arts"] if _drag["unit"] != null else [], "pers": _drag["unit"]["pers"] if _drag["unit"] != null else ""})
+		ghost = ut
 	ghost.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	ghost.modulate = Color(1, 1, 1, 0.92)
 	ghost.pivot_offset = Vector2(75, 75)
@@ -1104,7 +1170,7 @@ func _begin_drag() -> void:
 
 
 func _move_drag(pos: Vector2) -> void:
-	var ghost: UnitTile = _drag["ghost"]
+	var ghost: Control = _drag["ghost"]
 	# 손가락과 아래 칸이 가리지 않도록 위쪽에 띄운다
 	ghost.position = pos - Vector2(75, 75) + Vector2(0, -140)
 	var tag: Control = _drag["tag"]
@@ -1117,7 +1183,47 @@ func _move_drag(pos: Vector2) -> void:
 
 
 ## 화면 좌표 아래에 있는 놓을 곳 ({"board": key} / {"bench": i} / {"sell": true} / null)
+## 화면의 아티팩트 버튼들 (보관함 + 사도 정보의 장착 아티팩트): uid -> 버튼
+func _art_buttons() -> Dictionary:
+	var out := {}
+	for root in [_inv_grid, _detail_box]:
+		_collect_art_buttons(root, out)
+	return out
+
+
+func _collect_art_buttons(n: Node, out: Dictionary) -> void:
+	for c in n.get_children():
+		if c is Button and c.has_meta("art_uid") and c.is_visible_in_tree():
+			out[int(c.get_meta("art_uid"))] = c
+		_collect_art_buttons(c, out)
+
+
+func _art_ghost(art_id: String) -> Control:
+	var art := GameData.artifact(art_id)
+	var col: Color = UI.GRADE_COLOR[art.get("grade", "common")]
+	var p := UI.panel(col.darkened(0.6), 16, col, 4)
+	p.custom_minimum_size = Vector2(150, 150)
+	var v := VBoxContainer.new()
+	v.alignment = BoxContainer.ALIGNMENT_CENTER
+	p.add_child(v)
+	var ic := UI.artifact_icon(art_id)
+	if ic != null:
+		v.add_child(UI.tex_rect(ic, Vector2(96, 96)))
+	else:
+		v.add_child(UI.label("?", 56, col, HORIZONTAL_ALIGNMENT_CENTER))
+	var l := UI.label(art.get("name", ""), 16, UI.TEXT, HORIZONTAL_ALIGNMENT_CENTER)
+	l.clip_text = true
+	v.add_child(l)
+	p.modulate = Color(1, 1, 1, 0.92)
+	return p
+
+
 func _target_at(pos: Vector2):
+	if _drag.has("art_id"):
+		var btns := _art_buttons()
+		for uid in btns:
+			if btns[uid].get_global_rect().has_point(pos):
+				return {"art": uid}
 	for key in _board_tiles:
 		if _board_tiles[key].get_global_rect().has_point(pos):
 			return {"board": key}
@@ -1131,6 +1237,8 @@ func _target_at(pos: Vector2):
 
 ## 놓을 수 있는지 검사: {ok, text}
 func _check_drop(target: Dictionary) -> Dictionary:
+	if _drag.has("art_id"):
+		return _check_art_drop(target)
 	var p := me()
 	var src: Dictionary = _drag["src"]
 	var aid: String = _drag["aid"]
@@ -1171,8 +1279,49 @@ func _check_drop(target: Dictionary) -> Dictionary:
 	return {"ok": true, "text": "교체" if occupant != null else ""}
 
 
+## 아티팩트 끌기: 사도에 놓으면 장착, 같은 등급 아티팩트에 놓으면 합성
+func _check_art_drop(target: Dictionary) -> Dictionary:
+	var art := GameData.artifact(_drag["art_id"])
+	if target.has("art"):
+		if int(target["art"]) == int(_drag["src"]["art"]):
+			return {"ok": false, "text": "", "same": true}
+		var other := _find_art(int(target["art"]))
+		if other.is_empty():
+			return {"ok": false, "text": ""}
+		var og: String = GameData.artifact(other["art"]["id"]).get("grade", "")
+		if og != art["grade"]:
+			return {"ok": false, "text": "등급이 다름\n(%s/%s)" % [GameData.grade_name(art["grade"]), GameData.grade_name(og)]}
+		var ng := GameData.next_grade(og)
+		if ng == "":
+			return {"ok": false, "text": "전설은 합성 불가"}
+		return {"ok": true, "text": "합성 → %s\n(보관함으로)" % GameData.grade_name(ng)}
+	if target.has("sell"):
+		return {"ok": false, "text": ""}
+	var u = _unit_at(target)
+	if u == null:
+		return {"ok": false, "text": ""}
+	if not _drag["in_inv"]:
+		return {"ok": false, "text": "장착 중인 것은\n옮길 수 없음"}
+	if u["arts"].size() >= int(B()["artifact_slots"]):
+		return {"ok": false, "text": "장착 칸 가득\n(%d/%d)" % [u["arts"].size(), int(B()["artifact_slots"])]}
+	return {"ok": true, "text": "장착 (%d/%d)" % [u["arts"].size() + 1, int(B()["artifact_slots"])]}
+
+
 func _paint_drag() -> void:
 	var hover = _drag.get("hover")
+	# 아티팩트 버튼 칠하기
+	if _drag.has("art_id"):
+		var btns := _art_buttons()
+		for uid in btns:
+			var b: Button = btns[uid]
+			var r := _check_drop({"art": uid})
+			var base: Color = UI.GRADE_COLOR[GameData.artifact(_find_art(uid).get("art", {}).get("id", "")).get("grade", "common")]
+			var col := Color("5ee39b") if r["ok"] else Color("6b3535")
+			if r.get("same", false):
+				col = UI.ACCENT
+			var on_it: bool = hover != null and hover.has("art") and int(hover["art"]) == uid
+			b.add_theme_stylebox_override("normal", UI.box(base.darkened(0.45 if on_it else 0.62), 10, col.lightened(0.3) if on_it else col, 6 if on_it else 3))
+			b.modulate.a = 1.0 if r["ok"] or r.get("same", false) else 0.5
 	var all := []
 	for key in _board_tiles:
 		all.append([_board_tiles[key], {"board": key}])
@@ -1206,7 +1355,7 @@ func _paint_drag() -> void:
 		_drag["tag_lbl"].text = tag_text
 		_drag["tag_lbl"].add_theme_color_override("font_color", UI.GOOD if tag_ok else UI.BAD)
 	# 판매 칸
-	var sell_ok: bool = not _drag["src"].has("shop")
+	var sell_ok: bool = not _drag["src"].has("shop") and not _drag.has("art_id")
 	var on_sell: bool = hover != null and hover.has("sell")
 	var col := Color("b55a5a") if sell_ok else Color("3a2525")
 	_sell_btn.add_theme_stylebox_override("normal", UI.box(Color("8a3030") if on_sell and sell_ok else Color("5a2b2b"), 14, Color("ffb0b0") if on_sell and sell_ok else col, 6 if on_sell else 2))
@@ -1254,7 +1403,14 @@ func _finish_drag() -> void:
 		refresh()
 		return
 	_vibrate(25)
-	if target.has("sell"):
+	if src.has("art"):
+		if target.has("art"):
+			App.session.submit({"t": "art_merge", "a": int(src["art"]), "b": int(target["art"])})
+			_vibrate(40)
+		else:
+			App.session.submit({"t": "equip", "art": int(src["art"]), "loc": target})
+			sel = {"unit": target}
+	elif target.has("sell"):
 		App.session.submit({"t": "sell", "loc": src})
 	elif src.has("shop"):
 		var i: int = src["shop"]

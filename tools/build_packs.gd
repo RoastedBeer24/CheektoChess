@@ -33,7 +33,7 @@ func _initialize() -> void:
 	core.append("res://.godot/global_script_class_cache.cfg")
 
 	var art := []
-	for dir in ["res://assets/portraits", "res://assets/artifacts"]:
+	for dir in ["res://assets/portraits", "res://assets/artifacts", "res://assets/icons"]:
 		for f in DirAccess.get_files_at(dir):
 			if f.ends_with(".import"):
 				art.append(dir + "/" + f)

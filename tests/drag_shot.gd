@@ -52,6 +52,44 @@ func _ready() -> void:
 	await _release(to)
 	await _wait(5)
 	await _shot("d5_after")
+	# 6) 아티팩트: 보관함 → 사도에 장착 (끄는 중), 같은 등급끼리 합성 대상 표시
+	p["inv"] = [{"uid": 8001, "id": "wooden_sword"}, {"uid": 8002, "id": "rusty_awl"}, {"uid": 8003, "id": "life_gem"}]
+	var rim_key := ""
+	for k in p["board"]:
+		rim_key = k
+	p["board"][rim_key]["arts"] = [{"uid": 8004, "id": "towel_headband"}, {"uid": 8005, "id": "patched_staff"}]
+	App.session.state_changed.emit()
+	await _wait(5)
+	var art_btn: Button = gs._art_buttons()[8001]
+	var a_from: Vector2 = art_btn.get_global_rect().get_center()
+	var a_to: Vector2 = gs._board_tiles[rim_key].get_global_rect().get_center()
+	await _press(a_from)
+	await _move_to(a_from, a_to)
+	await _shot("d6_art_to_unit")
+	var a_to2: Vector2 = gs._art_buttons()[8002].get_global_rect().get_center()
+	await _move_to(a_to, a_to2)
+	await _shot("d7_art_to_art")
+	await _release(a_to2)
+	await _wait(5)
+	# 7) 장착 중인 같은 등급 2개 → 합성 버튼
+	gs.sel = {"unit": {"board": rim_key}}
+	gs.refresh()
+	await _wait(5)
+	await _shot("d8_equipped_merge")
+	var before: int = p["inv"].size()
+	var mb: Button = null
+	for c in gs._detail_box.get_children():
+		if c is Button and String(c.text).contains("보관함으로"):
+			mb = c
+			break
+	if mb == null:
+		push_error("장착 합성 버튼 없음")
+	else:
+		mb.pressed.emit()
+		await _wait(5)
+		var after: int = gs.me()["inv"].size()
+		print("장착 합성: 보관함 %d → %d, 장착 %d개" % [before, after, gs.me()["board"][rim_key]["arts"].size()])
+	await _shot("d9_after_equipped_merge")
 	get_tree().quit()
 
 

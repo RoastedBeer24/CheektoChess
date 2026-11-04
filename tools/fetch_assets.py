@@ -78,6 +78,20 @@ ARTIFACT_MAP = {
     "yomis-moonflower": "yomi_moonflower",
 }
 GUESSED = {"cotton-cloak", "grail-of-origins"}
+# 성격·종족·열·역할·공격 타입 아이콘: 게임 키 -> 사이트 파일
+ICON_MAP = {
+    "pers_innocence": "icons/trickcal-innocence.png", "pers_composed": "icons/trickcal-composed.png",
+    "pers_madness": "icons/trickcal-madness.png", "pers_vivacious": "icons/trickcal-vivacious.png",
+    "pers_depressed": "icons/trickcal-depressed.png", "pers_resonance": "icons/trickcal-resonance.png",
+    "race_werebeasts": "icons/trickcal-werebeast.webp", "race_elves": "icons/trickcal-elves.webp",
+    "race_elementals": "icons/trickcal-elementals.webp", "race_sprites": "icons/trickcal-sprites.webp",
+    "race_phantoms": "icons/trickcal-phantoms.webp", "race_dragons": "icons/trickcal-dragons.webp",
+    "race_witches": "icons/trickcal-witches.webp", "race_mystic": "icons/trickcal-mystic.webp",
+    "row_front": "icons/trickcal-front.png", "row_mid": "icons/trickcal-middle.png",
+    "row_back": "icons/trickcal-back.png", "row_all": "icons/trickcal-all.png",
+    "role_dealer": "icons/trickcal-dps.png", "role_tank": "icons/trickcal-tank.png", "role_support": "icons/trickcal-support.png",
+    "dmg_physical": "icons/trickcal-physical.png", "dmg_magic": "icons/trickcal-magic.png",
+}
 # 사이트에는 있지만 게임(트릭컬 리바이브 한국 서버 목록)에 없는 아티팩트
 NOT_IN_GAME = {"guins-tiny-penguin-friends", "sherums-parchment-scroll", "piras-gleaming-business-card", "icy-charm"}
 
@@ -138,8 +152,26 @@ def main():
         save_image(fetch(c["icon"], args.cache, ctx), os.path.join(pdir, aid + ".webp"), 256)
         have_portrait.add(aid)
 
+    idir = os.path.join(ROOT, "assets", "icons")
+    os.makedirs(idir, exist_ok=True)
+    for key, path in ICON_MAP.items():
+        save_image(fetch(path, args.cache, ctx), os.path.join(idir, key + ".png"), 96)
+    make_eldyne_icon(os.path.join(idir, "eldyne.png"))
+
     write_report(arts, have_art, apostles, have_portrait)
     print(f"아티팩트 아이콘 {len(have_art)}/{len(arts)}, 초상화 {len(have_portrait)}/{len(apostles)}")
+
+
+def make_eldyne_icon(out):
+    """엘다인 아이콘은 사이트에 없어서 직접 그린다 (금색 잎 모양 마름모)."""
+    from PIL import ImageDraw
+    S = 96
+    im = Image.new("RGBA", (S, S), (0, 0, 0, 0))
+    d = ImageDraw.Draw(im)
+    d.polygon([(48, 4), (90, 48), (48, 92), (6, 48)], fill=(224, 184, 79, 255), outline=(255, 240, 190, 255), width=5)
+    d.polygon([(48, 22), (72, 48), (48, 74), (24, 48)], fill=(255, 236, 160, 255))
+    d.line([(48, 26), (48, 70)], fill=(176, 128, 32, 255), width=4)
+    im.save(out, "PNG")
 
 
 def write_report(arts, have_art, apostles, have_portrait):

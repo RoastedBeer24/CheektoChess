@@ -35,13 +35,14 @@ static func apostle(box: Control, u: Dictionary, on_art: Callable = Callable(), 
 	chips.add_theme_constant_override("v_separation", 6)
 	box.add_child(chips)
 	var pers: String = a["personality"] + (" → " + u["pers"] if u.get("pers", "") != "" else "")
-	chips.add_child(UI.chip(pers, UI.pers_color(aid, u.get("pers", ""))))
-	chips.add_child(UI.chip(a["race"], Color("8fb7ff")))
+	var picon: String = u["pers"] if u.get("pers", "") != "" else a["personality"]
+	chips.add_child(UI.chip(pers, UI.pers_color(aid, u.get("pers", "")), 16, UI.trait_icon(picon)))
+	chips.add_child(UI.chip(a["race"], Color("8fb7ff"), 16, UI.trait_icon(a["race"])))
 	if a.get("eldyne", false):
-		chips.add_child(UI.chip("엘다인", Color("e0b84f")))
-	chips.add_child(UI.chip(GameData.ROW_NAME[a["row"]], Color("c0c4d6")))
-	chips.add_child(UI.chip(GameData.ROLE_NAME[a["role"]], Color("c0c4d6")))
-	chips.add_child(UI.chip(GameData.DAMAGE_NAME[a["damage"]], Color("ff9f6b") if a["damage"] == "physical" else Color("7fb8ff")))
+		chips.add_child(UI.chip("엘다인", Color("e0b84f"), 16, UI.trait_icon("엘다인")))
+	chips.add_child(UI.chip(GameData.ROW_NAME[a["row"]], Color("c0c4d6"), 16, UI.trait_icon(a["row"])))
+	chips.add_child(UI.chip(GameData.ROLE_NAME[a["role"]], Color("c0c4d6"), 16, UI.trait_icon(a["role"])))
+	chips.add_child(UI.chip(GameData.DAMAGE_NAME[a["damage"]], Color("ff9f6b") if a["damage"] == "physical" else Color("7fb8ff"), 16, UI.trait_icon(a["damage"])))
 	var bs := Rules.base_stats(aid, star)
 	var grid := GridContainer.new()
 	grid.columns = 4
@@ -94,6 +95,7 @@ static func apostle(box: Control, u: Dictionary, on_art: Callable = Callable(), 
 		var b := UI.artifact_button(art["id"], Vector2(0, 58), 18, sel_art == int(art["uid"]))
 		b.text = "%s%s" % [info["name"], fav]
 		var uid := int(art["uid"])
+		b.set_meta("art_uid", uid)   # 게임 화면에서 끌어다 놓기(합성) 대상으로 찾을 수 있게
 		if on_art.is_valid():
 			b.pressed.connect(func(): on_art.call(uid))
 		box.add_child(b)
@@ -179,7 +181,11 @@ static func synergy(box: Control, name: String, count: int, board_aids: Array) -
 		if count >= int(tiers[i]):
 			active = i + 1
 	var col: Color = UI.PERS_COLOR.get(name, Color("e0b84f") if name == "엘다인" else Color("8fb7ff"))
-	box.add_child(UI.label("%s  %d명" % [name, count], 28, col))
+	var th := HBoxContainer.new()
+	th.add_theme_constant_override("separation", 10)
+	th.add_child(UI.tex_rect(UI.trait_icon(name), Vector2(44, 44)))
+	th.add_child(UI.label("%s  %d명" % [name, count], 28, col))
+	box.add_child(th)
 	box.add_child(UI.wrap_label("%s · 적용: %s" % [syn.get("desc", ""), SCOPE_NAME.get(syn.get("scope", ""), "")], 17, UI.SUB))
 	for i in tiers.size():
 		var on := i < active
