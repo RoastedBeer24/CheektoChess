@@ -500,6 +500,8 @@ func refresh() -> void:
 	_offer_btn.visible = prep and not p.get("art_offer", {}).is_empty() and _offer_hidden
 	_board_root.visible = phase != "battle"
 	_battle_view.visible = phase == "battle"
+	# 전투 중에는 오른쪽 정보 패널을 접어 전투 화면을 넓게 (전투 중에는 장착·합성 불가)
+	_right_panel.visible = phase != "battle"
 	_refresh_players()
 	_refresh_synergy()
 	_refresh_board()

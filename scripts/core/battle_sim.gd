@@ -56,9 +56,9 @@ func _build_side(army: Array, side: int) -> void:
 		}
 		# 위치·사거리 (이동하며 싸우기): 배치 칸 → 전장 좌표
 		var mv: Dictionary = B["move"]
-		var col: int = (2 - u["row"]) if side == 0 else (3 + u["row"])
-		u["x"] = 0.6 + col * float(mv["col_w"]) + (float(mv["side_gap"]) if col >= 3 else 0.0)
-		u["y"] = 0.8 + u["slot"] * float(mv["slot_h"])
+		var p0 := start_xy(side, u["row"], u["slot"])
+		u["x"] = p0.x
+		u["y"] = p0.y
 		var rkey: String = a.get("row", "mid")
 		if rkey == "all":
 			rkey = GameData.ROWS[u["row"]]
@@ -521,7 +521,7 @@ func _update_unit(u: Dictionary) -> void:
 		_cast(u, "fresh")
 		return
 	# 사거리 밖이면 다가간다
-	if _dist(u, target) > u["range"] + 0.01:
+	if _reach(u, target) > u["range"] + 0.01:
 		_move_toward(u, target)
 		return
 	if u.get("moving", false):
@@ -540,7 +540,27 @@ func _dist(a: Dictionary, b: Dictionary) -> float:
 	return Vector2(a["x"], a["y"]).distance_to(Vector2(b["x"], b["y"]))
 
 
-## 가장 가까운 적 (도발 중인 적이 있으면 그중 가장 가까운 적)
+## 공격 거리: 앞뒤(가로) 거리 + 줄 차이는 조금만 (원작처럼 줄 맞춰 앞으로 나가 싸움)
+func _reach(a: Dictionary, b: Dictionary) -> float:
+	return absf(a["x"] - b["x"]) + float(B["move"]["lane_pull"]) * absf(a["y"] - b["y"])
+
+
+## 전장 크기 (가로: 양 진영 끝에서 끝, 세로: 3줄)
+static func field_size() -> Vector2:
+	var mv: Dictionary = GameData.balance["move"]
+	return Vector2(float(mv["field_w"]), 1.4 + 2.0 * float(mv["slot_h"]))
+
+
+## 배치 칸 → 처음 위치. 왼쪽 진영(0)은 왼쪽 끝에서, 오른쪽 진영(1)은 오른쪽 끝에서 시작
+static func start_xy(side: int, row: int, slot: int) -> Vector2:
+	var mv: Dictionary = GameData.balance["move"]
+	var x := float(mv["margin"]) + (2 - row) * float(mv["col_w"])
+	if side == 1:
+		x = float(mv["field_w"]) - x
+	return Vector2(x, 0.7 + slot * float(mv["slot_h"]))
+
+
+## 목표: 도발 중인 적 우선, 그다음 공격 거리가 가장 가까운 적 (앞줄부터 맞붙음)
 func _nearest(u: Dictionary) -> Variant:
 	var best = null
 	var best_d := INF
@@ -551,7 +571,7 @@ func _nearest(u: Dictionary) -> Variant:
 		var t: bool = e["taunt"] > 0.0
 		if taunting and not t:
 			continue
-		var d := _dist(u, e)
+		var d := _reach(u, e)
 		if (t and not taunting) or d < best_d - 0.0001:
 			best = e
 			best_d = d
@@ -559,27 +579,44 @@ func _nearest(u: Dictionary) -> Variant:
 	return best
 
 
+## 줄을 지켜 앞으로 걸어간다. 같은 줄 앞의 아군·적의 몸을 지나치지 않음.
+## 앞뒤로는 이미 가깝지만 줄이 달라 닿지 않으면(근접) 그 줄로 옮겨 간다.
 func _move_toward(u: Dictionary, target: Dictionary) -> void:
 	var mv: Dictionary = B["move"]
-	var p := Vector2(u["x"], u["y"])
-	var goal := Vector2(target["x"], target["y"])
-	var d := p.distance_to(goal)
-	var step := minf(float(mv["speed"]) * DT, d - u["range"])
-	if step <= 0.0:
-		return
-	p += (goal - p).normalized() * step
-	# 아군과 겹치지 않게 살짝 비켜 선다
-	var sp := float(mv["spacing"])
-	for a in units:
-		if a == u or not a["alive"] or a["side"] != u["side"]:
-			continue
-		var q := Vector2(a["x"], a["y"])
-		var dd := p.distance_to(q)
-		if dd < sp:
-			var push := (p - q).normalized() if dd > 0.001 else Vector2(0, 1 if u["i"] % 2 == 0 else -1)
-			p += push * (sp - dd) * 0.5
-	u["x"] = p.x
-	u["y"] = clampf(p.y, 0.2, 0.8 + 2.0 * float(mv["slot_h"]) + 0.6)
+	var step := float(mv["speed"]) * DT
+	var dx: float = target["x"] - u["x"]
+	var dy: float = target["y"] - u["y"]
+	var need: float = _reach(u, target) - float(u["range"])
+	var x: float = u["x"]
+	var y: float = u["y"]
+	if absf(dx) > u["range"] * 0.75:
+		var dir := signf(dx)
+		var mx := minf(step, minf(need, absf(dx) - float(mv["body"]) * 0.5))
+		if mx <= 0.0:
+			return
+		var nx := x + dir * mx
+		# 같은 줄 앞쪽의 아군(간격) · 적(몸)을 넘어가지 않음
+		for a in units:
+			if a == u or not a["alive"] or absf(a["y"] - y) > 0.55:
+				continue
+			var ahead: float = (a["x"] - x) * dir
+			if ahead <= 0.0:
+				continue
+			var gap := float(mv["spacing"]) if a["side"] == u["side"] else float(mv["body"])
+			nx = x + dir * minf(absf(nx - x), maxf(0.0, ahead - gap))
+		if absf(nx - x) < 0.0005:
+			# 앞이 막혔으면 비어 있는 옆 줄로 비켜 선다
+			if absf(dy) > 0.3:
+				y += signf(dy) * minf(step * 0.6, absf(dy))
+			else:
+				return
+		x = nx
+	else:
+		if absf(dy) < 0.01:
+			return
+		y += signf(dy) * minf(step * 0.8, absf(dy))
+	u["x"] = x
+	u["y"] = clampf(y, 0.3, field_size().y - 0.3)
 	u["moving"] = true
 	if _tick_count % 2 == 0:
 		_emit_pos(u)

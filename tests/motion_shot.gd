@@ -32,7 +32,7 @@ func _ready() -> void:
 		{"aid": "guin", "star": 1, "row": 0, "slot": 2, "arts": [], "pers": ""},
 	]
 	bv.setup({"army_a": a, "army_b": b, "seed": 5}, 0, "우리 편", "상대")
-	for t in [0.6, 2.2, 4.5, 9.0]:
+	for t in [0.3, 1.6, 3.2, 6.0]:
 		while bv._t < t and bv._playing:
 			await get_tree().process_frame
 		await RenderingServer.frame_post_draw

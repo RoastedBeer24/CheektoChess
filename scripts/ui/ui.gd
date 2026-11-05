@@ -48,9 +48,31 @@ static func apply_settings() -> void:
 		BAD = Color("ff6b6b")
 
 
+## 글꼴: NotoSansKR 은 굵기 조절 글꼴(기본값이 가장 가는 100)이라 굵기를 정해서 쓴다.
+## 보통 글은 500(중간), 강조(이름·숫자·제목)는 700(굵게).
+static var _fonts := {}
+
+
+static func font(weight: int = 500) -> Font:
+	if _fonts.has(weight):
+		return _fonts[weight]
+	var base: Font = load("res://assets/fonts/NotoSansKR.ttf")
+	var fv := FontVariation.new()
+	fv.base_font = base
+	fv.variation_opentype = {TextServerManager.get_primary_interface().name_to_tag("wght"): weight}
+	_fonts[weight] = fv
+	return fv
+
+
+static func bold() -> Font:
+	return font(700)
+
+
 static func make_theme() -> Theme:
 	var t := Theme.new()
+	t.default_font = font(500)
 	t.default_font_size = 22
+	t.set_font("bold_font", "RichTextLabel", bold())
 	t.set_color("font_color", "Label", TEXT)
 	t.set_stylebox("normal", "Button", box(PANEL_LIGHT, 10))
 	t.set_stylebox("hover", "Button", box(PANEL_LIGHT.lightened(0.1), 10))
@@ -117,6 +139,7 @@ static func label(text: String, size: int = 22, color: Color = TEXT, align: int 
 
 static func outlined(text: String, size: int, color: Color, outline: int = 6, align: int = HORIZONTAL_ALIGNMENT_CENTER) -> Label:
 	var l := label(text, size, color, align)
+	l.add_theme_font_override("font", bold())
 	l.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
 	l.add_theme_constant_override("outline_size", outline)
 	return l

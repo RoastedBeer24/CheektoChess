@@ -6,10 +6,16 @@ extends Control
 const TILE := Vector2(150, 150)
 const GAP := 12.0
 
-var _tiles := {}          # 유닛 index -> UnitTile
+var _tiles := {}          # 유닛 index -> UnitTile (모션이 없거나 모션을 끈 경우의 카드)
 var _sprites := {}        # 유닛 index -> MotionSprite (모션 파일이 있는 사도만)
-const SPRITE_BOX := 215.0
-const SPRITE_LIFT := 30.0 # 이름·HP 띠 위에 발이 오도록
+var _plates := {}         # 유닛 index -> BattlePlate (발밑 이름표·체력, 맨 위 레이어)
+var _plate_layer: Control
+var _box := 200.0         # 모션 그림 크기(px)
+var _card_k := 1.0        # 카드 크기 배율
+var _ppu_v := Vector2(60, 80)   # 전장 1칸 → 화면 px
+var _origin := Vector2.ZERO     # 전장 (0, 첫 줄 발 위치) 의 화면 위치
+var _float_n := {}        # 유닛 index -> 떠오르는 글자 개수 (겹치지 않게 비켜 놓기)
+var _status_until := {}   # 유닛 index -> 상태 표시가 끝나는 전투 시간
 var _units: Array = []
 var _hp := {}
 var _sh := {}
@@ -37,8 +43,6 @@ var _shake := 0.0
 var _skill_banner: Label
 var _pos := {}            # 유닛 index -> 전투 계산 좌표 (목표)
 var _disp := {}           # 유닛 index -> 화면에 보이는 좌표 (목표로 부드럽게 이동)
-var _field_base := Vector2.ZERO
-var _sc := 1.0
 
 
 func _ready() -> void:
@@ -60,6 +64,10 @@ func _ready() -> void:
 	add_child(_field)
 	_fx = BattleFx.new()
 	add_child(_fx)
+	_plate_layer = Control.new()
+	_plate_layer.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_plate_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_plate_layer)
 	_skill_banner = UI.outlined("", 34, UI.ACCENT, 9)
 	_skill_banner.set_anchors_preset(Control.PRESET_TOP_WIDE)
 	_skill_banner.offset_top = 64
@@ -88,8 +96,12 @@ func _ready() -> void:
 func setup(bt: Dictionary, my_side: int, name_a: String, name_b: String) -> void:
 	_my_side = my_side
 	UI.clear(_field)
+	UI.clear(_plate_layer)
 	_tiles.clear()
 	_sprites.clear()
+	_plates.clear()
+	_float_n.clear()
+	_status_until.clear()
 	_anim.clear()
 	_stats.clear()
 	if _stats_panel and is_instance_valid(_stats_panel):
@@ -117,32 +129,34 @@ func setup(bt: Dictionary, my_side: int, name_a: String, name_b: String) -> void
 	_left_tag.text = left
 	_right_tag.text = right
 	for u in _units:
-		_udata[u["i"]] = u
-		_pos[u["i"]] = _start_pos(u)
-		_disp[u["i"]] = _pos[u["i"]]
+		var i: int = u["i"]
+		_udata[i] = u
+		_pos[i] = _start_pos(u)
+		_disp[i] = _pos[i]
 		if Settings.flag("battle_motion") and MotionSprite.available(u["aid"]):
 			var sp := MotionSprite.new(u["aid"])
 			sp.face_right = u["side"] == my_side   # 왼쪽(우리 편)은 오른쪽을 봄
-			sp.size = TILE
-			sp.box = SPRITE_BOX
-			sp.pivot_offset = Vector2(TILE.x / 2.0, TILE.y)
 			sp.shadow = true
 			if u.get("monster", false):
 				sp.modulate = Color(0.45, 0.32, 0.62)   # 그림자 몬스터
 			_field.add_child(sp)
-			_sprites[u["i"]] = sp
-		var tile := UnitTile.new(TILE)
-		tile.set_unit({"aid": u["aid"], "star": u["star"], "pers": u["pers"]})
-		tile.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		if _sprites.has(u["i"]):
-			tile.set_motion_mode(true)
-		_field.add_child(tile)
-		_tiles[u["i"]] = tile
-		_dtype[u["i"]] = GameData.apostle(u["aid"]).get("damage", "physical")
-		_anim[u["i"]] = {"lunge": 0.0, "dir": Vector2.ZERO, "flash": 0.0, "pulse": 0.0, "dead": false}
-		tile.pivot_offset = TILE / 2.0
-		_hp[u["i"]] = float(u["max_hp"])
-		_sh[u["i"]] = 0.0
+			_sprites[i] = sp
+		else:
+			var tile := UnitTile.new(TILE)
+			tile.set_unit({"aid": u["aid"], "star": u["star"], "pers": u["pers"]})
+			tile.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			_field.add_child(tile)
+			_tiles[i] = tile
+		var pl := BattlePlate.new()
+		pl.uname = u["name"]
+		pl.star = int(u["star"])
+		pl.mine = int(u["side"]) == my_side
+		_plate_layer.add_child(pl)
+		_plates[i] = pl
+		_dtype[i] = GameData.apostle(u["aid"]).get("damage", "physical")
+		_anim[i] = {"lunge": 0.0, "dir": Vector2.ZERO, "flash": 0.0, "pulse": 0.0, "dead": false}
+		_hp[i] = float(u["max_hp"])
+		_sh[i] = 0.0
 	_layout()
 	_update_bars()
 	_say_spawn.call_deferred()
@@ -156,59 +170,83 @@ func _mv() -> Dictionary:
 
 
 func _span() -> Vector2:
-	var mv := _mv()
-	return Vector2(1.2 + 5.0 * float(mv["col_w"]) + float(mv["side_gap"]), 1.6 + 2.0 * float(mv["slot_h"]))
-
-
-func _ppu() -> Vector2:
-	var mv := _mv()
-	return Vector2((TILE.x + GAP) / float(mv["col_w"]), (TILE.y + GAP) / float(mv["slot_h"]))
+	return BattleSim.field_size()
 
 
 ## 처음 위치 (전투 계산과 같은 식)
 func _start_pos(u: Dictionary) -> Vector2:
-	var mv := _mv()
-	var col: int = (2 - int(u["row"])) if int(u["side"]) == 0 else (3 + int(u["row"]))
-	return Vector2(0.6 + col * float(mv["col_w"]) + (float(mv["side_gap"]) if col >= 3 else 0.0), 0.8 + int(u["slot"]) * float(mv["slot_h"]))
+	return BattleSim.start_xy(int(u["side"]), int(u["row"]), int(u["slot"]))
 
 
-## 유닛 index → 전장 안에서 칸의 왼쪽 위 (표시 위치)
-func _screen_pos(i: int) -> Vector2:
+## 유닛 index → 발 위치 (화면 px, 전장 레이어 기준). 내가 오른쪽 진영이면 좌우를 뒤집는다.
+func _foot(i: int) -> Vector2:
 	var p: Vector2 = _disp.get(i, Vector2.ZERO)
 	if _my_side == 1:
 		p.x = _span().x - p.x
-	return Vector2(p.x * _ppu().x, p.y * _ppu().y) - TILE / 2.0
+	return _origin + Vector2(p.x * _ppu_v.x, (p.y - 0.7) * _ppu_v.y)
+
+
+## 캐릭터 키(px): 머리 위 글자·몸 가운데 이펙트 위치에 쓴다
+func _char_h(i: int) -> float:
+	if _sprites.has(i):
+		return _box * 0.66 * MotionSprite.body_scale(_udata[i]["aid"])
+	return TILE.y * _card_k
 
 
 func _layout() -> void:
-	var px := _span() * _ppu()
-	_sc = minf(1.0, minf((size.x - 30.0) / px.x, (size.y - 130.0) / px.y))
-	_field.scale = Vector2(_sc, _sc)
-	_fx.scale = _field.scale
-	_field_base = Vector2((size.x - px.x * _sc) / 2.0, (size.y - px.y * _sc) / 2.0 + 30.0)
-	_field.position = _field_base
-	_fx.position = _field_base
-	var mid_x := _field_base.x + px.x * _sc / 2.0
-	_divider.position = Vector2(mid_x - 1.0, _field_base.y - 10)
-	_divider.size = Vector2(2, px.y * _sc + 20)
-	var half := px.x * _sc * 0.4
-	_left_tag.position = Vector2(_field_base.x, _field_base.y - 46)
-	_left_tag.size = Vector2(half, 32)
-	_right_tag.position = Vector2(_field_base.x + px.x * _sc - half, _field_base.y - 46)
-	_right_tag.size = Vector2(half, 32)
+	var mv := _mv()
+	var span := _span()
+	var top := 64.0
+	var bottom := 74.0
+	# 세로: 3줄 발 간격 + 맨 윗줄 머리 높이(≈ 1.3줄) + 이름표
+	var lane := maxf(50.0, (size.y - top - bottom - 40.0) / 3.3)
+	_ppu_v = Vector2((size.x - 70.0) / span.x, lane / float(mv["slot_h"]))
+	_box = clampf(minf(lane * 1.75, _ppu_v.x * float(mv["col_w"]) * 1.9), 90.0, 250.0)
+	_card_k = clampf(lane * 0.9 / TILE.y, 0.4, 1.0)
+	# 세로 가운데 정렬: 맨 윗줄 머리 ~ 맨 아랫줄 이름표
+	var content := _box * 0.72 + 2.0 * lane + 46.0
+	var free := maxf(0.0, size.y - top - bottom - content)
+	_origin = Vector2(35.0, top + free * 0.5 + _box * 0.72)
+	var mid_x := _origin.x + span.x * _ppu_v.x / 2.0
+	_divider.position = Vector2(mid_x - 1.0, top)
+	_divider.size = Vector2(2, size.y - top - bottom)
+	_left_tag.visible = false    # 제목에 이름이 있고, 이름표 테두리 색(초록/빨강)으로 진영 구분
+	_right_tag.visible = false
+	var pk := clampf(_ppu_v.x * float(mv["spacing"]) / (BattlePlate.W + 4.0), 0.72, 1.0)
+	for i in _plates:
+		_plates[i].scale = Vector2(pk, pk)
+	for i in _sprites:
+		_sprites[i].size = Vector2(_box, _box)
+		_sprites[i].box = _box
+		_sprites[i].pivot_offset = Vector2(_box / 2.0, _box)
+	for i in _tiles:
+		_tiles[i].size = TILE
+		_tiles[i].scale = Vector2.ONE * _card_k
+	_place_all()
+
+
+func _place_all() -> void:
 	for u in _units:
-		var i: int = u["i"]
-		if _tiles.has(i):
-			_tiles[i].position = _screen_pos(i)
-			_tiles[i].size = TILE
-		if _sprites.has(i):
-			_sprites[i].position = _screen_pos(i) - Vector2(0, SPRITE_LIFT)
+		_place(u["i"], Vector2.ZERO)
+
+
+## 유닛 i 를 발 위치(+ off)에 그린다. 아래 줄일수록 앞에 (겹칠 때 자연스럽게)
+func _place(i: int, off: Vector2) -> void:
+	var f := _foot(i) + off
+	if _sprites.has(i):
+		_sprites[i].position = f - Vector2(_box / 2.0, _box)
+	if _tiles.has(i):
+		_tiles[i].position = f - Vector2(TILE.x * _card_k / 2.0, TILE.y * _card_k)
+	if _plates.has(i):
+		_plates[i].position = _foot(i) + Vector2(-BattlePlate.W * _plates[i].scale.x / 2.0, 6.0)
 
 
 func _update_bars() -> void:
 	for u in _units:
+		var i: int = u["i"]
 		var mh: float = maxf(1.0, u["max_hp"])
-		_tiles[u["i"]].set_hp(_hp[u["i"]] / mh, _sh[u["i"]] / mh)
+		if _plates.has(i):
+			_plates[i].set_hp(_hp[i] / mh, _sh[i] / mh)
 
 
 ## 남은 이벤트를 모두 바로 적용 (건너뛰기)
@@ -310,11 +348,13 @@ func _process(delta: float) -> void:
 	if _shake > 0.0:
 		_shake = maxf(0.0, _shake - delta)
 		var amp := 10.0 * _shake / 0.35
-		_field.position = _field_base + Vector2(randf_range(-amp, amp), randf_range(-amp, amp))
+		_field.position = Vector2(randf_range(-amp, amp), randf_range(-amp, amp))
 		_fx.position = _field.position
-	elif _field.position != _field_base:
-		_field.position = _field_base
-		_fx.position = _field_base
+		_plate_layer.position = _field.position
+	elif _field.position != Vector2.ZERO:
+		_field.position = Vector2.ZERO
+		_fx.position = Vector2.ZERO
+		_plate_layer.position = Vector2.ZERO
 	if not _playing:
 		return
 	_t += delta * _speed
@@ -338,10 +378,11 @@ func _apply(e: Array) -> void:
 			_stat(src, "dealt", float(e[4]))
 			_stat(dst, "taken", float(e[4]))
 			_hp[dst] = float(e[6])
-			_anim[dst]["flash"] = 0.18
 			_sh[dst] = float(e[7])
 			var crit := String(e[5]).ends_with("!")
 			var dkind := String(e[5]).trim_suffix("!")
+			if dkind != "status":
+				_anim[dst]["flash"] = 0.18   # 지속 피해(화상 등)는 깜빡이지 않음
 			var col := Color("ffb27a") if _dtype.get(src, "physical") == "physical" else Color("8cc4ff")
 			if dkind == "status" or dkind == "reflect":
 				col = Color("d9a6ff")
@@ -354,7 +395,7 @@ func _apply(e: Array) -> void:
 				_shake_cam(0.12)
 				_float(dst, "치명 " + str(int(e[4])) + "!", col, 36, 0.0, true)
 			else:
-				_float(dst, str(int(e[4])), col, 28 if dkind == "fresh" or dkind == "senior" else 23)
+				_float(dst, str(int(e[4])), col, 30 if dkind == "fresh" or dkind == "senior" else 25)
 		"heal":
 			_fx_at(dst, "ring", UI.GOOD, 0.45, 46.0)
 			_stat(src, "heal", float(e[4]))
@@ -375,18 +416,22 @@ func _apply(e: Array) -> void:
 			_fx_skill(src, int(e[4]) == 1, String(e[5]))
 			_say(src, "Ultimate" if int(e[4]) == 1 else "SPSkill")
 			_motion(src, "Ultimate1_1" if int(e[4]) == 1 else "Skill1_1")
-			_float(src, "✦ " + String(e[5]), UI.ACCENT if int(e[4]) == 1 else Color("c9a7ff"), 26, -56, true)
+			_bubble(src, String(e[5]), UI.ACCENT if int(e[4]) == 1 else Color("c9a7ff"))
 		"death":
 			_fx_at(dst, "spark", Color(0.8, 0.8, 0.85), 0.5, 70.0)
 			_say(dst, "Die")
 			_hp[dst] = 0.0
 			_anim[dst]["dead"] = true
+			if _plates.has(dst):
+				_plates[dst].set_dead(true)
 			if _sprites.has(dst):
 				_sprites[dst].play("Die", false, "", true)
 		"revive":
 			_hp[dst] = float(e[6])
 			_sh[dst] = 0.0
 			_anim[dst]["dead"] = false
+			if _plates.has(dst):
+				_plates[dst].set_dead(false)
 			if _sprites.has(dst):
 				_sprites[dst].play("Idle")
 				_sprites[dst].modulate = Color.WHITE
@@ -399,7 +444,13 @@ func _apply(e: Array) -> void:
 				_sprites[dst].play("Groggy", true, "Idle", false, float(e[4]))
 				if String(e[5]) == "freeze":
 					_sprites[dst].tint = Color(0.7, 0.85, 1.0)
-			_float(dst, names.get(String(e[5]), String(e[5])), Color("ffb3e6"), 18)
+			var st := String(e[5])
+			var scol := {"stun": Color("ffd166"), "freeze": Color("9fd8ff"), "burn": Color("ff9a6b"), "shock": Color("e6e07a"), "bitter": Color("c9a7ff"), "blind": Color("b8b8c8")}
+			if _plates.has(dst) and typeof(e[4]) in [TYPE_FLOAT, TYPE_INT] and float(e[4]) > 0.0:
+				_plates[dst].set_status(names.get(st, st), scol.get(st, Color("ffb3e6")))
+				_status_until[dst] = _t + float(e[4])
+			else:
+				_float(dst, names.get(st, st), scol.get(st, Color("ffb3e6")), 18)
 		"buff":
 			if String(e[5]) != "":
 				_float(dst, String(e[5]), Color("b3ffcc"), 16, -20)
@@ -423,22 +474,28 @@ func _apply(e: Array) -> void:
 			_show_stats()
 
 
-## 떠오르는 글자. pop: 크게 튀어나왔다 줄어듦 (치명타·스킬)
+## 떠오르는 글자 (머리 위). 같은 사도에 연달아 뜨면 좌우·위아래로 비켜 놓아 겹치지 않게.
+## pop: 크게 튀어나왔다 줄어듦 (치명타)
 func _float(i: int, text: String, color: Color, fsize: int, dy: float = 0.0, pop: bool = false) -> void:
-	if not _tiles.has(i):
+	if not _udata.has(i):
 		return
-	var t: UnitTile = _tiles[i]
+	var n: int = _float_n.get(i, 0)
+	_float_n[i] = n + 1
 	var l := UI.label(text, fsize, color, HORIZONTAL_ALIGNMENT_CENTER)
-	l.add_theme_color_override("font_outline_color", Color.BLACK)
-	l.add_theme_constant_override("outline_size", 9 if pop else 7)
-	l.size = Vector2(TILE.x + 60, 40)
-	l.position = t.position + Vector2(-30, 30 + dy + randf_range(-10, 10))
+	l.add_theme_font_override("font", UI.bold())
+	l.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.95))
+	l.add_theme_constant_override("outline_size", 10 if pop else 8)
+	l.size = Vector2(200, fsize + 16)
+	var head := _foot(i) - Vector2(0, _char_h(i) + 8.0)
+	var off := Vector2(((n % 3) - 1) * 26.0, -(n % 2) * 20.0 + dy * 0.5)
+	l.position = head + off - Vector2(100, l.size.y)
 	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_field.add_child(l)
+	l.z_index = 5
+	_plate_layer.add_child(l)
 	var tw := create_tween()
 	tw.set_parallel(true)
-	tw.tween_property(l, "position:y", l.position.y - 50, 0.8)
-	tw.tween_property(l, "modulate:a", 0.0, 0.8).set_delay(0.3)
+	tw.tween_property(l, "position:y", l.position.y - 34, 0.9).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_CUBIC)
+	tw.tween_property(l, "modulate:a", 0.0, 0.3).set_delay(0.65)
 	if pop:
 		l.pivot_offset = l.size / 2.0
 		l.scale = Vector2(1.45, 1.45)
@@ -446,16 +503,37 @@ func _float(i: int, text: String, color: Color, fsize: int, dy: float = 0.0, pop
 	tw.chain().tween_callback(l.queue_free)
 
 
+## 스킬 이름 말풍선 (머리 위, 어두운 바탕)
+func _bubble(i: int, text: String, color: Color) -> void:
+	if not _udata.has(i):
+		return
+	var pc := PanelContainer.new()
+	pc.add_theme_stylebox_override("panel", UI.box(Color(0.06, 0.07, 0.12, 0.92), 10, color, 2))
+	pc.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var l := UI.label("✦ " + text, 18, color, HORIZONTAL_ALIGNMENT_CENTER)
+	l.add_theme_font_override("font", UI.bold())
+	pc.add_child(l)
+	pc.z_index = 6
+	_plate_layer.add_child(pc)
+	pc.reset_size()
+	var head := _foot(i) - Vector2(0, _char_h(i) + 30.0)
+	pc.position = head - Vector2(pc.size.x / 2.0, pc.size.y)
+	pc.position.x = clampf(pc.position.x, 4.0, size.x - pc.size.x - 4.0)
+	pc.modulate.a = 0.0
+	var tw := create_tween()
+	tw.tween_property(pc, "modulate:a", 1.0, 0.1)
+	tw.tween_interval(0.9 / maxf(0.5, _speed))
+	tw.tween_property(pc, "modulate:a", 0.0, 0.25)
+	tw.tween_callback(pc.queue_free)
+
+
 # ─────────────────────────────── 이펙트 ───────────────────────────────
 
-## 유닛 몸 가운데 (모션이면 캐릭터 몸, 카드면 카드 가운데)
+## 유닛 몸 가운데
 func _center(i: int) -> Vector2:
-	if not _tiles.has(i):
+	if not _udata.has(i):
 		return Vector2.ZERO
-	var c: Vector2 = _tiles[i].position + TILE / 2.0
-	if _sprites.has(i):
-		c.y -= SPRITE_LIFT + 20.0
-	return c
+	return _foot(i) - Vector2(0, _char_h(i) * 0.5)
 
 
 func _fx_on() -> bool:
@@ -463,14 +541,14 @@ func _fx_on() -> bool:
 
 
 func _fx_at(i: int, kind: String, color: Color, dur: float, r: float) -> void:
-	if _fx_on() and _tiles.has(i):
+	if _fx_on() and _udata.has(i):
 		var c := _center(i)
 		_fx.add(kind, c, c, color, dur, r)
 
 
 ## 공격: 앞 열 물리 공격은 베기, 그 외(원거리·마법)는 탄환
 func _fx_attack(src: int, dst: int) -> void:
-	if not _fx_on() or not _tiles.has(src) or not _tiles.has(dst):
+	if not _fx_on() or not _udata.has(src) or not _udata.has(dst):
 		return
 	var magic: bool = _dtype.get(src, "physical") == "magic"
 	var col := Color("8cc4ff") if magic else Color("ffcf8a")
@@ -483,11 +561,11 @@ func _fx_attack(src: int, dst: int) -> void:
 
 ## 스킬: 시전자 바닥 빛, 고학년(궁극기)은 화면 흔들림 + 이름 배너
 func _fx_skill(src: int, senior: bool, sname: String) -> void:
-	if not _tiles.has(src):
+	if not _udata.has(src):
 		return
 	var col := UI.ACCENT if senior else Color("c9a7ff")
 	if _fx_on():
-		var foot: Vector2 = _tiles[src].position + Vector2(TILE.x / 2.0, TILE.y - SPRITE_LIFT)
+		var foot: Vector2 = _foot(src)
 		_fx.add("glow", foot, foot, col, 0.7 if senior else 0.5, 70.0 if senior else 52.0)
 		_fx.add("ring", _center(src), _center(src), col, 0.5, 80.0 if senior else 56.0)
 	if senior:
@@ -554,28 +632,28 @@ func _motion(i: int, anim: String) -> void:
 
 
 func _lunge(src: int, dst: int) -> void:
-	if not _tiles.has(src) or not _tiles.has(dst):
+	if not _udata.has(src) or not _udata.has(dst):
 		return
 	_anim[src]["lunge"] = 0.18
-	_anim[src]["dir"] = (_tiles[dst].position - _tiles[src].position).normalized()
+	_anim[src]["dir"] = (_foot(dst) - _foot(src)).normalized()
 
 
-## 임시 모션: 대기 중 흔들림, 공격 시 돌진, 피격 시 붉게 깜빡임, 스킬 시 커짐, 쓰러지면 흐려짐.
-## 사도별 모션 에셋을 받으면 이 부분을 교체한다.
+## 걷기·대기 전환, 공격 돌진, 피격 깜빡임, 스킬 때 커짐, 쓰러지면 흐려짐
 func _animate(delta: float) -> void:
 	for u in _units:
 		var i: int = u["i"]
-		if not _tiles.has(i):
-			continue
-		var t: UnitTile = _tiles[i]
 		var a: Dictionary = _anim[i]
 		# 목표 좌표로 걸어간다 (전투 계산 속도보다 약간 빠르게 따라감)
 		var walking := false
 		if _pos.has(i) and _disp[i] != _pos[i] and not a["dead"]:
 			_disp[i] = (_disp[i] as Vector2).move_toward(_pos[i], float(_mv()["speed"]) * 1.15 * _speed * delta)
 			walking = true
-		var pos := _screen_pos(i)
+		if _status_until.has(i) and _t >= float(_status_until[i]):
+			_status_until.erase(i)
+			if _plates.has(i):
+				_plates[i].set_status("")
 		var sp: MotionSprite = _sprites.get(i)
+		var t: UnitTile = _tiles.get(i)
 		if sp != null:
 			sp.speed = _speed
 			if walking and (sp.current() == "Idle" or sp.current() == ""):
@@ -583,44 +661,51 @@ func _animate(delta: float) -> void:
 			elif not walking and sp.current() == "Move":
 				sp.play("Idle")
 		if a["dead"]:
-			t.position = pos + Vector2(0, 6)
-			t.modulate = t.modulate.lerp(Color(0.5, 0.5, 0.5, 0.25), minf(1.0, delta * 6.0))
-			t.scale = Vector2.ONE
+			_place(i, Vector2(0, 4))
+			if t != null:
+				t.modulate = t.modulate.lerp(Color(0.5, 0.5, 0.5, 0.25), minf(1.0, delta * 6.0))
 			if sp != null:
-				sp.position = pos - Vector2(0, SPRITE_LIFT)
 				sp.tint = Color.WHITE
 				# 쓰러짐 동작이 끝난 뒤 서서히 흐려짐
 				sp.modulate = sp.modulate.lerp(Color(1, 1, 1, 0.35), minf(1.0, delta * 1.2))
 			continue
+		var off := Vector2.ZERO
 		if sp == null:
-			pos.y += sin(_clock * 3.0 + i * 0.9) * 3.0
+			off.y += sin(_clock * 3.0 + i * 0.9) * 3.0
 		if a["lunge"] > 0.0:
 			a["lunge"] = maxf(0.0, a["lunge"] - delta)
 			var k: float = sin((1.0 - a["lunge"] / 0.18) * PI)
-			pos += a["dir"] * 18.0 * k
-		t.position = pos
-		if sp != null:
-			sp.position = pos - Vector2(0, SPRITE_LIFT)
+			off += a["dir"] * 18.0 * k
+		_place(i, off)
 		if a["flash"] > 0.0:
 			a["flash"] = maxf(0.0, a["flash"] - delta)
 			if sp != null:
 				sp.tint = Color(1.0, 0.5, 0.5)
-				t.modulate = Color.WHITE
-			else:
+			if t != null:
 				t.modulate = Color(1.0, 0.55, 0.55)
 		else:
-			t.modulate = Color.WHITE
+			if t != null:
+				t.modulate = Color.WHITE
 			if sp != null and sp.current() != "Groggy":
 				sp.tint = Color.WHITE
+		var pk := 0.0
 		if a["pulse"] > 0.0:
 			a["pulse"] = maxf(0.0, a["pulse"] - delta)
-			var sc := Vector2.ONE * (1.0 + 0.12 * sin((1.0 - a["pulse"] / 0.35) * PI))
-			if sp != null:
-				sp.scale = Vector2.ONE * (1.0 + 0.06 * sin((1.0 - a["pulse"] / 0.35) * PI))
-				t.scale = Vector2.ONE
-			else:
-				t.scale = sc
-		else:
-			t.scale = Vector2.ONE
-			if sp != null:
-				sp.scale = Vector2.ONE
+			pk = sin((1.0 - a["pulse"] / 0.35) * PI)
+		if sp != null:
+			sp.scale = Vector2.ONE * (1.0 + 0.06 * pk)
+		if t != null:
+			t.scale = Vector2.ONE * _card_k * (1.0 + 0.12 * pk)
+	_sort_depth()
+
+
+## 아래 줄(발이 아래)에 있는 사도가 앞에 보이도록 그리는 순서 정렬 (z_index 대신: 다른 레이어를 덮지 않게)
+func _sort_depth() -> void:
+	var kids: Array = _field.get_children()
+	var sorted := kids.duplicate()
+	sorted.sort_custom(func(a, b): return (a.position.y + a.size.y * a.scale.y) < (b.position.y + b.size.y * b.scale.y))
+	for k in sorted.size():
+		if kids[k] != sorted[k]:
+			for j in sorted.size():
+				_field.move_child(sorted[j], j)
+			return

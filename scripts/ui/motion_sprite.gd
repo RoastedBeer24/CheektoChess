@@ -9,6 +9,7 @@ const DIR := "res://assets/motions/"
 
 static var _meta_cache := {}     # aid -> meta (없으면 {})
 static var _tex_cache := {}      # "aid/Anim" -> Texture2D
+static var _scale_tab = null     # data/motion_scale.json: 사도마다 크기 보정 (작거나 큰 모델)
 
 var aid := ""
 var face_right := false
@@ -37,6 +38,17 @@ static func meta_of(id: String) -> Dictionary:
 			m = d
 	_meta_cache[id] = m
 	return m
+
+
+## 사도 몸 크기 보정 배율 (tools/motion_scale.py 가 만든 표, 없으면 1)
+static func body_scale(id: String) -> float:
+	if _scale_tab == null:
+		_scale_tab = {}
+		if FileAccess.file_exists("res://data/motion_scale.json"):
+			var d = JSON.parse_string(FileAccess.get_file_as_string("res://data/motion_scale.json"))
+			if typeof(d) == TYPE_DICTIONARY:
+				_scale_tab = d
+	return float(_scale_tab.get(id, 1.0))
 
 
 static func available(id: String) -> bool:
@@ -139,8 +151,9 @@ func _draw() -> void:
 	var cell := float(_meta.get("size", 192))
 	var src := Rect2((_frame % cols) * cell, (_frame / cols) * cell, cell, cell)
 	var feet := float(_meta.get("feet", 0.9))
-	# 발이 컨트롤 아래쪽 가운데에 오도록
-	var dst := Rect2(size.x / 2.0 - box / 2.0, size.y - box * feet, box, box)
+	# 발이 컨트롤 아래쪽 가운데에 오도록 (사도마다 크기 보정)
+	var b := box * body_scale(aid)
+	var dst := Rect2(size.x / 2.0 - b / 2.0, size.y - b * feet, b, b)
 	var flip := face_right != (String(_meta.get("facing", "left")) == "right")
 	if flip:
 		# 컨트롤 가운데를 기준으로 좌우 뒤집기
@@ -148,7 +161,7 @@ func _draw() -> void:
 	if shadow:
 		var c := Vector2(size.x / 2.0, size.y - 2.0)
 		draw_set_transform(c, 0.0, Vector2(1.0, 0.28))
-		draw_circle(Vector2.ZERO, box * 0.22, Color(0, 0, 0, 0.35 * tint.a))
+		draw_circle(Vector2.ZERO, minf(b, box) * 0.22, Color(0, 0, 0, 0.35 * tint.a))
 		draw_set_transform(Vector2(size.x, 0) if flip else Vector2.ZERO, 0.0, Vector2(-1, 1) if flip else Vector2.ONE)
 	draw_texture_rect_region(tex, dst, src, tint)
 	if flip:
