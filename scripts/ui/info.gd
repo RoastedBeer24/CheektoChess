@@ -127,7 +127,11 @@ static func apostle(box: Control, u: Dictionary, on_art: Callable = Callable(), 
 
 	# ── 스킬
 	var sp: VBoxContainer = pages["skill"]
-	sp.add_child(UI.wrap_label("현재는 역할별 공통 스킬로 동작합니다 (원작 스킬 구현 예정).", 18, UI.DIM))
+	var spec: Dictionary = GameData.skill_specs.get(aid, {})
+	if spec.is_empty():
+		sp.add_child(UI.wrap_label("이 사도는 역할별 공통 스킬로 동작합니다.", 18, UI.DIM))
+	else:
+		sp.add_child(UI.wrap_label("원작 설명 아래의 '게임에서'가 이 게임에서 실제로 동작하는 방식입니다 (수치는 게임에 맞게 조정).", 18, UI.DIM))
 	for k in ["fresh", "senior", "passive"]:
 		var sk: Dictionary = a.get("skills", {}).get(k, {})
 		if sk.is_empty():
@@ -148,6 +152,7 @@ static func apostle(box: Control, u: Dictionary, on_art: Callable = Callable(), 
 		nl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		cv.add_child(nl)
 		cv.add_child(UI.rich_desc(sk["desc"], 19))
+		_game_note(cv, spec.get(k, {}), a.get("damage", "physical"))
 		sp.add_child(card)
 
 	# ── 어사이드
@@ -171,6 +176,8 @@ static func apostle(box: Control, u: Dictionary, on_art: Callable = Callable(), 
 		nl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		cv.add_child(nl)
 		cv.add_child(UI.rich_desc(asd["desc"], 19, UI.SUB if on else UI.DIM, Color("ffd98a") if on else UI.DIM))
+		if n != "1":
+			_game_note(cv, spec.get("aside" + n, {}), a.get("damage", "physical"))
 		ap.add_child(card)
 	if a.get("aside", {}).is_empty():
 		ap.add_child(UI.label("어사이드 정보 없음", 18, UI.SUB))
@@ -190,6 +197,32 @@ static func apostle(box: Control, u: Dictionary, on_art: Callable = Callable(), 
 	if arts.is_empty():
 		tp.add_child(UI.wrap_label("보관함의 아티팩트를 이 사도 위로 끌어다 놓거나, 아티팩트를 누른 뒤 이 사도를 누르면 장착합니다.", 18, UI.SUB))
 	show.call(apostle_tab if pages.has(apostle_tab) else "skill")
+
+
+## '게임에서: …' 한 줄 (스킬 데이터의 note)
+static func _game_note(box: Control, spec: Dictionary, dtype: String = "physical") -> void:
+	var note: String = spec.get("note", "")
+	var acts: Array = spec.get("do", [])
+	var parts := []
+	if not acts.is_empty():
+		parts.append(describe_actions(acts, dtype))
+	if not spec.get("mods", {}).is_empty():
+		parts.append(mods_text(spec["mods"]) + ((" (%s)" % {"team": "아군 전체", "row": "같은 열 아군", "self": "자신"}.get(spec.get("scope", "self"), "")) if spec.has("scope") else ""))
+	if spec.has("power"):
+		parts.append("스킬 위력 +%s%%" % _n(spec["power"]))
+	if not parts.is_empty():
+		note = " · ".join(parts) + ("\n(" + note + ")" if note != "" else "")
+	if note == "":
+		return
+	var h := HBoxContainer.new()
+	h.add_theme_constant_override("separation", 6)
+	var gc := UI.chip("게임에서", Color("7fd6d0"), 16)
+	gc.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	h.add_child(gc)
+	var l := UI.rich_desc(note, 18, Color("bfe8e4"), Color("ffd98a"), false)
+	l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	h.add_child(l)
+	box.add_child(h)
 
 
 ## 아티팩트 정보. where: "inv"(보관함) / "equipped"(장착 중) / ""(도감)
@@ -231,7 +264,11 @@ static func artifact(box: Control, art_id: String, where: String = "") -> void:
 	if a.get("owner", "") != "":
 		section(box, "애착: %s" % a["owner"])
 		box.add_child(UI.rich_desc(a.get("fav", ""), 19))
-		box.add_child(UI.wrap_label("※ 애착 효과는 다음 단계에서 구현 예정", 18, UI.DIM))
+		var fv: Dictionary = GameData.skill_specs.get("_fav", {}).get(art_id, {})
+		if fv.is_empty():
+			box.add_child(UI.wrap_label("※ 이 애착 효과는 아직 게임에서 동작하지 않음", 18, UI.DIM))
+		else:
+			_game_note(box, fv)
 	if where != "":
 		box.add_child(UI.hsep())
 	if where == "inv":
@@ -244,8 +281,73 @@ const MOD_NAME := {
 	"heal_in": "받는 회복", "shield_in": "받는 보호막", "hp": "최대 HP", "skill_dmg": "스킬 피해",
 	"dmg": "피해량", "aspd": "공격 속도", "crit": "치명타", "critdmg": "치명 피해", "normal_dmg": "일반 공격 피해",
 	"enh_dmg": "강화 공격 피해", "sp_regen": "SP 회복", "dmg_taken": "받는 피해", "start_shield": "전투 시작 보호막(최대 HP)",
-	"def": "방어력", "atk": "공격력", "heal_out": "치유량",
+	"def": "방어력", "atk": "공격력", "heal_out": "치유량", "patk": "물리 공격력", "matk": "마법 공격력",
+	"pdef": "물리 방어력", "mdef": "마법 방어력", "magic_dmg": "마법 피해", "fresh_dmg": "저학년 스킬 피해",
+	"senior_dmg": "고학년 스킬 피해", "critres": "치명타 저항", "regen": "초당 HP 회복",
 }
+const TARGET_NAME := {
+	"front": "가장 앞의 적", "back": "가장 뒤의 적", "low": "HP가 가장 낮은 적", "high_atk": "공격력이 가장 높은 적",
+	"row_front": "가장 앞 열 적 전체", "row_back": "가장 뒤 열 적 전체", "all": "적 전체", "around": "가장 앞의 적과 양옆",
+	"random": "무작위 적 %s명", "self": "자신", "lowest": "HP가 가장 낮은 아군", "allies": "아군 전체", "row": "같은 열 아군",
+	"front_ally": "가장 앞 열 아군", "back_ally": "가장 뒤 열 아군", "random_ally": "무작위 아군 %s명",
+}
+const STATUS_NAME := {"stun": "기절", "burn": "화상", "bitter": "쓰라림", "shock": "감전", "blind": "눈가림", "freeze": "빙결"}
+
+
+static func _target_text(to: String, a: String) -> String:
+	if to == "":
+		to = "front" if a in ["dmg", "debuff", "status", "execute"] else "self"
+	var parts := to.split(":")
+	var t: String = TARGET_NAME.get(parts[0], to)
+	if t.contains("%s"):
+		t = t % (parts[1] if parts.size() > 1 else "1")
+	return t
+
+
+## 숫자 표시 (130.0 → 130, 1.5 → 1.5)
+static func _n(v) -> String:
+	var f := float(v)
+	return str(int(f)) if is_equal_approx(f, round(f)) else str(snappedf(f, 0.1))
+
+
+## 스킬 동작 → 사람이 읽는 설명 (수치 포함)
+static func describe_actions(acts: Array, dtype: String) -> String:
+	var out := []
+	var dname := "물리" if dtype == "physical" else "마법"
+	for act in acts:
+		var a: String = act["a"]
+		var tgt := _target_text(act.get("to", ""), a)
+		match a:
+			"dmg":
+				var hits := int(act.get("hits", 1))
+				var t := "%s에게 공격력 %s%% %s 피해" % [tgt, _n(act["pct"]), dname]
+				if hits > 1:
+					t += " (%d회에 나눠)" % hits
+				if act.has("status"):
+					var st: Dictionary = act["status"]
+					t += ", %s %s초%s" % [STATUS_NAME.get(st["s"], st["s"]), _n(st["dur"]), (" (%s%% 확률)" % _n(st["chance"])) if st.has("chance") else ""]
+				out.append(t)
+			"heal":
+				out.append("%s 회복 (%s)" % [tgt, ("공격력 %s%%" % _n(act["pct_atk"])) if act.has("pct_atk") else ("최대 HP %s%%" % _n(act.get("pct_hp", 0)))])
+			"shield":
+				out.append("%s 보호막 (%s, %s초)" % [tgt, ("공격력 %s%%" % _n(act["pct_atk"])) if act.has("pct_atk") else ("최대 HP %s%%" % _n(act.get("pct_hp", 0))), _n(act.get("dur", 5))])
+			"buff", "debuff":
+				out.append("%s %s %s초" % [tgt, mods_text(act.get("mods", {})), _n(act.get("dur", 4))])
+			"status":
+				out.append("%s %s %s초%s" % [tgt, STATUS_NAME.get(act["s"], act["s"]), _n(act["dur"]), (" (%s%% 확률)" % _n(act["chance"])) if act.has("chance") else ""])
+			"taunt":
+				out.append("도발 %s초" % _n(act.get("dur", 3)))
+			"invuln":
+				out.append("무적 %s초" % _n(act.get("dur", 1)))
+			"untarget":
+				out.append("대상 지정 불가 %s초" % _n(act.get("dur", 1)))
+			"sp":
+				out.append("%s SP +%s%%" % [tgt, _n(act.get("pct", 0))])
+			"cleanse":
+				out.append("%s 기절·빙결 해제" % tgt)
+			"execute":
+				out.append("HP %s%% 이하인 적 처형" % _n(act.get("below", 10)))
+	return " · ".join(out)
 const SCOPE_NAME := {"trait": "해당 사도", "team": "아군 전체", "enemy": "적 전체"}
 
 

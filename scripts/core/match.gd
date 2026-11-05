@@ -501,6 +501,7 @@ func _eliminate(pid: String, remaining: int) -> void:
 	var p := player(pid)
 	p["alive"] = false
 	p["place"] = remaining
+	p["last_board"] = p["board"].duplicate(true)   # 기록·통계용 (탈락 직전 보드)
 	for u in _all_units(p):
 		_return_to_pool(u)
 	p["bench"] = _empty_bench()

@@ -62,9 +62,36 @@ func _build_side(army: Array, side: int) -> void:
 			u["name"] = "그림자 " + String(u["name"])
 		# 어사이드 1성 (기본 적용)
 		Rules.add_mods(u["mods"], Rules.aside1_mods(aid))
-		# 어사이드 2성: 스킬 위력 증가 (간이)
+		# 사도별 스킬 데이터 (원작 스킬·패시브·어사이드 2/3성·애착)
+		var sk: Dictionary = GameData.skill_specs.get(aid, {}) if not u["monster"] else {}
+		u["sk"] = {}
+		for which in ["fresh", "senior", "enh"]:
+			if sk.has(which) and not sk[which].get("do", []).is_empty():
+				u["sk"][which] = sk[which]["do"]
+		if sk.get("senior", {}).has("cd"):
+			u["senior_cd"] = float(sk["senior"]["cd"])
+			u["senior_timer"] = minf(float(B["senior_first"]), u["senior_cd"])
+		if sk.has("passive"):
+			_attach(u, sk["passive"])
+		# 어사이드 2성: 데이터가 있으면 그것, 없으면 스킬 위력 증가 (간이)
 		if star >= 2:
-			u["power"] += float(B["aside2_skill_power"]) / 100.0
+			if sk.has("aside2"):
+				_attach(u, sk["aside2"])
+				u["power"] += float(sk["aside2"].get("power", 0)) / 100.0
+			else:
+				u["power"] += float(B["aside2_skill_power"]) / 100.0
+		# 애착: 주인 사도가 장착한 아티팩트
+		var favs: Dictionary = GameData.skill_specs.get("_fav", {})
+		var fav_done := {}
+		for art_id in u["arts"]:
+			var fv: Dictionary = favs.get(art_id, {})
+			if fv.is_empty() or fv.get("owner", "") != aid or fav_done.has(art_id):
+				continue
+			fav_done[art_id] = true
+			_attach(u, fv)
+			var rp: String = fv.get("replace", "")
+			if rp != "" and not fv.get("do", []).is_empty():
+				u["sk"][rp] = fv["do"]
 		# 아티팩트 능력치(항상 중첩) + 부가 효과(nostack 이면 1회)
 		var seen_nostack := {}
 		for art_id in u["arts"]:
@@ -122,9 +149,25 @@ func _apply_team_effects() -> void:
 				# 공명/이면: 시너지 사도가 고른 성격에 따라 (첫 사도 기준)
 				spec = spec["by_pers"].get(members[0]["pers"], spec["by_pers"].values()[0])
 			_apply_synergy(side, name, spec, members, allies, enemies)
-		# 어사이드 3성 (간이)
+		# 어사이드 3성: 데이터가 있으면 그것 (자신/같은 열/아군 전체), 없으면 간이 해석
 		for src in allies:
 			if src["star"] < 3:
+				continue
+			var a3: Dictionary = GameData.skill_specs.get(src["aid"], {}).get("aside3", {}) if not src["monster"] else {}
+			if not a3.is_empty():
+				for u in allies:
+					var ok3 := false
+					match a3.get("scope", "self"):
+						"team":
+							ok3 = true
+						"row":
+							ok3 = u["row"] == src["row"]
+						_:
+							ok3 = u == src
+					if ok3:
+						_add_static(u, a3.get("mods", {}))
+						_add_static(u, a3.get("team_mods", {}))
+				_attach(src, {"fx": a3.get("fx", [])})
 				continue
 			var eff := Rules.aside3_effect(src["aid"])
 			if eff.is_empty():
@@ -211,6 +254,18 @@ func _apply_synergy(side: int, name: String, spec: Dictionary, members: Array, a
 ## 유닛의 시너지 (그림자 몬스터는 없음)
 func _traits(u: Dictionary) -> Array:
 	return [] if u.get("monster", false) else GameData.traits_of(u["aid"])
+
+
+## 패시브·어사이드·애착의 능력치(mods)와 발동 효과(fx)를 붙인다
+func _attach(u: Dictionary, spec: Dictionary) -> void:
+	_add_static(u, spec.get("mods", {}))
+	for fx in spec.get("fx", []):
+		var f: Dictionary = fx.duplicate(true)
+		if f["t"] == "cond":
+			u["conds"].append(f)
+		else:
+			f["k"] = u["fx"].size()
+			u["fx"].append(f)
 
 
 func _add_static(u: Dictionary, mods: Dictionary) -> void:
@@ -446,7 +501,7 @@ func _update_unit(u: Dictionary) -> void:
 	# 고학년 스킬 (재사용 대기시간)
 	u["senior_timer"] -= DT
 	if u["senior_timer"] <= 0.0:
-		u["senior_timer"] = float(B["senior_cooldown"])
+		u["senior_timer"] = float(u.get("senior_cd", B["senior_cooldown"]))
 		_cast(u, "senior")
 		return
 	# 저학년 스킬 (SP)
@@ -601,6 +656,9 @@ func _normal_attack(u: Dictionary, target: Dictionary) -> void:
 	if dealt <= 0.0:
 		return
 	u["n_normal_hits"] += 1
+	# 강화 공격 추가 효과 (사도별)
+	if kind == "enh" and u["sk"].has("enh") and target["alive"]:
+		_skill_do(u, u["sk"]["enh"], 1.0, target)
 	# 주변 적에게 튀는 공격 (splash %)
 	var splash := mod(u, "splash")
 	if splash > 0.0:
@@ -643,6 +701,9 @@ func _cast(u: Dictionary, which: String) -> void:
 		sname = "저학년 스킬" if which == "fresh" else "고학년 스킬"
 	_emit("skill", u["i"], -1, 0 if which == "fresh" else 1, sname)
 	var p: float = u["power"]
+	if u["sk"].has(which):
+		_after_cast(u, which, _skill_do(u, u["sk"][which], p))
+		return
 	var row: String = a.get("row", "mid")
 	if row == "all":
 		row = GameData.ROWS[u["row"]]
@@ -709,7 +770,11 @@ func _cast(u: Dictionary, which: String) -> void:
 				for al in _allies(u):
 					_heal(u, al, atk(u) * 1.1 * p, true)
 					_add_buff(u, al, {"dmg": 20 * p}, 6.0, "support_senior", 1, false)
-	# 스킬 적중 카운트 효과
+	_after_cast(u, which, hit_targets)
+
+
+## 스킬 적중·사용 발동 효과
+func _after_cast(u: Dictionary, which: String, hit_targets: Array) -> void:
 	for e in hit_targets:
 		for f in u["fx"]:
 			if f["t"] == "skill_hit" and (not f.has("which") or f["which"] == which):
@@ -1041,6 +1106,154 @@ func _run_actions(u: Dictionary, actions: Array, target, ctx: Dictionary) -> voi
 				if t != null:
 					for e in _enemies_in_row(u, t["row"]):
 						_apply_damage(u, e, maxf(1.0, round(max_hp(u) * float(act["pct_maxhp"]) / 100.0)), "reflect", false)
+
+
+# ─────────────────────────────── 사도별 스킬 ───────────────────────────────
+
+## 스킬 동작 실행 (docs/SKILL_SPEC.md). 피해를 준 적 목록을 돌려준다 (스킬 적중 효과용).
+func _skill_do(u: Dictionary, acts: Array, power: float, forced_target = null) -> Array:
+	var hit := []
+	for act in acts:
+		if not u["alive"]:
+			break
+		var a: String = act["a"]
+		var to: String = act.get("to", "")
+		if to == "":
+			to = "front" if a in ["dmg", "debuff", "status", "execute"] else "self"
+		var targets: Array = [forced_target] if forced_target != null and to in ["front", "low", "back", "high_atk"] else _skill_targets(u, to)
+		match a:
+			"dmg":
+				var hits := maxi(1, int(act.get("hits", 1)))
+				var per := float(act["pct"]) * power / hits
+				for t in targets:
+					for h in hits:
+						if not t["alive"]:
+							break
+						var kind := "fresh" if acts == u["sk"].get("fresh") else ("senior" if acts == u["sk"].get("senior") else "extra")
+						if deal(u, t, per, kind, {}) > 0.0 and not hit.has(t):
+							hit.append(t)
+					if act.has("status") and t["alive"]:
+						var st: Dictionary = act["status"]
+						if rng.randf() * 100.0 < float(st.get("chance", 100)):
+							_add_status(u, t, st["s"], float(st["dur"]))
+			"heal":
+				for t in targets:
+					var amt := atk(u) * float(act["pct_atk"]) / 100.0 * power if act.has("pct_atk") else max_hp(t) * float(act.get("pct_hp", 0)) / 100.0
+					_heal(u, t, amt, true)
+			"shield":
+				for t in targets:
+					var amt := atk(u) * float(act["pct_atk"]) / 100.0 * power if act.has("pct_atk") else max_hp(t) * float(act.get("pct_hp", 0)) / 100.0
+					_add_shield(u, t, amt, float(act.get("dur", 5.0)), true)
+			"buff", "debuff":
+				for t in targets:
+					_add_buff(u, t, act["mods"], float(act.get("dur", 4.0)), String(act.get("key", "")), int(act.get("stack", 1)), a == "debuff")
+				if a == "buff" and not targets.is_empty():
+					_emit("buff", u["i"], targets[0]["i"], 0, "")
+			"status":
+				for t in targets:
+					if rng.randf() * 100.0 < float(act.get("chance", 100)):
+						_add_status(u, t, act["s"], float(act["dur"]))
+			"taunt":
+				u["taunt"] = maxf(u["taunt"], float(act.get("dur", 3.0)))
+				_emit("buff", u["i"], u["i"], 0, "도발")
+			"invuln":
+				u["invuln"] = maxf(u["invuln"], float(act.get("dur", 1.0)))
+				_emit("buff", u["i"], u["i"], 0, "무적")
+			"untarget":
+				u["untarget"] = maxf(u["untarget"], float(act.get("dur", 1.0)))
+			"sp":
+				for t in targets:
+					t["sp"] += float(B["sp_max"]) * float(act.get("pct", 0)) / 100.0
+			"cleanse":
+				for t in targets:
+					t["status"].erase("stun")
+					t["status"].erase("freeze")
+			"execute":
+				for t in targets:
+					if t["alive"] and t["hp"] / max_hp(t) * 100.0 <= float(act.get("below", 10)) and t["invuln"] <= 0.0:
+						_emit("execute", u["i"], t["i"], 0)
+						_kill(u, t)
+	return hit
+
+
+## 스킬 대상 (docs/SKILL_SPEC.md 의 대상 이름)
+func _skill_targets(u: Dictionary, to: String) -> Array:
+	var foes := []
+	for e in units:
+		if e["side"] != u["side"] and _targetable(e):
+			foes.append(e)
+	var friends := _allies(u)
+	var parts := to.split(":")
+	match parts[0]:
+		"self":
+			return [u]
+		"front", "back", "low":
+			var t = _pick_target(u, parts[0])
+			return [t] if t != null else []
+		"high_atk":
+			var best = null
+			for e in foes:
+				if best == null or atk(e) > atk(best):
+					best = e
+			return [best] if best != null else []
+		"row_front", "row_back":
+			if foes.is_empty():
+				return []
+			var r := 99 if parts[0] == "row_front" else -1
+			for e in foes:
+				r = mini(r, e["row"]) if parts[0] == "row_front" else maxi(r, e["row"])
+			var out := []
+			for e in foes:
+				if e["row"] == r:
+					out.append(e)
+			return out
+		"all":
+			return foes
+		"random":
+			var n := int(parts[1]) if parts.size() > 1 else 1
+			var out := []
+			if not foes.is_empty():
+				for i in n:
+					out.append(foes[rng.randi() % foes.size()])
+			return out
+		"around":
+			var t = _pick_target(u, parts[1] if parts.size() > 1 else "front")
+			if t == null:
+				return []
+			var out := [t]
+			for e in foes:
+				if e != t and e["row"] == t["row"] and absi(int(e["slot"]) - int(t["slot"])) <= 1:
+					out.append(e)
+			return out
+		"lowest":
+			var lo = _lowest_ally(u)
+			return [lo] if lo != null else []
+		"allies":
+			return friends
+		"row":
+			var out := []
+			for a in friends:
+				if a["row"] == u["row"]:
+					out.append(a)
+			return out
+		"front_ally", "back_ally":
+			if friends.is_empty():
+				return []
+			var r := 99 if parts[0] == "front_ally" else -1
+			for a in friends:
+				r = mini(r, a["row"]) if parts[0] == "front_ally" else maxi(r, a["row"])
+			var out := []
+			for a in friends:
+				if a["row"] == r:
+					out.append(a)
+			return out
+		"random_ally":
+			var n := int(parts[1]) if parts.size() > 1 else 1
+			var out := []
+			for i in n:
+				out.append(friends[rng.randi() % friends.size()])
+			return out
+	return []
 
 
 func _shield_total(u: Dictionary) -> float:
