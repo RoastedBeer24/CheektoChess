@@ -291,6 +291,10 @@ func _traits(u: Dictionary) -> Array:
 ## 패시브·어사이드·애착의 능력치(mods)와 발동 효과(fx)를 붙인다
 func _attach(u: Dictionary, spec: Dictionary) -> void:
 	_add_static(u, spec.get("mods", {}))
+	if spec.has("immune"):
+		var im: Array = u.get("immune", []).duplicate()
+		im.append_array(spec["immune"])
+		u["immune"] = im
 	for fx in spec.get("fx", []):
 		var f: Dictionary = fx.duplicate(true)
 		if f["t"] == "cond":
@@ -408,7 +412,7 @@ func aspd(u: Dictionary) -> float:
 func _alive_count(side: int) -> int:
 	var n := 0
 	for u in units:
-		if u["side"] == side and u["alive"]:
+		if u["side"] == side and u["alive"] and not u.get("summon", false):
 			n += 1
 	return n
 
@@ -437,6 +441,9 @@ func run() -> Dictionary:
 		for u in units:
 			if u["alive"]:
 				_update_unit(u)
+		if not _spawn_q.is_empty():
+			units.append_array(_spawn_q)
+			_spawn_q.clear()
 		var a := _alive_count(0)
 		var b := _alive_count(1)
 		if a == 0 or b == 0:
@@ -483,13 +490,32 @@ func _tick_side() -> void:
 func unit_snapshots() -> Array:
 	var out := []
 	for u in units:
-		out.append({"i": u["i"], "side": u["side"], "aid": u["aid"], "name": u["name"], "star": u["star"],
-			"row": u["row"], "slot": u["slot"], "max_hp": max_hp(u), "pers": u["pers"], "monster": u["monster"]})
+		if u.get("summon", false):
+			continue   # 소환물은 전투 중 "summon" 이벤트로 나타남
+		out.append(_snapshot(u))
 	return out
+
+
+func _snapshot(u: Dictionary) -> Dictionary:
+	return {"i": u["i"], "side": u["side"], "aid": u["aid"], "name": u["name"], "star": u["star"],
+		"row": u["row"], "slot": u["slot"], "max_hp": max_hp(u), "pers": u["pers"], "monster": u["monster"],
+		"summon": u.get("summon", false), "scale": u.get("scale", 1.0)}
+
+
+var _spawn_q: Array = []
 
 
 func _update_unit(u: Dictionary) -> void:
 	var whole_second := _tick_count % 10 == 0
+	# 소환물: 시간이 다 되면 사라짐
+	if u.get("summon", false):
+		u["life"] = float(u["life"]) - DT
+		if u["life"] <= 0.0:
+			u["alive"] = false
+			u["hp"] = 0.0
+			_emit("death", u["i"], u["i"], 0)
+			return
+	u["cc_immune"] = maxf(0.0, float(u.get("cc_immune", 0.0)) - DT)
 	# 시간 경과
 	u["invuln"] = maxf(0.0, u["invuln"] - DT)
 	u["untarget"] = maxf(0.0, u["untarget"] - DT)
@@ -532,14 +558,17 @@ func _update_unit(u: Dictionary) -> void:
 	var target = _nearest(u)
 	if target == null:
 		return
-	# 고학년 스킬 (재사용 대기시간)
+	var silenced: bool = u["status"].has("silence")
+	# 고학년 스킬 (재사용 대기시간) — 침묵 중에는 쓰지 못함
 	u["senior_timer"] -= DT
-	if u["senior_timer"] <= 0.0:
+	if u["senior_timer"] <= 0.0 and silenced:
+		u["senior_timer"] = 0.0
+	elif u["senior_timer"] <= 0.0:
 		u["senior_timer"] = float(u.get("senior_cd", B["senior_cooldown"]))
 		_cast(u, "senior")
 		return
 	# 저학년 스킬 (SP)
-	if u["sp"] >= float(B["sp_max"]):
+	if u["sp"] >= float(B["sp_max"]) and not silenced:
 		u["sp"] = 0.0
 		_cast(u, "fresh")
 		return
@@ -591,7 +620,7 @@ func _nearest(u: Dictionary) -> Variant:
 	for e in units:
 		if e["side"] == u["side"] or not _targetable(e):
 			continue
-		var t: bool = e["taunt"] > 0.0
+		var t: bool = e["taunt"] > 0.0 and not u.get("immune", []).has("taunt")
 		if taunting and not t:
 			continue
 		var d := _reach(u, e)
@@ -671,11 +700,11 @@ func _expire(u: Dictionary) -> void:
 
 
 func _tick_status(u: Dictionary) -> void:
-	for s in ["burn", "bitter"]:
+	for s in ["burn", "bitter", "poison"]:
 		if u["status"].has(s):
 			var st: Dictionary = u["status"][s]
 			var src: Dictionary = units[st["src"]]
-			var pct := 20.0 if s == "burn" else 10.0
+			var pct: float = {"burn": 20.0, "bitter": 10.0, "poison": 15.0}[s]
 			var amt := atk(src) * pct / 100.0 * (1.0 + mod(src, "status_dmg") / 100.0)
 			_apply_damage(src, u, amt, "status", false)
 			if not u["alive"]:
@@ -759,7 +788,7 @@ func _lowest_ally(u: Dictionary) -> Variant:
 
 func _normal_attack(u: Dictionary, target: Dictionary) -> void:
 	u["n_attacks"] += 1
-	var enh_every: int = B["enhanced_every"]
+	var enh_every: int = maxi(2, int(B["enhanced_every"]) - int(mod(u, "enh_freq")))
 	var kind := "enh" if u["n_attacks"] % enh_every == 0 else "normal"
 	var mult := float(B["enhanced_mult"]) * 100.0 if kind == "enh" else 100.0
 	# "n번째 공격마다 치명타" 류 (pre)
@@ -1031,8 +1060,10 @@ func _apply_damage(src: Dictionary, dst: Dictionary, amt: float, kind: String, c
 func _kill(src: Dictionary, dst: Dictionary) -> void:
 	dst["alive"] = false
 	dst["hp"] = 0.0
-	deaths[dst["side"]] += 1
 	_emit("death", src["i"], dst["i"], 0)
+	if dst.get("summon", false):
+		return   # 소환물은 처치 수·쓰러짐 효과에 넣지 않음
+	deaths[dst["side"]] += 1
 	# 쓰러질 때 효과 / 아군이 쓰러졌을 때 효과
 	for f in dst["fx"]:
 		if f["t"] == "death_self":
@@ -1064,6 +1095,8 @@ func _heal(src: Dictionary, dst: Dictionary, amt: float, from_skill: bool, overf
 	if not dst["alive"]:
 		return
 	var v := amt * maxf(0.0, 1.0 + mod(src, "heal_out") / 100.0) * maxf(0.0, 1.0 + mod(dst, "heal_in") / 100.0)
+	if dst["status"].has("poison"):
+		v *= 0.7   # 중독: 받는 회복 -30%
 	var mh := max_hp(dst)
 	var over := maxf(0.0, dst["hp"] + v - mh)
 	dst["hp"] = minf(mh, dst["hp"] + v)
@@ -1104,6 +1137,10 @@ func _add_status(src: Dictionary, dst: Dictionary, s: String, dur: float) -> voi
 	if not dst["alive"]:
 		return
 	if dst["invuln"] > 0.0 and (s == "stun" or s == "freeze"):
+		return
+	# 면역: 상태 이상 면역 시간(cc_immune) 또는 사도 고유 면역(immune 목록)
+	if (float(dst.get("cc_immune", 0.0)) > 0.0 and s in ["stun", "freeze", "silence", "blind"]) or dst.get("immune", []).has(s):
+		_emit("resist", src["i"], dst["i"], 0, s)
 		return
 	dst["status"][s] = {"until": time + dur, "src": src["i"]}
 	_emit("status", src["i"], dst["i"], dur, s)
@@ -1215,7 +1252,19 @@ func _run_actions(u: Dictionary, actions: Array, target, ctx: Dictionary) -> voi
 			"sp_pct":
 				u["sp"] += float(B["sp_max"]) * float(act["pct"]) / 100.0
 			"cleanse":
-				u["status"].erase("stun")
+				for d in _resolve_to(u, act.get("to", "self"), target, act.get("trait", "")):
+					_cleanse(d)
+			"dispel":
+				for d in _resolve_to(u, act.get("to", "enemies"), target, act.get("trait", "")):
+					_dispel(d)
+			"cd":
+				for d in _resolve_to(u, act.get("to", "self"), target, act.get("trait", "")):
+					d["senior_timer"] = maxf(0.0, float(d["senior_timer"]) + float(act["sec"]))
+			"cc_immune":
+				u["cc_immune"] = maxf(float(u.get("cc_immune", 0.0)), float(act["dur"]))
+				_emit("buff", u["i"], u["i"], 0, "상태 이상 면역")
+			"summon":
+				_summon(u, act)
 			"break_shield":
 				if target != null and not target["shields"].is_empty():
 					target["shields"].pop_front()
@@ -1239,6 +1288,69 @@ func _run_actions(u: Dictionary, actions: Array, target, ctx: Dictionary) -> voi
 				if t != null:
 					for e in _enemies_in_row(u, t["row"]):
 						_apply_damage(u, e, maxf(1.0, round(max_hp(u) * float(act["pct_maxhp"]) / 100.0)), "reflect", false)
+
+
+## 상태 해제: 상태 이상과 약화 효과를 모두 지움
+func _cleanse(t: Dictionary) -> void:
+	for s in ["stun", "freeze", "burn", "poison", "silence", "shock", "bitter", "blind"]:
+		t["status"].erase(s)
+	var keep := []
+	for b in t["buffs"]:
+		if not b.get("debuff", false):
+			keep.append(b)
+	t["buffs"] = keep
+
+
+## 강화 해제: 적의 이로운 효과(버프·보호막)를 지움
+func _dispel(t: Dictionary) -> void:
+	var keep := []
+	for b in t["buffs"]:
+		if b.get("debuff", false) or float(b["until"]) - time > 900.0:
+			keep.append(b)   # 약화 효과와 전투 내내 가는 효과(시너지·패시브 누적)는 남김
+	t["buffs"] = keep
+	t["shields"] = []
+	_emit("buff", -1, t["i"], 0, "강화 해제")
+
+
+## 소환: 시전자 옆에 작은 분신/친구를 잠시 불러냄 (기본 공격만, 시간이 다 되면 사라짐)
+## {"a": "summon", "n": 2, "hp_pct": 35, "atk_pct": 45, "dur": 10, "name": "꿀벌", "scale": 0.55}
+func _summon(u: Dictionary, act: Dictionary) -> void:
+	var n := int(act.get("n", 1))
+	for k in n:
+		var s: Dictionary = u.duplicate(true)
+		s["i"] = units.size() + _spawn_q.size()
+		s["name"] = String(act.get("name", u["name"] + "의 분신"))
+		s["summon"] = true
+		s["life"] = float(act.get("dur", 10.0))
+		s["scale"] = float(act.get("scale", 0.6))
+		s["base"] = u["base"].duplicate()
+		s["base"]["hp"] = float(u["base"]["hp"]) * float(act.get("hp_pct", 35)) / 100.0
+		s["base"]["atk"] = float(u["base"]["atk"]) * float(act.get("atk_pct", 40)) / 100.0
+		s["mods"] = {}
+		s["buffs"] = []
+		s["shields"] = []
+		s["status"] = {}
+		s["fx"] = []
+		s["conds"] = []
+		s["sk"] = {}
+		s["arts"] = []
+		s["sp"] = 0.0
+		s["senior_timer"] = 999.0
+		s["taunt"] = 0.0
+		s["regens"] = []
+		s["counters"] = {}
+		s["cds"] = {}
+		s["once"] = {}
+		s["pending_normal"] = []
+		s["role"] = "dealer"
+		s["range"] = float(B["move"]["range"]["front"])
+		s["y"] = clampf(float(u["y"]) + (0.45 if k % 2 == 0 else -0.45), 0.3, field_size().y - 0.3)
+		s["x"] = float(u["x"]) + (0.4 if u["side"] == 0 else -0.4)
+		s["hp"] = max_hp(s)
+		s["alive"] = true
+		_spawn_q.append(s)
+		_emit("summon", u["i"], s["i"], _snapshot(s))
+		_emit_pos(s)
 
 
 # ─────────────────────────────── 사도별 스킬 ───────────────────────────────
@@ -1299,8 +1411,20 @@ func _skill_do(u: Dictionary, acts: Array, power: float, forced_target = null) -
 					t["sp"] += float(B["sp_max"]) * float(act.get("pct", 0)) / 100.0
 			"cleanse":
 				for t in targets:
-					t["status"].erase("stun")
-					t["status"].erase("freeze")
+					_cleanse(t)
+			"dispel":
+				for t in targets:
+					_dispel(t)
+			"cd":
+				for t in targets:
+					t["senior_timer"] = maxf(0.0, float(t["senior_timer"]) + float(act["sec"]))
+			"cc_immune":
+				for t in targets:
+					t["cc_immune"] = maxf(float(t.get("cc_immune", 0.0)), float(act.get("dur", 3.0)))
+				if not targets.is_empty():
+					_emit("buff", u["i"], targets[0]["i"], 0, "상태 이상 면역")
+			"summon":
+				_summon(u, act)
 			"execute":
 				for t in targets:
 					if t["alive"] and t["hp"] / max_hp(t) * 100.0 <= float(act.get("below", 10)) and t["invuln"] <= 0.0:

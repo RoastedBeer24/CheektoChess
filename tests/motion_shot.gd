@@ -18,7 +18,7 @@ func _ready() -> void:
 	var a := [
 		{"aid": "canna", "star": 2, "row": 2, "slot": 0, "arts": [], "pers": ""},
 		{"aid": "meluna", "star": 2, "row": 2, "slot": 1, "arts": [], "pers": ""},
-		{"aid": "kishya", "star": 2, "row": 1, "slot": 0, "arts": [], "pers": ""},
+		{"aid": "jubee", "star": 2, "row": 1, "slot": 0, "arts": [], "pers": ""},
 		{"aid": "joanne", "star": 2, "row": 1, "slot": 2, "arts": [], "pers": "순수"},
 		{"aid": "rohne", "star": 2, "row": 0, "slot": 1, "arts": [], "pers": ""},
 		{"aid": "allet", "star": 1, "row": 0, "slot": 2, "arts": [], "pers": ""},

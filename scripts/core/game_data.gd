@@ -20,6 +20,7 @@ static var artifacts_by_grade: Dictionary = {}  # grade -> [id]
 static var synergies: Dictionary = {}     # 시너지 이름 -> 정의 (지금 그룹: id, kind, tiers, color, effect, levels)
 static var balance: Dictionary = {}
 static var skill_specs: Dictionary = {}  # 사도별 원작 스킬·어사이드·애착 동작 (data/skill_specs.json)
+static var unit_tuning: Dictionary = {}  # 사도별 체력·공격력 보정 배율 (data/unit_tuning.json)
 static var augments: Dictionary = {}     # 증강 (data/augments.json): {rounds, list}
 static var _aug_by_id: Dictionary = {}
 
@@ -40,6 +41,8 @@ static func load_all() -> void:
 		artifacts[item["id"]] = item
 		artifacts_by_grade[item["grade"]].append(item["id"])
 	skill_specs = _load("res://data/skill_specs.json") if FileAccess.file_exists("res://data/skill_specs.json") else {}
+	unit_tuning = _load("res://data/unit_tuning.json") if FileAccess.file_exists("res://data/unit_tuning.json") else {}
+	unit_tuning.erase("_doc")
 	augments = _load("res://data/augments.json") if FileAccess.file_exists("res://data/augments.json") else {"rounds": [], "list": []}
 	_aug_by_id.clear()
 	for ag in augments.get("list", []):

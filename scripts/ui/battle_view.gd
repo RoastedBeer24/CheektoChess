@@ -133,38 +133,47 @@ func setup(bt: Dictionary, my_side: int, name_a: String, name_b: String) -> void
 	_left_tag.text = left
 	_right_tag.text = right
 	for u in _units:
-		var i: int = u["i"]
-		_udata[i] = u
-		_pos[i] = _start_pos(u)
-		_disp[i] = _pos[i]
-		if Settings.flag("battle_motion") and MotionSprite.available(u["aid"]):
-			MotionSprite.preload_anims(u["aid"], ["Idle", "Move", "Attack1_1"])
-			var sp := MotionSprite.new(u["aid"])
-			sp.face_right = u["side"] == my_side   # 왼쪽(우리 편)은 오른쪽을 봄
-			sp.shadow = true
-			if u.get("monster", false):
-				sp.modulate = Color(0.45, 0.32, 0.62)   # 그림자 몬스터
-			_field.add_child(sp)
-			_sprites[i] = sp
-		else:
-			var tile := UnitTile.new(TILE)
-			tile.set_unit({"aid": u["aid"], "star": u["star"], "pers": u["pers"]})
-			tile.mouse_filter = Control.MOUSE_FILTER_IGNORE
-			_field.add_child(tile)
-			_tiles[i] = tile
-		var pl := BattlePlate.new()
-		pl.uname = u["name"]
-		pl.star = int(u["star"])
-		pl.mine = int(u["side"]) == my_side
-		_plate_layer.add_child(pl)
-		_plates[i] = pl
-		_dtype[i] = GameData.apostle(u["aid"]).get("damage", "physical")
-		_anim[i] = {"lunge": 0.0, "dir": Vector2.ZERO, "flash": 0.0, "pulse": 0.0, "dead": false}
-		_hp[i] = float(u["max_hp"])
-		_sh[i] = 0.0
+		_add_unit(u)
 	_layout()
 	_update_bars()
 	_say_spawn.call_deferred()
+
+
+## 유닛 하나의 그림·이름표 만들기 (처음 + 전투 중 소환)
+func _add_unit(u: Dictionary) -> void:
+	var my_side := _my_side
+	var i: int = u["i"]
+	_udata[i] = u
+	if not u.get("summon", false):   # 소환물 위치는 바로 뒤의 "pos" 이벤트로
+		_pos[i] = _start_pos(u)
+		_disp[i] = _pos[i]
+	if Settings.flag("battle_motion") and MotionSprite.available(u["aid"]):
+		MotionSprite.preload_anims(u["aid"], ["Idle", "Move", "Attack1_1"])
+		var sp := MotionSprite.new(u["aid"])
+		sp.face_right = u["side"] == my_side   # 왼쪽(우리 편)은 오른쪽을 봄
+		sp.shadow = true
+		if u.get("monster", false):
+			sp.modulate = Color(0.45, 0.32, 0.62)   # 그림자 몬스터
+		if u.get("summon", false):
+			sp.modulate = Color(0.8, 0.9, 1.0, 0.85)
+		_field.add_child(sp)
+		_sprites[i] = sp
+	else:
+		var tile := UnitTile.new(TILE)
+		tile.set_unit({"aid": u["aid"], "star": u["star"], "pers": u["pers"]})
+		tile.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_field.add_child(tile)
+		_tiles[i] = tile
+	var pl := BattlePlate.new()
+	pl.uname = u["name"]
+	pl.star = int(u["star"]) if not u.get("summon", false) else 1
+	pl.mine = int(u["side"]) == my_side
+	_plate_layer.add_child(pl)
+	_plates[i] = pl
+	_dtype[i] = GameData.apostle(u["aid"]).get("damage", "physical")
+	_anim[i] = {"lunge": 0.0, "dir": Vector2.ZERO, "flash": 0.0, "pulse": 0.0, "dead": false}
+	_hp[i] = float(u["max_hp"])
+	_sh[i] = 0.0
 
 
 # ─────────────────────────────── 위치 (이동하며 싸우기) ───────────────────────────────
@@ -194,7 +203,7 @@ func _foot(i: int) -> Vector2:
 ## 캐릭터 키(px): 머리 위 글자·몸 가운데 이펙트 위치에 쓴다
 func _char_h(i: int) -> float:
 	if _sprites.has(i):
-		return _box * 0.66 * MotionSprite.body_scale(_udata[i]["aid"])
+		return _box * 0.66 * MotionSprite.body_scale(_udata[i]["aid"]) * float(_udata[i].get("scale", 1.0))
 	return TILE.y * _card_k
 
 
@@ -222,7 +231,7 @@ func _layout() -> void:
 		_plates[i].scale = Vector2(pk, pk)
 	for i in _sprites:
 		_sprites[i].size = Vector2(_box, _box)
-		_sprites[i].box = _box
+		_sprites[i].box = _box * float(_udata[i].get("scale", 1.0))
 		_sprites[i].pivot_offset = Vector2(_box / 2.0, _box)
 	for i in _tiles:
 		_tiles[i].size = TILE
@@ -468,6 +477,18 @@ func _apply(e: Array) -> void:
 			_float(dst, "보호막", Color("cfe8ff"), 18)
 		"pos":
 			_pos[src] = Vector2(float(e[4][0]), float(e[4][1]))
+			if not _disp.has(src):
+				_disp[src] = _pos[src]
+		"summon":
+			var snap: Dictionary = e[4]
+			if not _udata.has(dst):
+				_units.append(snap)
+				_add_unit(snap)
+				_layout()
+				_fx_at(dst, "ring", Color("bfe8ff"), 0.5, 50.0)
+				_float(dst, "소환!", Color("bfe8ff"), 20)
+		"resist":
+			_float(dst, "면역", Color("dddddd"), 18)
 		"attack":
 			_lunge(src, dst)
 			_motion(src, "Attack1_1")
@@ -502,13 +523,13 @@ func _apply(e: Array) -> void:
 				_tiles[dst].modulate = Color.WHITE
 			_float(dst, "부활!", Color("d9b3ff"), 30, -30, true)
 		"status":
-			var names := {"stun": "기절", "burn": "화상", "bitter": "쓰라림", "shock": "감전", "blind": "눈가림", "freeze": "빙결"}
+			var names := {"stun": "기절", "burn": "화상", "bitter": "쓰라림", "shock": "감전", "blind": "눈가림", "freeze": "빙결", "poison": "중독", "silence": "침묵"}
 			if (String(e[5]) == "stun" or String(e[5]) == "freeze") and _sprites.has(dst) and not _anim[dst]["dead"]:
 				_sprites[dst].play("Groggy", true, "Idle", false, float(e[4]))
 				if String(e[5]) == "freeze":
 					_sprites[dst].tint = Color(0.7, 0.85, 1.0)
 			var st := String(e[5])
-			var scol := {"stun": Color("ffd166"), "freeze": Color("9fd8ff"), "burn": Color("ff9a6b"), "shock": Color("e6e07a"), "bitter": Color("c9a7ff"), "blind": Color("b8b8c8")}
+			var scol := {"stun": Color("ffd166"), "freeze": Color("9fd8ff"), "burn": Color("ff9a6b"), "shock": Color("e6e07a"), "bitter": Color("c9a7ff"), "blind": Color("b8b8c8"), "poison": Color("9be564"), "silence": Color("8f9bb3")}
 			if _plates.has(dst) and typeof(e[4]) in [TYPE_FLOAT, TYPE_INT] and float(e[4]) > 0.0:
 				_plates[dst].set_status(names.get(st, st), scol.get(st, Color("ffb3e6")))
 				_status_until[dst] = _t + float(e[4])

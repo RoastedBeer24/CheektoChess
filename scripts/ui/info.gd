@@ -210,6 +210,8 @@ static func _game_note(box: Control, spec: Dictionary, dtype: String = "physical
 		parts.append(mods_text(spec["mods"]) + ((" (%s)" % {"team": "아군 전체", "row": "같은 열 아군", "self": "자신"}.get(spec.get("scope", "self"), "")) if spec.has("scope") else ""))
 	if spec.has("power"):
 		parts.append("스킬 위력 +%s%%" % _n(spec["power"]))
+	if spec.has("immune"):
+		parts.append("%s 면역" % "·".join(spec["immune"].map(func(x): return {"taunt": "도발"}.get(x, STATUS_NAME.get(x, x)))))
 	if not parts.is_empty():
 		note = " · ".join(parts) + ("\n(" + note + ")" if note != "" else "")
 	if note == "":
@@ -280,7 +282,7 @@ static func artifact(box: Control, art_id: String, where: String = "") -> void:
 const MOD_NAME := {
 	"heal_in": "받는 회복", "shield_in": "받는 보호막", "hp": "최대 HP", "skill_dmg": "스킬 피해",
 	"dmg": "피해량", "aspd": "공격 속도", "crit": "치명타", "critdmg": "치명 피해", "normal_dmg": "일반 공격 피해",
-	"enh_dmg": "강화 공격 피해", "sp_regen": "SP 회복", "dmg_taken": "받는 피해", "start_shield": "전투 시작 보호막(최대 HP)",
+	"enh_dmg": "강화 공격 피해", "enh_freq": "강화 공격 빈도", "sp_regen": "SP 회복", "dmg_taken": "받는 피해", "start_shield": "전투 시작 보호막(최대 HP)",
 	"def": "방어력", "atk": "공격력", "heal_out": "치유량", "patk": "물리 공격력", "matk": "마법 공격력",
 	"pdef": "물리 방어력", "mdef": "마법 방어력", "magic_dmg": "마법 피해", "fresh_dmg": "저학년 스킬 피해",
 	"senior_dmg": "고학년 스킬 피해", "critres": "치명타 저항", "regen": "초당 HP 회복",
@@ -291,7 +293,7 @@ const TARGET_NAME := {
 	"random": "무작위 적 %s명", "self": "자신", "lowest": "HP가 가장 낮은 아군", "allies": "아군 전체", "row": "같은 열 아군",
 	"front_ally": "가장 앞 열 아군", "back_ally": "가장 뒤 열 아군", "random_ally": "무작위 아군 %s명",
 }
-const STATUS_NAME := {"stun": "기절", "burn": "화상", "bitter": "쓰라림", "shock": "감전", "blind": "눈가림", "freeze": "빙결"}
+const STATUS_NAME := {"stun": "기절", "burn": "화상", "bitter": "쓰라림", "shock": "감전", "blind": "눈가림", "freeze": "빙결", "poison": "중독", "silence": "침묵"}
 
 
 static func _target_text(to: String, a: String) -> String:
@@ -344,7 +346,15 @@ static func describe_actions(acts: Array, dtype: String) -> String:
 			"sp":
 				out.append("%s SP +%s%%" % [tgt, _n(act.get("pct", 0))])
 			"cleanse":
-				out.append("%s 기절·빙결 해제" % tgt)
+				out.append("%s 상태 이상·약화 해제" % tgt)
+			"dispel":
+				out.append("%s 강화 효과·보호막 해제" % tgt)
+			"cd":
+				out.append("고학년 재사용 대기 %s초" % _n(act["sec"]))
+			"cc_immune":
+				out.append("상태 이상 면역 %s초" % _n(act.get("dur", 3)))
+			"summon":
+				out.append("%s %d명 소환 (%s초, 체력 %s%%·공격력 %s%%)" % [act.get("name", "분신"), int(act.get("n", 1)), _n(act.get("dur", 10)), _n(act.get("hp_pct", 35)), _n(act.get("atk_pct", 40))])
 			"execute":
 				out.append("HP %s%% 이하인 적 처형" % _n(act.get("below", 10)))
 	return " · ".join(out)
@@ -355,6 +365,9 @@ static func mods_text(mods: Dictionary) -> String:
 	var parts := []
 	for k in mods:
 		var v := float(mods[k])
+		if k == "enh_freq":
+			parts.append("강화 공격이 더 자주 (%d번째 → %d번째 공격마다)" % [int(GameData.balance["enhanced_every"]), maxi(2, int(GameData.balance["enhanced_every"]) - int(v))])
+			continue
 		parts.append("%s %s%s%%" % [MOD_NAME.get(k, k), "+" if v > 0 else "", str(snappedf(v, 0.1)).trim_suffix(".0")])
 	return ", ".join(parts)
 

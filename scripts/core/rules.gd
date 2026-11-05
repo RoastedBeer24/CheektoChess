@@ -53,9 +53,11 @@ static func base_stats(aid: String, star: int) -> Dictionary:
 	var cost: int = GameData.cost_of.get(aid, 1)
 	var cs := 1.0 + float(b["cost_scale"]) * (cost - 1)
 	var sm: float = b["star_mult"][clampi(star, 1, 3) - 1]
+	# 사도별 보정 배율 (tools/tune_balance → data/unit_tuning.json)
+	var tm := float(GameData.unit_tuning.get(aid, 1.0))
 	return {
-		"hp": float(role["hp"]) * rowm["hp"] * cs * sm,
-		"atk": float(role["atk"]) * rowm["atk"] * cs * sm,
+		"hp": float(role["hp"]) * rowm["hp"] * cs * sm * tm,
+		"atk": float(role["atk"]) * rowm["atk"] * cs * sm * tm,
 		"def": float(role["def"]) * (1.0 + 0.1 * (cost - 1)),
 		"aspd": float(role["aspd"]),
 		"crit": float(b["base_crit"]),
