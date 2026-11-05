@@ -11,6 +11,7 @@ var rng := RandomNumberGenerator.new()
 var B: Dictionary
 var phase_left := 0.0
 var _bot_second_done := false
+var tutorial := false   # 튜토리얼 연습 판: 준비 시간이 멈춤
 
 
 func _init(players: Array, seed: int) -> void:
@@ -180,6 +181,8 @@ func _enter_prep() -> void:
 	state["phase"] = "prep"
 	var r: int = state["round"]
 	phase_left = float(B.get("first_prep_time", B["prep_time"])) if r == 1 else float(B["prep_time"])
+	if tutorial:
+		phase_left = 99999.0
 	_log("라운드 %d 준비 시작" % r)
 	_bot_second_done = false
 	for pid in alive_players():

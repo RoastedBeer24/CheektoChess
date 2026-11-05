@@ -84,6 +84,16 @@ var tutorial := false
 func start_tutorial() -> void:
 	start_offline(3)
 	tutorial = true
+	if game == null:
+		return
+	# 연습 판: 준비 시간 멈춤, 합성 연습용 상점(같은 사도 3장), 장착 연습용 아티팩트
+	game.tutorial = true
+	game.phase_left = 99999.0
+	var p: Dictionary = game.player(my_pid)
+	p["gold"] = 12
+	p["shop"] = ["rohne", "rohne", "rohne", "bana", "festa"]
+	p["inv"].append({"uid": game._uid(), "id": "wooden_sword"})
+	_flush()
 
 
 func host_room() -> Error:

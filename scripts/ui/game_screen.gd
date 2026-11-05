@@ -71,6 +71,11 @@ func _ready() -> void:
 	_build()
 	get_viewport().size_changed.connect(_fit_layout)
 	_fit_layout.call_deferred()
+	(func():
+		if App.session.tutorial:
+			var t := Tutorial.new()
+			t.gs = self
+			add_child(t)).call_deferred()
 	App.session.state_changed.connect(refresh)
 	refresh()
 
@@ -449,6 +454,8 @@ func _process(_delta: float) -> void:
 			_ready_btn.text = "결과 보기 ▶"
 	else:
 		_phase_lbl.text = "%s  %d초" % [PHASE_NAME.get(phase, phase), ceili(left)] if phase != "over" else "게임 종료"
+		if App.session.tutorial and phase == "prep":
+			_phase_lbl.text = "준비 (튜토리얼 — 시간 제한 없음)"
 		_time_bar.value = 100.0 * left / maxf(1.0, _phase_total)
 
 
@@ -884,6 +891,17 @@ func _shop_tip(i: int) -> String:
 		extra += "\n[color=#ff7070]골드 %d 부족[/color]" % (cost - int(p.get("gold", 0)))
 	extra += "\n[color=#8a8fa6]누르면 구매 · 끌어서 원하는 칸에 구매 · 꾹 눌러 잠금[/color]"
 	return UI.unit_tip({"aid": aid, "star": 1}, extra)
+
+
+func _all_my_units() -> Array:
+	var p := me()
+	var out := []
+	for k in p.get("board", {}):
+		out.append(p["board"][k])
+	for u in p.get("bench", []):
+		if u != null:
+			out.append(u)
+	return out
 
 
 func _sell_value(u: Dictionary) -> int:
