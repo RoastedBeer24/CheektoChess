@@ -41,6 +41,8 @@ var _fx: BattleFx
 var _udata := {}          # 유닛 index -> 스냅샷 (열·진영)
 var _shake := 0.0
 var _skill_banner: Label
+var _full_btn: Button
+signal full_toggled
 var _pos := {}            # 유닛 index -> 전투 계산 좌표 (목표)
 var _disp := {}           # 유닛 index -> 화면에 보이는 좌표 (목표로 부드럽게 이동)
 
@@ -90,6 +92,18 @@ func _ready() -> void:
 		_speed = 2.0 if _speed < 1.5 else 1.0
 		_speed_btn.text = "속도 x%d" % int(_speed))
 	add_child(_speed_btn)
+	_full_btn = UI.button("", 20, Vector2(150, 48))
+	_full_btn.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
+	_full_btn.offset_left = -290
+	_full_btn.offset_top = -56
+	_full_btn.offset_right = -138
+	_full_btn.offset_bottom = -8
+	_full_btn.text = "기본 보기" if UI.battle_full() else "크게 보기"
+	_full_btn.pressed.connect(func():
+		Settings.set_value("battle_full", 2 if UI.battle_full() else 1)
+		_full_btn.text = "기본 보기" if UI.battle_full() else "크게 보기"
+		full_toggled.emit())
+	add_child(_full_btn)
 	resized.connect(_layout)
 
 

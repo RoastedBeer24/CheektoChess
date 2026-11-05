@@ -894,7 +894,7 @@ func command(pid: String, cmd: Dictionary) -> String:
 			return "이미 가져간 묶음"
 		_carousel_pick(pid, ci)
 		return ""
-	var prep_only := ["buy", "sell", "move", "reroll", "buy_xp", "art_reroll", "art_pick", "equip", "art_merge", "ready", "aug_pick", "aug_reroll"]
+	var prep_only := ["buy", "sell", "move", "reroll", "buy_xp", "art_reroll", "art_pick", "equip", "art_merge", "ready", "aug_pick", "aug_reroll", "undo_sell"]
 	if prep_only.has(t) and state["phase"] != "prep":
 		return "준비 단계가 아님"
 	var err := ""
@@ -908,6 +908,7 @@ func command(pid: String, cmd: Dictionary) -> String:
 		"art_pick": err = _cmd_art_pick(p, cmd)
 		"equip": err = _cmd_equip(p, cmd)
 		"art_merge": err = _cmd_art_merge(p, cmd)
+		"undo_sell": err = _cmd_undo_sell(p)
 		"aug_pick": err = _cmd_aug_pick(p, cmd)
 		"aug_reroll": err = _cmd_aug_reroll(p)
 		"ready":
@@ -1010,14 +1011,40 @@ func _try_merge(p: Dictionary, aid: String, star: int, extra = null) -> void:
 	_try_merge(p, aid, star + 1)
 
 
+## 되돌리기: 이번 준비 단계에서 마지막으로 판 사도를 판 값 그대로 다시 사 온다 (실수 방지)
+func _cmd_undo_sell(p: Dictionary) -> String:
+	var ls: Dictionary = p.get("last_sold", {})
+	if ls.is_empty() or int(ls.get("round", -1)) != int(state["round"]):
+		return "되돌릴 판매가 없음"
+	var free: int = p["bench"].find(null)
+	if free < 0:
+		return "대기석이 가득 참"
+	var u: Dictionary = ls["unit"]
+	var need := int(ls["value"])
+	if p["gold"] < need:
+		return "골드 부족"
+	var n := int(pow(3, int(u["star"]) - 1))
+	if int(state["pool"].get(u["aid"], 0)) < n:
+		return "남은 사도가 없음"
+	p["gold"] -= need
+	state["pool"][u["aid"]] -= n
+	u["arts"] = []
+	p["bench"][free] = u
+	p["last_sold"] = {}
+	_try_merge(p, u["aid"], int(u["star"]))
+	return ""
+
+
 func _cmd_sell(p: Dictionary, cmd: Dictionary) -> String:
 	var loc: Dictionary = cmd.get("loc", {})
 	var u = unit_at(p, loc)
 	if u == null:
 		return "유닛 없음"
-	p["gold"] += sell_value(u)
+	var val := sell_value(u)
+	p["gold"] += val
 	for a in u["arts"]:
 		p["inv"].append(a)
+	p["last_sold"] = {"round": int(state["round"]), "value": val, "unit": {"uid": u["uid"], "aid": u["aid"], "star": u["star"], "arts": [], "pers": u.get("pers", "")}}
 	_return_to_pool(u)
 	_set_at(p, loc, null)
 	return ""
@@ -1041,7 +1068,7 @@ func _cmd_move(p: Dictionary, cmd: Dictionary) -> String:
 	var other = unit_at(p, to)
 	# 열 제한 검사
 	if to.has("board") and not can_place_p(p, u["aid"], _parse_key(to["board"])[0]):
-		return "%s은(는) %s에만 배치할 수 있음" % [GameData.apostle(u["aid"])["name"], GameData.ROW_NAME[GameData.apostle(u["aid"])["row"]]]
+		return "%s %s 전용" % [GameData.josa(GameData.apostle(u["aid"])["name"], "은", "는"), GameData.ROW_NAME[GameData.apostle(u["aid"])["row"]]]
 	if other != null and from.has("board") and not can_place_p(p, other["aid"], _parse_key(from["board"])[0]):
 		return "자리를 바꿀 수 없는 열"
 	# 보드 인원 제한

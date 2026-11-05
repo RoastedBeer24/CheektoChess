@@ -6,7 +6,7 @@ extends CanvasLayer
 ## 설명 글 속 밑줄 용어(Glossary)는 올리거나 누르면 용어 설명.
 
 const HOVER_DELAY := 0.35
-const HOLD_MS := 450
+const HOLD_MS := 350
 const MOVE_CANCEL := 14.0
 
 static var inst: Tips

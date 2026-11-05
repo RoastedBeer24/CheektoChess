@@ -6,13 +6,13 @@ const BG := Color("161824")
 const BG2 := Color("1f2233")
 const PANEL := Color("262a3d")
 const PANEL_LIGHT := Color("33384f")
-const LINE := Color("3d4360")
+const LINE := Color("4a5175")
 const ACCENT := Color("ffc857")
 const TEXT := Color("f2f2f7")
-const SUB := Color("b9bed3")
+const SUB := Color("cdd1e2")
 const DIM := Color("8a8fa6")
 ## 화면 어디서나 이보다 작은 글자는 쓰지 않는다 (모바일 가독성)
-const MIN_FONT := 18
+const MIN_FONT := 19
 ## 좋음/위험 색 (색약 모드면 파랑/주황) — apply_settings() 가 바꾼다
 static var GOOD := Color("5ee39b")
 static var BAD := Color("ff6b6b")
@@ -35,6 +35,35 @@ static var text_scale := 1.0
 
 static func fs(size: int) -> int:
 	return int(round(maxi(size, MIN_FONT) * text_scale))
+
+
+## 화면 크기 배율: 휴대폰처럼 화면이 작으면 글자·버튼·칸을 모두 키운다 (설정에서 바꿀 수 있음)
+static func auto_ui_scale() -> float:
+	if DisplayServer.get_name() == "headless":
+		return 1.0
+	var dpi := float(DisplayServer.screen_get_dpi())
+	var sz := DisplayServer.screen_get_size()
+	if dpi <= 0.0 or sz.y <= 0:
+		return 1.0
+	var h_in := minf(sz.x, sz.y) / dpi    # 가로 화면에서 세로 길이 (인치)
+	# 휴대폰(세로 약 2.7인치) 1.3배, 태블릿·PC 는 1.0배
+	return clampf(3.5 / maxf(0.5, h_in), 1.0, 1.35)
+
+
+## 전투 크게 보기 (시너지·순위·대기석·상점을 접고 전투만): 자동이면 화면을 키운 기기(휴대폰)에서 켬
+static func battle_full() -> bool:
+	var v := int(Settings.num("battle_full"))
+	if v == 0:
+		var t := Engine.get_main_loop() as SceneTree
+		return t != null and t.root.content_scale_factor > 1.1
+	return v == 1
+
+
+static func apply_ui_scale(root: Window) -> void:
+	var v := Settings.num("ui_scale")
+	if OS.get_environment("CHEEKTO_UI_SCALE") != "":
+		v = float(OS.get_environment("CHEEKTO_UI_SCALE"))   # 화면 시험용
+	root.content_scale_factor = v if v > 0.0 else auto_ui_scale()
 
 
 ## 설정 반영 (시작할 때와 설정을 바꿀 때)

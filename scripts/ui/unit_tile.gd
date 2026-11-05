@@ -120,12 +120,13 @@ func _init(size: Vector2 = Vector2(140, 140)) -> void:
 	sv.add_theme_constant_override("separation", -3)
 	sv.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_strip.add_child(sv)
-	_name = UI.label("", 19, UI.TEXT, HORIZONTAL_ALIGNMENT_CENTER)
+	_name = UI.label("", 22 if size.x >= 200 else 19, UI.TEXT, HORIZONTAL_ALIGNMENT_CENTER)
+	_name.add_theme_font_override("font", UI.bold())
 	_name.clip_text = true
 	_name.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	sv.add_child(_name)
 	_sub = UI.label("", 14, UI.SUB, HORIZONTAL_ALIGNMENT_CENTER)
-	_sub.add_theme_font_size_override("font_size", 16)   # 칸 안의 보조 글자는 공간이 좁아 조금 작게
+	_sub.add_theme_font_size_override("font_size", UI.fs(18 if size.x >= 200 else 16))   # 칸 안의 보조 글자는 공간이 좁아 조금 작게
 	_sub.clip_text = true
 	_sub.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	sv.add_child(_sub)

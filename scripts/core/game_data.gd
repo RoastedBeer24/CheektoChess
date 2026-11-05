@@ -142,6 +142,15 @@ static func personality_options(apostle_id: String) -> Array:
 	return apostle(apostle_id).get("personality_options", [])
 
 
+## 받침에 맞는 조사: josa("마요", "은", "는") → "마요는"
+static func josa(word: String, with_final: String, without_final: String) -> String:
+	if word == "":
+		return word
+	var c := word.unicode_at(word.length() - 1)
+	var has_final := c >= 0xAC00 and c <= 0xD7A3 and (c - 0xAC00) % 28 != 0
+	return word + (with_final if has_final else without_final)
+
+
 static func augment(id: String) -> Dictionary:
 	return _aug_by_id.get(id, {})
 

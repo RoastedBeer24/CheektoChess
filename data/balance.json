@@ -36,7 +36,7 @@
  "damage_base": 2,
  "damage_per_round_div": 3,
  "artifact_rounds": [3, 7, 11, 15],
- "monster_rounds": [1, 2, 6, 10, 14, 18],
+ "monster_rounds": [1, 2, 9, 16],
  "monster": {"count_base": 2, "count_per_round": 0.25, "count_max": 7, "power_base": 0.55, "power_per_round": 0.05, "kill_gold_max": 3},
  "carousel_rounds": [4, 9, 13, 17],
  "carousel_turn": 7,

@@ -59,6 +59,10 @@ var _row_heads: Array = []
 var _fit_k := 1.0
 var _right_panel: Control
 var _left_panel: Control
+var _players_panel: Control
+var _bench_row: Control
+var _shop_row: Control
+var _undo_btn: Button
 var _drag_layer: Control
 var _drag := {}               # 끌기 중 정보 {src, aid, star, unit, start, active, ghost, hover}
 var _suppress_click := false  # 끌기 직후 버튼 클릭 무시
@@ -136,6 +140,7 @@ func _build() -> void:
 	_battle_view = BattleView.new()
 	_battle_view.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_battle_view.visible = false
+	_battle_view.full_toggled.connect(func(): refresh())
 	cstack.add_child(_battle_view)
 	# 라운드·결과 배너: 가운데 가로 띠 + 큰 글자 + 작은 설명
 	_banner_box = PanelContainer.new()
@@ -156,9 +161,12 @@ func _build() -> void:
 	_banner_sub.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	bv.add_child(_banner_sub)
 	mid.add_child(_build_right())
+	mid.add_child(_build_players())
 
-	root.add_child(_build_bench())
-	root.add_child(_build_shop())
+	_bench_row = _build_bench()
+	root.add_child(_bench_row)
+	_shop_row = _build_shop()
+	root.add_child(_shop_row)
 
 	_overlay = Control.new()
 	_overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -185,14 +193,19 @@ func _fit_layout() -> void:
 	_right_panel.custom_minimum_size.x = 450.0 + minf(extra * 0.55, 240.0)
 	_left_panel.custom_minimum_size.x = 340.0 + minf(extra * 0.25, 80.0)
 	_apply_fit(1.0)
-	var need := _root.get_combined_minimum_size().y + 20.0
+	# 보드는 일반 Control 안에 있어 최소 높이가 위로 전해지지 않으므로 직접 더한다
+	var mid_min: float = (_root.get_child(1) as Control).get_combined_minimum_size().y
+	var board_need: float = _board_root.get_combined_minimum_size().y + 36.0
+	var need := _root.get_combined_minimum_size().y + maxf(0.0, board_need - mid_min) + 20.0
 	var over := need - avail
 	var k := 1.0
 	if over > 0.0:
-		k = clampf(1.0 - over / (BOARD_TILE * 3.0 + BENCH_TILE + SHOP_H), 0.55, 1.0)
+		k = clampf(1.0 - over / (BOARD_TILE * 3.0 + BENCH_TILE + SHOP_H), 0.5, 1.0)
 	if not is_equal_approx(k, 1.0):
 		_apply_fit(k)
 	_fit_k = k
+	if OS.get_environment("CHEEKTO_DEBUG_FIT") != "":
+		print("FIT avail=", avail, " need=", need, " k=", k, " root_min=", _root.get_combined_minimum_size())
 
 
 func _apply_fit(k: float) -> void:
@@ -205,6 +218,7 @@ func _apply_fit(k: float) -> void:
 	for t in _bench_tiles:
 		t.custom_minimum_size = Vector2(be, be)
 	_sell_btn.custom_minimum_size.y = be
+	_undo_btn.custom_minimum_size.y = be
 	var sh := roundf(SHOP_H * k)
 	for t in _shop_tiles:
 		t.custom_minimum_size.y = sh
@@ -214,6 +228,10 @@ func _apply_fit(k: float) -> void:
 
 func _build_top() -> Control:
 	var top := UI.panel(UI.PANEL, 14)
+	# 세로 공간 아끼기: 위 정보 줄은 얇게
+	var tsb: StyleBoxFlat = top.get_theme_stylebox("panel")
+	tsb.content_margin_top = 6
+	tsb.content_margin_bottom = 6
 	var h := HBoxContainer.new()
 	h.add_theme_constant_override("separation", 22)
 	top.add_child(h)
@@ -263,24 +281,24 @@ func _build_top() -> Control:
 	lv.add_child(_xp_bar)
 	lv.mouse_filter = Control.MOUSE_FILTER_STOP
 	Tips.set_tip(lv, _level_tip)
-	_offer_btn = UI.button("아티팩트 선택", 22, Vector2(190, 58), Color("8a5a1f"))
+	_offer_btn = UI.button("아티팩트 선택", 22, Vector2(190, 52), Color("8a5a1f"))
 	_offer_btn.pressed.connect(func():
 		_offer_hidden = false
 		refresh())
 	h.add_child(_offer_btn)
-	var codex := UI.button("도감", 22, Vector2(100, 58), Color("4f3586"))
+	var codex := UI.button("도감", 22, Vector2(100, 52), Color("4f3586"))
 	codex.pressed.connect(func(): add_child(Codex.new()))
 	h.add_child(codex)
 	Tips.set_tip(codex, "[b]도감[/b]\n모든 사도·아티팩트·시너지·용어를 찾아볼 수 있습니다.")
-	_ready_btn = UI.button("준비 완료", 22, Vector2(160, 58), Color("2f6b4a"))
+	_ready_btn = UI.button("준비 완료", 22, Vector2(160, 52), Color("2f6b4a"))
 	_ready_btn.pressed.connect(_on_ready_btn)
 	Tips.set_tip(_ready_btn, "[b]준비 완료[/b]  [color=#8a8fa6]［스페이스］[/color]\n사람 플레이어가 모두 준비하면 시간이 남아도 바로 전투합니다.\n전투 중에는 [b]건너뛰기[/b] — 모두 누르면 바로 다음 라운드.")
 	h.add_child(_ready_btn)
-	var setb := UI.button("설정", 22, Vector2(90, 58), Color("3a4058"))
+	var setb := UI.button("설정", 22, Vector2(90, 52), Color("3a4058"))
 	setb.pressed.connect(func(): add_child(SettingsPanel.new()))
 	Tips.set_tip(setb, "[b]설정·기록[/b]\n음량, 전투 속도, 모션·이펙트, 글자 크기, 색약 모드, 게임 기록")
 	h.add_child(setb)
-	var quit := UI.button("나가기", 22, Vector2(110, 58), Color("6b3535"))
+	var quit := UI.button("나가기", 22, Vector2(110, 52), Color("6b3535"))
 	quit.pressed.connect(_confirm_quit)
 	h.add_child(quit)
 	return top
@@ -296,16 +314,30 @@ func _build_left() -> Control:
 	lv.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	lv.add_theme_constant_override("separation", 8)
 	scroll.add_child(lv)
-	lv.add_child(UI.label("플레이어", 24, UI.ACCENT))
-	_players_box = VBoxContainer.new()
-	_players_box.add_theme_constant_override("separation", 6)
-	lv.add_child(_players_box)
-	lv.add_child(UI.hsep())
-	lv.add_child(UI.label("시너지", 24, UI.ACCENT))
+	lv.add_child(UI.label("시너지", 26, UI.ACCENT))
 	_syn_box = VBoxContainer.new()
 	_syn_box.add_theme_constant_override("separation", 6)
 	lv.add_child(_syn_box)
 	return left
+
+
+## 오른쪽 끝 순위 줄: 대표 사진 + 체력 (누르면 그 보드)
+func _build_players() -> Control:
+	var panel := UI.panel()
+	panel.custom_minimum_size.x = 150
+	_players_panel = panel
+	var scroll := DragScroll.new(UI.PANEL)
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	panel.add_child(scroll)
+	var v := VBoxContainer.new()
+	v.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	v.add_theme_constant_override("separation", 6)
+	scroll.add_child(v)
+	v.add_child(UI.label("순위", 22, UI.ACCENT, HORIZONTAL_ALIGNMENT_CENTER))
+	_players_box = VBoxContainer.new()
+	_players_box.add_theme_constant_override("separation", 6)
+	v.add_child(_players_box)
+	return panel
 
 
 func _build_right() -> Control:
@@ -351,12 +383,9 @@ func _build_board() -> Control:
 	var v := VBoxContainer.new()
 	v.alignment = BoxContainer.ALIGNMENT_CENTER
 	v.add_theme_constant_override("separation", 10)
-	var bih := HBoxContainer.new()
-	bih.alignment = BoxContainer.ALIGNMENT_CENTER
-	bih.add_theme_constant_override("separation", 14)
-	v.add_child(bih)
-	_board_info = UI.label("", 22, UI.SUB, HORIZONTAL_ALIGNMENT_CENTER)
-	bih.add_child(_board_info)
+	_board_info = UI.label("", 20, UI.SUB, HORIZONTAL_ALIGNMENT_CENTER)
+	_board_info.mouse_filter = Control.MOUSE_FILTER_STOP
+	Tips.set_tip(_board_info, func(): return "[b]보드 인원[/b]\n보드에 올릴 수 있는 사도 수 = 레벨%s" % (" (+1 확장 보드)" if Match.has_aug(me(), "board_plus") else ""))
 	# 다음 상대 미리보기 (누르면 그 사람 보드)
 	_next_btn = UI.button("", 18, Vector2(0, 40), Color("5a2f3a"))
 	_next_btn.visible = false
@@ -364,11 +393,11 @@ func _build_board() -> Control:
 		var opp: String = _next_btn.get_meta("pid", "")
 		if opp != "":
 			_show_player(opp))
-	bih.add_child(_next_btn)
 	var heads := HBoxContainer.new()
 	heads.alignment = BoxContainer.ALIGNMENT_CENTER
 	heads.add_theme_constant_override("separation", 14)
 	v.add_child(heads)
+	heads.add_child(_board_info)
 	var grid := GridContainer.new()
 	grid.columns = 3
 	grid.add_theme_constant_override("h_separation", 14)
@@ -378,7 +407,10 @@ func _build_board() -> Control:
 	v.add_child(cc)
 	# 화면 왼쪽부터 후열 · 중열 · 전열 (오른쪽이 적 방향)
 	for r in [2, 1, 0]:
-		var chip := UI.panel(UI.PANEL_LIGHT, 10)
+		var chip := UI.panel(UI.PANEL_LIGHT, 8)
+		var csb: StyleBoxFlat = chip.get_theme_stylebox("panel")
+		csb.content_margin_top = 2
+		csb.content_margin_bottom = 2
 		chip.custom_minimum_size.x = 170
 		_row_heads.append(chip)
 		chip.add_child(UI.label(GameData.ROW_NAME[GameData.ROWS[r]], 22, UI.TEXT, HORIZONTAL_ALIGNMENT_CENTER))
@@ -397,10 +429,7 @@ func _build_board() -> Control:
 			_board_tiles[key] = t
 	# 적 방향 표시는 열 이름 줄 오른쪽에 (아래에 두면 좁은 화면에서 대기석과 겹침)
 	heads.add_child(UI.label("적 ▶▶", 20, UI.BAD.lightened(0.2), HORIZONTAL_ALIGNMENT_LEFT))
-	var pad := Control.new()
-	pad.custom_minimum_size.x = 40
-	heads.add_child(pad)
-	heads.move_child(pad, 0)
+	heads.add_child(_next_btn)
 	return v
 
 
@@ -430,6 +459,12 @@ func _build_bench() -> Control:
 	_sell_btn.pressed.connect(_on_sell)
 	Tips.set_tip(_sell_btn, "[b]판매[/b]  [color=#8a8fa6]［E］[/color]\n사도를 여기로 끌어다 놓거나, 사도를 고른 뒤 누르면 판매합니다.\n판매 가격 = 코스트 × (★1: 1, ★2: 3, ★3: 9). 장착한 아티팩트는 보관함으로 돌아옵니다.")
 	bench.add_child(_sell_btn)
+	# 판매 되돌리기 (이번 준비 단계에서 마지막으로 판 사도)
+	_undo_btn = UI.button("", 18, Vector2(130, 124), Color("4a3f2b"))
+	_undo_btn.visible = false
+	_undo_btn.pressed.connect(func(): App.session.submit({"t": "undo_sell"}))
+	Tips.set_tip(_undo_btn, "[b]판매 되돌리기[/b]\n이번 준비 단계에서 마지막으로 판 사도를 판 값 그대로 다시 데려옵니다 (아티팩트는 보관함에 남음).")
+	bench.add_child(_undo_btn)
 	return bench
 
 
@@ -542,6 +577,16 @@ func refresh() -> void:
 	_battle_view.visible = phase == "battle"
 	# 전투 중에는 오른쪽 정보 패널을 접어 전투 화면을 넓게 (전투 중에는 장착·합성 불가)
 	_right_panel.visible = phase != "battle"
+	# '크게 보기': 전투 중 시너지·순위·대기석·상점도 접어 전투만
+	var full: bool = phase == "battle" and UI.battle_full()
+	_left_panel.visible = not full
+	_players_panel.visible = not full
+	_bench_row.visible = not full
+	_shop_row.visible = not full
+	var ls: Dictionary = p.get("last_sold", {})
+	_undo_btn.visible = prep and not ls.is_empty() and int(ls.get("round", -1)) == int(App.session.state.get("round", 0))
+	if _undo_btn.visible:
+		_undo_btn.text = "판매 취소\n%s\n-%d골드" % [GameData.apostle(ls["unit"]["aid"]).get("name", ""), int(ls["value"])]
 	_refresh_players()
 	_refresh_synergy()
 	_refresh_board()
@@ -555,6 +600,7 @@ func refresh() -> void:
 
 func _on_phase_changed(phase: String, rnd: int) -> void:
 	var st := App.session.state
+	_fit_layout.call_deferred()
 	if phase == "prep":
 		_offer_hidden = false
 	sel = {}
@@ -662,36 +708,46 @@ func _refresh_players() -> void:
 		var sb: StyleBoxFlat = row.get_theme_stylebox("panel")
 		sb.content_margin_top = 4
 		sb.content_margin_bottom = 4
-		row.custom_minimum_size.y = 46
+		sb.content_margin_left = 4
+		sb.content_margin_right = 4
+		row.custom_minimum_size.y = 58
 		var h := HBoxContainer.new()
-		h.add_theme_constant_override("separation", 6)
+		h.add_theme_constant_override("separation", 5)
 		row.add_child(h)
+		var av_box := Control.new()
+		av_box.custom_minimum_size = Vector2(46, 46)
+		h.add_child(av_box)
 		if String(p.get("avatar", "")) != "":
-			var av := UI.tex_rect(UI.portrait(p["avatar"]), Vector2(34, 34), true)
+			var av := UI.tex_rect(UI.portrait(p["avatar"]), Vector2(46, 46), true)
 			if not p["alive"]:
 				av.modulate = Color(1, 1, 1, 0.4)
-			h.add_child(av)
-		var name_l := UI.label("%d %s" % [rank, p["name"]], 19, UI.ACCENT if mine else (UI.TEXT if p["alive"] else UI.SUB))
-		name_l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		name_l.clip_text = true
-		h.add_child(name_l)
+			av_box.add_child(av)
+		var rk := UI.outlined(str(rank), 16, UI.ACCENT if rank <= 4 else UI.TEXT, 4, HORIZONTAL_ALIGNMENT_LEFT)
+		rk.position = Vector2(-2, -6)
+		av_box.add_child(rk)
+		var col := VBoxContainer.new()
+		col.add_theme_constant_override("separation", 0)
+		col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		h.add_child(col)
+		var tag := ""
 		if not p["alive"]:
-			h.add_child(UI.label("%d위" % int(p["place"]), 17, UI.SUB))
+			tag = "%d위" % int(p["place"])
 			row.modulate.a = 0.55
+		elif not p["connected"]:
+			tag = "끊김"
+		elif p.get("ready", false) and App.session.state["phase"] == "prep" and not p["bot"]:
+			tag = "준비✓"
+		var name_l := UI.label(String(p["name"]), 16, UI.ACCENT if mine else UI.TEXT)
+		name_l.clip_text = true
+		name_l.custom_minimum_size.x = 10
+		col.add_child(name_l)
+		if p["alive"]:
+			var hp := maxi(0, int(p["hp"]))
+			var hl := UI.label("♥%d%s" % [hp, ("  " + tag) if tag != "" else ""], 17, UI.GOOD if hp > 30 else UI.BAD)
+			hl.add_theme_font_override("font", UI.bold())
+			col.add_child(hl)
 		else:
-			if not p["connected"]:
-				h.add_child(UI.label("끊김", 15, UI.BAD))
-			elif p.get("ready", false) and App.session.state["phase"] == "prep" and not p["bot"]:
-				h.add_child(UI.label("준비", 15, UI.GOOD))
-			h.add_child(UI.label("Lv%d" % int(p["level"]), 16, UI.SUB))
-			var hb := UI.bar(UI.GOOD if int(p["hp"]) > 30 else UI.BAD, 8)
-			hb.value = 100.0 * maxi(0, int(p["hp"])) / float(B()["player_hp"])
-			hb.custom_minimum_size.x = 60
-			hb.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-			h.add_child(hb)
-			var hl := UI.label("%d" % maxi(0, int(p["hp"])), 17, UI.TEXT, HORIZONTAL_ALIGNMENT_RIGHT)
-			hl.custom_minimum_size.x = 34
-			h.add_child(hl)
+			col.add_child(UI.label(tag, 16, UI.SUB))
 		_players_box.add_child(row)
 
 
@@ -753,7 +809,10 @@ func _refresh_synergy() -> void:
 			# 지금 적용 중인 단계의 효과 (고유 시너지는 효과 전체)
 			var lines: Array = UI.syn_lines(n)
 			var now_text: String = lines[1].get(int(tl[active - 1]), lines[0])
-			v.add_child(UI.wrap_label(now_text, 18, UI.SUB))
+			var wl := UI.wrap_label(now_text, 18, UI.SUB)
+			wl.max_lines_visible = 2   # 길면 두 줄까지 (전체는 꾹 눌러 팝업에서)
+			wl.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+			v.add_child(wl)
 		_syn_box.add_child(row)
 	if names.is_empty():
 		_syn_box.add_child(UI.wrap_label("보드에 사도를 올리면 시너지가 표시됩니다.", 18))
@@ -849,7 +908,8 @@ func _refresh_board() -> void:
 			if not _merge_pairs(u).is_empty():
 				t.set_corner("◆ 합성", Color("c9a7ff"))
 		t.set_selected(sel.get("unit", {}) == {"board": key})
-	_board_info.text = "보드 %d / %d   (레벨만큼 올릴 수 있음%s)" % [p.get("board", {}).size(), Match.board_cap(p), ", 확장 보드 +1" if Match.has_aug(p, "board_plus") else ""]
+	_board_info.text = "보드 %d/%d" % [p.get("board", {}).size(), Match.board_cap(p)]
+	_board_info.add_theme_color_override("font_color", UI.GOOD if p.get("board", {}).size() >= Match.board_cap(p) else UI.ACCENT)
 	_refresh_next_opp()
 
 
@@ -1019,7 +1079,7 @@ func _refresh_next_opp() -> void:
 	if st.get("phase", "") != "prep" or not me().get("alive", false):
 		return
 	if st.get("round_kind", "pvp") == "monster":
-		_next_btn.text = "다음 상대: 그림자 몬스터"
+		_next_btn.text = "다음: 몬스터"
 		_next_btn.set_meta("pid", "")
 		_next_btn.visible = true
 		return
@@ -1035,7 +1095,7 @@ func _refresh_next_opp() -> void:
 			continue
 		var who: String = opp if opp != "" else ghost
 		var nm: String = String(st["players"].get(who, {}).get("name", "?"))
-		_next_btn.text = "다음 상대: %s%s  ▶ 보드 보기" % [nm, " (유령)" if opp == "" else ""]
+		_next_btn.text = "다음: %s%s" % [nm, " (유령)" if opp == "" else ""]
 		_next_btn.set_meta("pid", who)
 		_next_btn.visible = true
 		return
@@ -1570,7 +1630,7 @@ func _on_held(src: Dictionary) -> void:
 	_drag = {"src": src, "aid": aid, "star": star, "unit": unit, "start": get_global_mouse_position(), "active": false, "hover": null, "t0": Time.get_ticks_msec()}
 
 
-const LONG_PRESS_MS := 450
+const LONG_PRESS_MS := 350
 var _long_fired := false
 var _syn_popup: Control
 
@@ -1775,7 +1835,22 @@ func _target_at(pos: Vector2):
 			return {"bench": i}
 	if _sell_btn.get_global_rect().has_point(pos):
 		return {"sell": true}
-	return null
+	# 칸 사이·가장자리에 놓아도 가장 가까운 칸으로 (칸 크기의 0.75 안)
+	var best = null
+	var best_d := INF
+	for key in _board_tiles:
+		var r: Rect2 = _board_tiles[key].get_global_rect()
+		var d := r.get_center().distance_to(pos)
+		if d < best_d and d < r.size.x * 0.75:
+			best_d = d
+			best = {"board": key}
+	for i in _bench_tiles.size():
+		var r: Rect2 = _bench_tiles[i].get_global_rect()
+		var d := r.get_center().distance_to(pos)
+		if d < best_d and d < r.size.x * 0.75:
+			best_d = d
+			best = {"bench": i}
+	return best
 
 
 ## 놓을 수 있는지 검사: {ok, text}

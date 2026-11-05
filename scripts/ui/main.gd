@@ -78,7 +78,8 @@ func show_toast(msg: String, secs: float = 2.5) -> void:
 func _place_toast() -> void:
 	_toast.reset_size()
 	var vp := get_viewport_rect().size
-	_toast.position = Vector2((vp.x - _toast.size.x) / 2.0, 96)
+	# 화면 아래쪽 (상점 위) — 보드·상단 정보를 가리지 않게
+	_toast.position = Vector2((vp.x - _toast.size.x) / 2.0, 8.0)   # 위 정보 줄 위 (보드·대기석을 가리지 않게)
 
 
 func _set_screen(c: Control) -> void:

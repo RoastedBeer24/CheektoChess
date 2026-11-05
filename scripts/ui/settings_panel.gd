@@ -81,6 +81,7 @@ func _build_settings() -> void:
 	_toggle("전투 이펙트 (탄환·타격·스킬 빛)", "effects")
 	_toggle("화면 흔들림 (치명타·궁극기)", "screen_shake")
 	Info.section(_body, "화면·조작")
+	_choice("화면 크기 (버튼·칸·글자 전체 — 휴대폰은 자동으로 크게)", "ui_scale", [["자동 (%.2f배)" % UI.auto_ui_scale(), 0.0], ["1배", 1.0], ["1.15배", 1.15], ["1.3배", 1.3]])
 	_choice("글자 크기 (다음에 여는 화면부터)", "text_scale", [["보통", 1.0], ["크게", 1.15], ["아주 크게", 1.3]])
 	_toggle("색약 모드 (좋음=파랑, 위험=주황)", "colorblind")
 	_toggle("상점 구매 추천 (보드에 올리면 시너지 단계가 오르는 사도에 ▲ 표시)", "shop_hint")
@@ -127,6 +128,8 @@ func _choice(title: String, key: String, opts: Array) -> void:
 		b.pressed.connect(func():
 			Settings.set_value(key, v)
 			UI.apply_settings()
+			if key == "ui_scale":
+				UI.apply_ui_scale(get_tree().root)
 			_set_tab("settings"))
 		h.add_child(b)
 

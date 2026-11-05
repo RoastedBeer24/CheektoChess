@@ -18,7 +18,9 @@ const DEFAULTS := {
 	"tutorial_done": false,
 	"rules": {},
 	"avatar": "",
-	"shop_hint": true,      # 상점 구매 추천 표시
+	"shop_hint": true,
+	"ui_scale": 0.0,
+	"battle_full": 0,       # 전투 크게 보기: 0 자동(휴대폰은 켬), 1 켬, 2 끔        # 화면 크기 배율: 0 = 자동(휴대폰은 크게), 그 외 그 값      # 상점 구매 추천 표시
 	"motion_quality": 1,    # 모션 화질: 1 높음, 0 낮음(저사양: 메모리 1/4)           # 프로필 대표 사도 (사도 id)            # 방 규칙 (방장·혼자 하기): {fast, augments, hp, gold, prep}
 }
 

@@ -20,6 +20,8 @@ static func start(root: Node) -> void:
 	started = true
 	_load_extra_packs()
 	GameData.load_all()
+	if root is Window:
+		UI.apply_ui_scale(root)
 	var v := _read_json("res://version.json")
 	build = int(v.get("build", 0))
 	if OS.get_environment("CHEEKTO_BUILD") != "":
