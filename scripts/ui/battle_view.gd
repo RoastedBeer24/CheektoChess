@@ -342,12 +342,11 @@ func _show_stats(side: int = -1) -> void:
 			mvp_v = v
 			mvp = u["i"]
 	var panel := UI.panel(Color(0.06, 0.07, 0.11, 0.95), 14, UI.LINE, 2)
-	var v := VBoxContainer.new()
-	v.add_theme_constant_override("separation", 6)
-	panel.add_child(v)
+	var outer := VBoxContainer.new()
+	outer.add_theme_constant_override("separation", 6)
+	panel.add_child(outer)
 	var head := HBoxContainer.new()
 	head.add_theme_constant_override("separation", 10)
-	v.add_child(head)
 	var t := UI.label("전투 통계", 24, UI.ACCENT)
 	t.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	head.add_child(t)
@@ -356,9 +355,17 @@ func _show_stats(side: int = -1) -> void:
 		var sdk: int = sd
 		b.pressed.connect(func(): _show_stats(sdk))
 		head.add_child(b)
+	outer.add_child(head)
 	var legend := HBoxContainer.new()
 	legend.add_theme_constant_override("separation", 14)
-	v.add_child(legend)
+	outer.add_child(legend)
+	# 사도 목록은 스크롤 (전투 화면 안에 들어오게 — 아래 대기석·상점에 가리지 않음)
+	var sc := ScrollContainer.new()
+	sc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	outer.add_child(sc)
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 6)
+	sc.add_child(v)
 	for pair in STAT_KINDS:
 		legend.add_child(UI.label("■ " + pair[1], 16, pair[2]))
 	for u in mine:
@@ -394,8 +401,11 @@ func _show_stats(side: int = -1) -> void:
 			bh.add_child(vl)
 			bars.add_child(bh)
 	add_child(panel)
+	var list_min := v.get_combined_minimum_size()
+	var room := maxf(120.0, size.y - 90.0 - 70.0 - outer.get_combined_minimum_size().y + sc.get_combined_minimum_size().y)
+	sc.custom_minimum_size = Vector2(list_min.x, minf(list_min.y, room))
 	panel.reset_size()
-	panel.position = Vector2((size.x - panel.size.x) / 2.0, maxf(70.0, (size.y - panel.size.y) / 2.0 + 20.0))
+	panel.position = Vector2((size.x - panel.size.x) / 2.0, clampf((size.y - panel.size.y) / 2.0, 60.0, maxf(60.0, size.y - panel.size.y - 64.0)))
 	panel.modulate.a = 0.0
 	create_tween().tween_property(panel, "modulate:a", 1.0, 0.2)
 	_stats_panel = panel
@@ -644,8 +654,9 @@ func _center(i: int) -> Vector2:
 	return _foot(i) - Vector2(0, _char_h(i) * 0.5)
 
 
+## 직접 그린 전투 이펙트(고리·베기·탄환·바닥 빛)는 뺐다 — 모션·피해 숫자·이름표·스킬 이름만
 func _fx_on() -> bool:
-	return Settings.flag("effects")
+	return false
 
 
 func _fx_at(i: int, kind: String, color: Color, dur: float, r: float) -> void:
@@ -690,7 +701,7 @@ func _fx_skill(src: int, senior: bool, sname: String) -> void:
 
 
 func _shake_cam(t: float) -> void:
-	if Settings.flag("screen_shake") and _fx_on():
+	if Settings.flag("screen_shake"):
 		_shake = maxf(_shake, t)
 
 

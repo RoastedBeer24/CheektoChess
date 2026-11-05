@@ -78,7 +78,6 @@ func _build_settings() -> void:
 	_toggle("전투 모션 (끄면 초상화 카드로 싸움 — 저사양 기기용)", "battle_motion")
 	_toggle("준비 단계 보드에서 사도 모션", "board_motion")
 	_choice("모션 화질 (낮음: 메모리 1/4 — 저사양 기기용, 다음 전투부터)", "motion_quality", [["높음", 1], ["낮음", 0]])
-	_toggle("전투 이펙트 (탄환·타격·스킬 빛)", "effects")
 	_toggle("화면 흔들림 (치명타·궁극기)", "screen_shake")
 	Info.section(_body, "화면·조작")
 	_choice("화면 크기 (버튼·칸·글자 전체 — 휴대폰은 자동으로 크게)", "ui_scale", [["자동 (%.2f배)" % UI.auto_ui_scale(), 0.0], ["1배", 1.0], ["1.15배", 1.15], ["1.3배", 1.3]])

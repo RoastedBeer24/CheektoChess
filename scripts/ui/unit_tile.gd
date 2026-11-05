@@ -285,6 +285,7 @@ func set_unit(unit: Dictionary, sub_text: String = "", border: Color = Color.TRA
 	_name.add_theme_color_override("font_color", UI.TEXT)
 	_sub.text = sub_text
 	_sub.visible = sub_text != ""
+	_fit_texts()
 	_stars.text = UI.stars(int(unit.get("star", 0)))
 	_stars.add_theme_color_override("font_color", UI.ACCENT)
 	_badge.text = ""
@@ -337,9 +338,31 @@ func _set_icons(unit: Dictionary) -> void:
 
 
 func _notification(what: int) -> void:
-	if what == NOTIFICATION_RESIZED and _motion != null:
-		_motion.size = Vector2(size.x, size.y - 36.0)
-		_motion.box = _motion.size.y / 0.82
+	if what == NOTIFICATION_RESIZED:
+		if _motion != null:
+			_motion.size = Vector2(size.x, size.y - 36.0)
+			_motion.box = _motion.size.y / 0.82
+		_fit_texts()
+
+
+## 칸이 작아지면 글자를 맞춘다: 이름은 칸 너비에 맞게 글자 크기를 줄이고, 낮은 칸에서는 둘째 줄(보조 글)을 숨김
+func _fit_texts() -> void:
+	if _name == null or size.x <= 0.0:
+		return
+	var base := UI.fs(22 if custom_minimum_size.x >= 200 else 19)
+	# 낮은 칸(휴대폰 대기석 등): 이름 띠가 칸 아래로 밀려나지 않게 글자를 줄임
+	if size.y < 100.0:
+		base = mini(base, int(size.y * 0.17) + 1)
+	if _stars != null:
+		_stars.add_theme_font_size_override("font_size", 18 if size.y >= 100.0 else 14)
+	var font: Font = _name.get_theme_font("font")
+	var avail := size.x - 10.0
+	var fsz := base
+	while fsz > 12 and font.get_string_size(_name.text, HORIZONTAL_ALIGNMENT_LEFT, -1, fsz).x > avail:
+		fsz -= 1
+	_name.add_theme_font_size_override("font_size", fsz)
+	if _sub != null:
+		_sub.visible = _sub.text != "" and size.y >= 108.0
 
 
 func _process(delta: float) -> void:

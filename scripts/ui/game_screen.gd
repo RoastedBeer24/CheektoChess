@@ -63,6 +63,8 @@ var _players_panel: Control
 var _bench_row: Control
 var _shop_row: Control
 var _undo_btn: Button
+var _odds_lbls: Array = []
+var _odds_title: Label
 var _sel_bar: PanelContainer
 var _sel_lbl: Label
 var _drag_layer: Control
@@ -169,9 +171,10 @@ func _build() -> void:
 	cstack.add_child(_sel_bar)
 	# 라운드·결과 배너: 가운데 가로 띠 + 큰 글자 + 작은 설명
 	_banner_box = PanelContainer.new()
-	_banner_box.set_anchors_preset(Control.PRESET_HCENTER_WIDE)
-	_banner_box.offset_top = -70
-	_banner_box.offset_bottom = 70
+	# 보드 위쪽 얇은 띠 (사도·칸을 가리지 않게)
+	_banner_box.set_anchors_preset(Control.PRESET_TOP_WIDE)
+	_banner_box.offset_top = 0
+	_banner_box.offset_bottom = 0
 	_banner_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_banner_box.modulate.a = 0.0
 	cstack.add_child(_banner_box)
@@ -180,10 +183,10 @@ func _build() -> void:
 	bv.add_theme_constant_override("separation", 0)
 	bv.mouse_filter = Control.MOUSE_FILTER_IGNORE   # 배너가 보드 가운데 줄 터치를 가로채지 않게
 	_banner_box.add_child(bv)
-	_banner = UI.outlined("", 60, UI.ACCENT, 12)
+	_banner = UI.outlined("", 34, UI.ACCENT, 8)
 	_banner.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	bv.add_child(_banner)
-	_banner_sub = UI.outlined("", 24, UI.TEXT, 6)
+	_banner_sub = UI.outlined("", 20, UI.TEXT, 5)
 	_banner_sub.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	bv.add_child(_banner_sub)
 	mid.add_child(_build_right())
@@ -218,17 +221,19 @@ func _fit_layout() -> void:
 	var extra := maxf(0.0, get_viewport_rect().size.x - 1920.0)
 	_right_panel.custom_minimum_size.x = 450.0 + minf(extra * 0.55, 240.0)
 	_left_panel.custom_minimum_size.x = 340.0 + minf(extra * 0.25, 80.0)
-	_apply_fit(1.0)
-	# 보드는 일반 Control 안에 있어 최소 높이가 위로 전해지지 않으므로 직접 더한다
-	var mid_min: float = (_root.get_child(1) as Control).get_combined_minimum_size().y
-	var board_need: float = _board_root.get_combined_minimum_size().y + 36.0
-	var need := _root.get_combined_minimum_size().y + maxf(0.0, board_need - mid_min) + 20.0
-	var over := need - avail
+	# 보드는 일반 Control 안에 있어 최소 높이가 위로 전해지지 않으므로 직접 더한다.
+	# 다른 패널(보관함 등)의 최소 높이는 줄지 않으므로, 실제로 들어갈 때까지 몇 번 다시 맞춘다
 	var k := 1.0
-	if over > 0.0:
-		k = clampf(1.0 - over / (BOARD_TILE * 3.0 + BENCH_TILE + SHOP_H), 0.5, 1.0)
-	if not is_equal_approx(k, 1.0):
+	var need := 0.0
+	for it in 6:
 		_apply_fit(k)
+		var mid_min: float = (_root.get_child(1) as Control).get_combined_minimum_size().y
+		var board_need: float = _board_root.get_combined_minimum_size().y + 36.0
+		need = _root.get_combined_minimum_size().y + maxf(0.0, board_need - mid_min) + 44.0
+		var over := need - avail
+		if over <= 0.5 or k <= 0.45:
+			break
+		k = clampf(k - over / (BOARD_TILE * 3.0 + BENCH_TILE + SHOP_H) - 0.005, 0.45, 1.0)
 	_fit_k = k
 	if OS.get_environment("CHEEKTO_DEBUG_FIT") != "":
 		print("FIT avail=", avail, " need=", need, " k=", k, " root_min=", _root.get_combined_minimum_size())
@@ -498,8 +503,36 @@ func _build_shop() -> Control:
 	var shop := HBoxContainer.new()
 	shop.add_theme_constant_override("separation", 8)
 	shop.alignment = BoxContainer.ALIGNMENT_CENTER
+	# 지금 레벨의 코스트별 등장 확률
+	var odds := UI.panel(UI.BG2, 10, UI.LINE, 2)
+	odds.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	odds.mouse_filter = Control.MOUSE_FILTER_STOP
+	Tips.set_tip(odds, _odds_tip)
+	var ov := VBoxContainer.new()
+	ov.add_theme_constant_override("separation", 2)
+	ov.alignment = BoxContainer.ALIGNMENT_CENTER
+	odds.add_child(ov)
+	# 제목은 첫 줄 왼쪽 작은 글씨 (상점 칸보다 높아지지 않게 두 줄로)
+	_odds_title = UI.label("", 15, UI.SUB, HORIZONTAL_ALIGNMENT_CENTER)
+	_odds_title.visible = false
+	var og := GridContainer.new()
+	og.columns = 5
+	og.add_theme_constant_override("h_separation", 8)
+	og.add_theme_constant_override("v_separation", 0)
+	ov.add_child(og)
+	for c in range(1, 6):
+		var cl := UI.label("%d코" % c, 17, UI.COST_COLOR[c - 1].lightened(0.25), HORIZONTAL_ALIGNMENT_CENTER)
+		cl.add_theme_font_override("font", UI.bold())
+		cl.custom_minimum_size.x = 40
+		og.add_child(cl)
+	for c in range(1, 6):
+		var pl := UI.label("", 17, UI.TEXT, HORIZONTAL_ALIGNMENT_CENTER)
+		pl.add_theme_font_override("font", UI.bold())
+		og.add_child(pl)
+		_odds_lbls.append(pl)
+	shop.add_child(odds)
 	for i in int(B()["shop_size"]):
-		var t := UnitTile.new(Vector2(226, 124))
+		var t := UnitTile.new(Vector2(206, 124))
 		var idx := i
 		t.pressed.connect(func():
 			if _take_suppress():
@@ -666,8 +699,8 @@ func _show_banner(text: String, color: Color, sub: String = "") -> void:
 	band.border_color = Color(color, 0.8)
 	band.border_width_top = 3
 	band.border_width_bottom = 3
-	band.content_margin_top = 8
-	band.content_margin_bottom = 8
+	band.content_margin_top = 4
+	band.content_margin_bottom = 4
 	_banner_box.add_theme_stylebox_override("panel", band)
 	var tw := create_tween()
 	_banner_box.modulate.a = 0.0
@@ -676,7 +709,7 @@ func _show_banner(text: String, color: Color, sub: String = "") -> void:
 	tw.set_parallel(true)
 	tw.tween_property(_banner_box, "modulate:a", 1.0, 0.18)
 	tw.tween_property(_banner_box, "scale", Vector2.ONE, 0.22).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	tw.chain().tween_interval(1.2)
+	tw.chain().tween_interval(1.6)
 	tw.chain().tween_property(_banner_box, "modulate:a", 0.0, 0.45)
 
 
@@ -766,6 +799,7 @@ func _refresh_players() -> void:
 			tag = "준비✓"
 		var name_l := UI.label(String(p["name"]), 16, UI.ACCENT if mine else UI.TEXT)
 		name_l.clip_text = true
+		name_l.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 		name_l.custom_minimum_size.x = 10
 		col.add_child(name_l)
 		if p["alive"]:
@@ -961,7 +995,37 @@ func _owned_count(p: Dictionary, aid: String) -> int:
 	return n
 
 
+## 코스트별 등장 확률 (지금 레벨 / 툴팁에 다음 레벨)
+func _odds_row(level: int) -> Array:
+	return B()["shop_odds"][clampi(level, 1, 9) - 1]
+
+
+func _odds_tip() -> String:
+	var lv := int(me().get("level", 1))
+	var out := "[b]상점 등장 확률[/b]  (코스트 1~5)\n"
+	for l in [lv, lv + 1]:
+		if l > int(B()["max_level"]):
+			continue
+		var row: Array = _odds_row(l)
+		var parts := []
+		for i in row.size():
+			parts.append("[color=#%s]%d코 %d%%[/color]" % [UI.COST_COLOR[i].lightened(0.3).to_html(false), i + 1, int(row[i])])
+		out += "Lv %d%s: %s\n" % [l, " (지금)" if l == lv else " (다음)", "  ".join(parts)]
+	return out.strip_edges()
+
+
+func _refresh_odds() -> void:
+	var lv := int(me().get("level", 1))
+	var row: Array = _odds_row(lv)
+	_odds_title.text = "Lv%d" % lv
+	for i in _odds_lbls.size():
+		var v := int(row[i]) if i < row.size() else 0
+		_odds_lbls[i].text = "%d%%" % v
+		_odds_lbls[i].add_theme_color_override("font_color", UI.TEXT if v > 0 else Color(1, 1, 1, 0.3))
+
+
 func _refresh_bench_shop() -> void:
+	_refresh_odds()
 	var p := me()
 	var prep: bool = App.session.state.get("phase", "") == "prep" and p.get("alive", false)
 	var bench: Array = p.get("bench", [])
@@ -1109,9 +1173,8 @@ func _refresh_sel_bar(prep: bool) -> void:
 		if merge_mode:
 			text = "합성: 같은 등급 아티팩트를 누르세요"
 		elif where.has("inv"):
-			text = "%s: 장착할 사도를 누르세요" % nm
-	elif prep and sel.has("unit") and _unit_at(sel["unit"]) != null:
-		text = "%s: 옮길 칸이나 판매를 누르세요" % GameData.apostle(_unit_at(sel["unit"])["aid"]).get("name", "")
+			text = "장착할 사도 위로 끌어다 놓으세요"
+
 	_sel_bar.visible = text != ""
 	_sel_lbl.text = text
 	# 보드 칸 너비 안에 (취소 버튼이 밀려나지 않게)
@@ -1247,9 +1310,9 @@ func _refresh_detail() -> void:
 		"사도를 끌어다 놓아 이동. 놓을 수 있는 칸은 초록, 손가락 옆에 결과가 보입니다.",
 		"사도는 자기 열(전열/중열/후열)에만 놓을 수 있습니다. 모든열은 어디든.",
 		"같은 사도 3명이 모이면 자동 ★ 합성. '★ 합성!' 표시된 상점 카드를 사면 바로 합성됩니다.",
-		"보관함 아티팩트를 누르고 사도를 누르면 장착 (최대 3개, 임의 해제 불가).",
+		"보관함 아티팩트를 사도 위로 끌어다 놓으면 장착 (최대 3개, 임의 해제 불가).",
 		"시너지를 꾹 누르면 단계별 효과와 해당 사도 목록을 볼 수 있습니다.",
-		"왼쪽 플레이어 이름을 누르면 그 플레이어의 보드를 볼 수 있습니다.",
+		"오른쪽 순위의 플레이어를 누르면 그 플레이어의 보드를 볼 수 있습니다.",
 		"PC 단축키: D 새로고침 · F 경험치 · E 마우스 아래 사도 판매 · 스페이스 준비/건너뛰기 · F11 전체 화면",
 	]:
 		var row := HBoxContainer.new()
@@ -1426,7 +1489,6 @@ func _check_merge_fx(p: Dictionary) -> void:
 				_vibrate(60 if st < 3 else 160)
 				Sfx.play("star3" if st >= 3 else "merge")
 				Voice.say(parts[0], "Spawn", "merge")
-				_merge_burst(p, parts[0], st)
 				break
 	_star_seen = now
 	_star_init = true
@@ -1586,26 +1648,11 @@ func _on_tile(loc: Dictionary) -> void:
 		sel = {"unit": loc} if u != null else {}
 		refresh()
 		return
-	if sel.has("art"):
-		if u != null:
-			var where := _find_art(int(sel["art"]))
-			if not where.is_empty() and where.has("inv"):
-				App.session.submit({"t": "equip", "art": int(sel["art"]), "loc": loc})
-				sel = {"unit": loc}
-				refresh()
-				return
-		sel = {"unit": loc} if u != null else {}
-		refresh()
-		return
-	if sel.has("unit"):
-		var from: Dictionary = sel["unit"]
-		sel = {}
-		if from != loc:
-			_do_move(from, loc)
-		refresh()
-		return
-	if u != null:
+	# 누르면 정보만 (이동·장착은 끌어다 놓기로만). 같은 사도를 다시 누르면 선택 해제
+	if u != null and not (sel.has("unit") and sel["unit"] == loc):
 		sel = {"unit": loc}
+	else:
+		sel = {}
 	refresh()
 
 
@@ -2301,57 +2348,79 @@ func _show_game_over() -> void:
 	var v := _modal("게임 종료", "over")
 	var list: Array = st["players"].values()
 	list.sort_custom(func(a, b): return int(a["place"]) < int(b["place"]))
-	# 시상대: 1~3위의 대표 사도(별·코스트 높은 순 3명)가 모션으로
-	var podium := HBoxContainer.new()
-	podium.alignment = BoxContainer.ALIGNMENT_CENTER
-	podium.add_theme_constant_override("separation", 30)
-	v.add_child(podium)
-	for idx in mini(3, list.size()):
-		var p: Dictionary = list[idx]
-		var col := VBoxContainer.new()
-		col.alignment = BoxContainer.ALIGNMENT_END
-		podium.add_child(col)
-		var units := []
-		for k in p.get("board", {}):
-			units.append(p["board"][k])
-		units.sort_custom(func(a, b): return int(a["star"]) * 10 + GameData.cost_of.get(a["aid"], 1) > int(b["star"]) * 10 + GameData.cost_of.get(b["aid"], 1))
-		var row := HBoxContainer.new()
-		row.add_theme_constant_override("separation", -20)
-		col.add_child(row)
-		for u in units.slice(0, 3):
-			if MotionSprite.available(u["aid"]) and Settings.flag("battle_motion"):
-				var sp := MotionSprite.new(u["aid"])
+	# 1위의 MVP 사도 3인 (게임 내내 쌓은 전투 기록의 종합 점수)
+	var champ: Dictionary = list[0] if not list.is_empty() else {}
+	var tops: Array = Match.mvp_top(champ, 3)
+	if not tops.is_empty():
+		v.add_child(UI.label("1위 %s 의 MVP" % champ["name"], 30, UI.ACCENT, HORIZONTAL_ALIGNMENT_CENTER))
+		var mrow := HBoxContainer.new()
+		mrow.alignment = BoxContainer.ALIGNMENT_CENTER
+		mrow.add_theme_constant_override("separation", 18)
+		v.add_child(mrow)
+		for k in tops.size():
+			var aid: String = tops[k][0]
+			var stt: Dictionary = tops[k][1]
+			var medal: Color = [UI.ACCENT, Color("d8dde8"), Color("e0a070")][k]
+			var card := UI.panel(UI.BG2, 14, medal, 3)
+			card.custom_minimum_size = Vector2(390, 0)
+			# 가로 카드: 왼쪽 모션 · 오른쪽 기록 (세로 공간 절약)
+			var ch := HBoxContainer.new()
+			ch.add_theme_constant_override("separation", 8)
+			card.add_child(ch)
+			if MotionSprite.available(aid) and Settings.flag("battle_motion"):
+				var sp := MotionSprite.new(aid)
 				sp.face_right = true
 				sp.shadow = true
-				var h := 150.0 if idx == 0 else 120.0
-				sp.custom_minimum_size = Vector2(h * 0.75, h)
-				sp.box = h / 0.82
+				var hh := 130.0
+				sp.custom_minimum_size = Vector2(hh * 0.8, hh)
+				sp.box = hh / 0.82
 				sp.play("Victory" if sp.has_anim("Victory") else "Idle")
-				row.add_child(sp)
+				ch.add_child(sp)
 			else:
-				row.add_child(UI.tex_rect(UI.portrait(u["aid"]), Vector2(90, 90), true))
-		var medal_col: Color = [UI.ACCENT, Color("d8dde8"), Color("e0a070")][idx]
-		col.add_child(UI.label("%d위  %s" % [idx + 1, p["name"]], 30 if idx == 0 else 24, medal_col, HORIZONTAL_ALIGNMENT_CENTER))
+				ch.add_child(UI.tex_rect(UI.portrait(aid), Vector2(100, 100), true))
+			var cv := VBoxContainer.new()
+			cv.add_theme_constant_override("separation", 0)
+			cv.alignment = BoxContainer.ALIGNMENT_CENTER
+			cv.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			ch.add_child(cv)
+			cv.add_child(UI.outlined("MVP %d" % (k + 1), 22, medal, 5))
+			cv.add_child(UI.label("%s %s" % [GameData.apostle(aid).get("name", aid), UI.stars(int(stt.get("star", 1)))], 22, UI.TEXT))
+			cv.add_child(UI.label("종합 %d점" % int(Match.mvp_score(stt)), 20, medal))
+			var det := "준 피해 %d · 회복 %d\n막은 피해 %d\n처치 %d · 전투 %d" % [int(stt.get("dealt", 0)), int(stt.get("heal", 0)), int(stt.get("blocked", 0)), int(stt.get("kills", 0)), int(stt.get("battles", 0))]
+			cv.add_child(UI.label(det, 16, UI.SUB))
+			mrow.add_child(card)
+	# 순위: 두 줄로 (세로 공간 절약)
+	var grid := GridContainer.new()
+	grid.columns = 2
+	grid.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	grid.add_theme_constant_override("h_separation", 10)
+	grid.add_theme_constant_override("v_separation", 6)
+	v.add_child(grid)
 	for p in list:
 		var mine: bool = p["id"] == App.session.my_pid
 		var row := UI.panel(Color(UI.ACCENT, 0.15) if mine else UI.BG2, 10, UI.ACCENT if mine else Color.TRANSPARENT, 2 if mine else 0)
-		row.custom_minimum_size.x = 520
+		row.custom_minimum_size.x = 420
+		row.custom_minimum_size.y = 0
 		var h := HBoxContainer.new()
+		h.add_theme_constant_override("separation", 10)
 		row.add_child(h)
 		var place := int(p["place"])
-		h.add_child(UI.label("%d위" % place, 30, UI.ACCENT if place == 1 else UI.TEXT))
-		var n := UI.label("   " + p["name"], 28, UI.TEXT)
+		h.add_child(UI.label("%d위" % place, 24, UI.ACCENT if place == 1 else UI.TEXT))
+		if String(p.get("avatar", "")) != "":
+			h.add_child(UI.tex_rect(UI.portrait(p["avatar"]), Vector2(34, 34), true))
+		var n := UI.label(p["name"], 22, UI.TEXT)
 		n.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		n.clip_text = true
 		h.add_child(n)
-		v.add_child(row)
+		grid.add_child(row)
 	var bh := HBoxContainer.new()
 	bh.add_theme_constant_override("separation", 14)
 	v.add_child(bh)
-	var rl := UI.button("라운드 기록 · 다시보기", 24, Vector2(0, 70), Color("4a3f6b"))
+	var rl := UI.button("라운드 기록 · 다시보기", 24, Vector2(0, 62), Color("4a3f6b"))
 	rl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	rl.pressed.connect(func(): _show_round_log(true))
 	bh.add_child(rl)
-	var b := UI.button("처음 화면으로", 26, Vector2(0, 70), Color("2f4f86"))
+	var b := UI.button("처음 화면으로", 26, Vector2(0, 62), Color("2f4f86"))
 	b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	b.pressed.connect(App.session.leave)
 	bh.add_child(b)

@@ -195,7 +195,7 @@ static func apostle(box: Control, u: Dictionary, on_art: Callable = Callable(), 
 			b.pressed.connect(func(): on_art.call(uid))
 		tp.add_child(b)
 	if arts.is_empty():
-		tp.add_child(UI.wrap_label("보관함의 아티팩트를 이 사도 위로 끌어다 놓거나, 아티팩트를 누른 뒤 이 사도를 누르면 장착합니다.", 18, UI.SUB))
+		tp.add_child(UI.wrap_label("보관함의 아티팩트를 이 사도 위로 끌어다 놓으면 장착합니다.", 18, UI.SUB))
 	show.call(apostle_tab if pages.has(apostle_tab) else "skill")
 
 
@@ -274,7 +274,7 @@ static func artifact(box: Control, art_id: String, where: String = "") -> void:
 	if where != "":
 		box.add_child(UI.hsep())
 	if where == "inv":
-		box.add_child(UI.wrap_label("사도 위로 끌어다 놓거나 사도를 누르면 장착합니다. 같은 등급 아티팩트 위로 끌어다 놓거나 [합성]을 누르면 합칠 수 있습니다.", 18))
+		box.add_child(UI.wrap_label("사도 위로 끌어다 놓으면 장착합니다. 같은 등급 아티팩트 위로 끌어다 놓거나 [합성]을 누르면 합칠 수 있습니다.", 18))
 	elif where == "equipped":
 		box.add_child(UI.wrap_label("장착 중인 아티팩트는 뺄 수 없지만 [합성] 재료로는 쓸 수 있습니다.", 18))
 

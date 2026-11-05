@@ -276,7 +276,7 @@ func _start_carousel(r: int) -> void:
 	for i in ids.size() + 2:
 		var cands := []
 		for aid in GameData.roster:
-			if GameData.cost_of[aid] <= max_cost and GameData.cost_of[aid] >= max_cost - 2:
+			if GameData.cost_of[aid] <= max_cost and GameData.cost_of[aid] >= max_cost - 2 and not is_banned(aid):
 				cands.append(aid)
 		var aid: String = cands[rng.randi_range(0, cands.size() - 1)]
 		opts.append({"aid": aid, "art": _roll_artifact(r), "by": ""})
@@ -370,6 +370,7 @@ func _start_battle() -> void:
 		var army_b := army_of(b if ghost == "" else ghost)
 		var seed := rng.randi()
 		var result := BattleSim.new(army_a, army_b, seed).run()
+		_tally(result, [a, b if ghost == "" else ""])
 		if _is_human(a) or (b != "" and _is_human(b)):
 			longest = maxf(longest, float(result["end_time"]))
 		battles.append({"a": a, "b": b, "ghost": ghost, "seed": seed, "army_a": army_a, "army_b": army_b,
@@ -481,6 +482,7 @@ func _start_monster_battles() -> void:
 		var army_a := army_of(pid)
 		var army_b := monster_army(r, mr)
 		var result := BattleSim.new(army_a, army_b, seed).run()
+		_tally(result, [pid, ""])
 		if _is_human(pid):
 			longest = maxf(longest, float(result["end_time"]))
 		battles.append({"a": pid, "b": "", "ghost": "", "monster": true, "seed": seed, "army_a": army_a, "army_b": army_b,
@@ -799,7 +801,7 @@ func _refresh_shop(p: Dictionary) -> void:
 	if has_aug(p, "fated") and locks[0] != true:
 		var owned := []
 		for u in _all_units(p):
-			if int(u["star"]) < 3 and int(state["pool"].get(u["aid"], 0)) > 0 and not owned.has(u["aid"]):
+			if int(u["star"]) < 3 and int(state["pool"].get(u["aid"], 0)) > 0 and not owned.has(u["aid"]) and not is_banned(u["aid"]):
 				owned.append(u["aid"])
 		if not owned.is_empty():
 			var pick: String = owned[rng.randi_range(0, owned.size() - 1)]
@@ -825,7 +827,7 @@ func _roll_unit(odds: Array) -> String:
 		var cands := []
 		var total := 0
 		for aid in GameData.roster:
-			if GameData.cost_of[aid] == c and state["pool"][aid] > 0:
+			if GameData.cost_of[aid] == c and state["pool"][aid] > 0 and not is_banned(aid):
 				cands.append(aid)
 				total += state["pool"][aid]
 		if total == 0:
@@ -1004,6 +1006,17 @@ func _try_merge(p: Dictionary, aid: String, star: int, extra = null) -> void:
 		for a in u["arts"]:
 			p["inv"].append(a)
 	var merged := {"uid": _uid(), "aid": aid, "star": star + 1, "arts": [], "pers": kept["pers"]}
+	if star + 1 >= 3:
+		# ★3 이 나온 사도는 이 게임에서 더는 등장하지 않음 (모든 사람의 상점·공유 선택)
+		if not state.has("banned"):
+			state["banned"] = {}
+		state["banned"][aid] = true
+		for pid in state["players"]:
+			var q: Dictionary = state["players"][pid]
+			for k in q.get("shop", []).size():
+				if q["shop"][k] == aid:
+					q["shop"][k] = ""
+					state["pool"][aid] += 1
 	_set_at(p, keep, merged)
 	_log("%s %s %d성 합성" % [p["name"], GameData.apostle(aid).get("name", aid), star + 1])
 	if has_aug(p, "merge_gold"):
@@ -1254,6 +1267,77 @@ func _cmd_art_merge(p: Dictionary, cmd: Dictionary) -> String:
 
 # ─────────────────────────────── 증강 ───────────────────────────────
 
+# ─────────────────────────────── 게임 MVP ───────────────────────────────
+## 전투 결과를 사도별로 쌓는다 (플레이어 → 사도 id → 준 피해·받은 피해·막은 피해·회복·처치·전투 수)
+func _tally(result: Dictionary, owners: Array) -> void:
+	var units: Array = result.get("units", [])
+	var by_i := {}
+	for u in units:
+		by_i[int(u["i"])] = u
+	var acc := {}
+	var shield := {}
+	for e in result.get("events", []):
+		var kind: String = e[1]
+		if kind == "dmg":
+			_tally_add(acc, by_i, int(e[2]), "dealt", float(e[4]))
+			_tally_add(acc, by_i, int(e[3]), "taken", float(e[4]))
+			var before: float = shield.get(int(e[3]), 0.0)
+			if float(e[7]) < before:
+				_tally_add(acc, by_i, int(e[3]), "blocked", before - float(e[7]))
+			shield[int(e[3])] = float(e[7])
+		elif kind == "shield":
+			shield[int(e[3])] = float(e[7])
+		elif kind == "heal":
+			_tally_add(acc, by_i, int(e[2]), "heal", float(e[4]))
+		elif kind == "death" and int(e[2]) != int(e[3]):
+			_tally_add(acc, by_i, int(e[2]), "kills", 1.0)
+	for u in units:
+		var side := int(u["side"])
+		var pid: String = owners[side] if side < owners.size() else ""
+		if pid == "" or u.get("summon", false) or u.get("monster", false):
+			continue
+		var p := player(pid)
+		if p.is_empty():
+			continue
+		if not p.has("mvp"):
+			p["mvp"] = {}
+		var aid: String = u["aid"]
+		var st: Dictionary = p["mvp"].get(aid, {"dealt": 0.0, "taken": 0.0, "blocked": 0.0, "heal": 0.0, "kills": 0.0, "battles": 0})
+		var a: Dictionary = acc.get(int(u["i"]), {})
+		for k in ["dealt", "taken", "blocked", "heal", "kills"]:
+			st[k] = roundf(float(st[k]) + float(a.get(k, 0.0)))
+		st["battles"] = int(st["battles"]) + 1
+		st["star"] = maxi(int(st.get("star", 1)), int(u.get("star", 1)))
+		p["mvp"][aid] = st
+
+
+func _tally_add(acc: Dictionary, by_i: Dictionary, i: int, key: String, v: float) -> void:
+	if not by_i.has(i):
+		return
+	if not acc.has(i):
+		acc[i] = {}
+	acc[i][key] = float(acc[i].get(key, 0.0)) + v
+
+
+## 종합 점수 (준 피해 + 회복 + 막은 피해·받은 피해 일부 + 처치·출전 보너스)
+static func mvp_score(st: Dictionary) -> float:
+	return float(st.get("dealt", 0)) + float(st.get("heal", 0)) + 0.8 * float(st.get("blocked", 0)) \
+		+ 0.3 * float(st.get("taken", 0)) + 120.0 * float(st.get("kills", 0)) + 40.0 * float(st.get("battles", 0))
+
+
+## 플레이어의 MVP 사도 n명: [[aid, 기록], ...] 점수 높은 순
+static func mvp_top(p: Dictionary, n: int = 3) -> Array:
+	var rows := []
+	for aid in p.get("mvp", {}):
+		rows.append([aid, p["mvp"][aid]])
+	rows.sort_custom(func(x, y): return mvp_score(x[1]) > mvp_score(y[1]))
+	return rows.slice(0, n)
+
+
+func is_banned(aid: String) -> bool:
+	return state.get("banned", {}).has(aid)
+
+
 static func has_aug(p: Dictionary, id: String) -> bool:
 	for a in p.get("augs", []):
 		if a["id"] == id:
@@ -1353,7 +1437,7 @@ func _apply_aug_now(p: Dictionary, a: Dictionary) -> void:
 func _give_unit(p: Dictionary, cost: int, star: int) -> void:
 	var cands := []
 	for aid in state["pool"]:
-		if GameData.cost_of.get(aid, 0) == cost and int(state["pool"][aid]) >= (3 if star == 2 else 1):
+		if GameData.cost_of.get(aid, 0) == cost and int(state["pool"][aid]) >= (3 if star == 2 else 1) and not is_banned(aid):
 			cands.append(aid)
 	cands.sort()
 	var free: int = p["bench"].find(null)

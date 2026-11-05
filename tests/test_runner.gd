@@ -177,6 +177,31 @@ func _test_rules_augments() -> int:
 	for pid in m.state["players"]:
 		n_augs = maxi(n_augs, m.player(pid)["augs"].size())
 	print("규칙·증강 판: 라운드 %d에 끝, 증강 최대 %d개, 나온 증강 %d종: %s" % [rounds, n_augs, picked.size(), picked.keys()])
+	# MVP: 1위의 사도별 기록이 쌓였는지
+	var champ: Dictionary = m.player(m.state["winner"]) if m.state["winner"] != "" else {}
+	var tops := Match.mvp_top(champ, 3)
+	print("1위 MVP: %s" % [tops.map(func(t): return "%s %d점" % [t[0], int(Match.mvp_score(t[1]))])])
+	if tops.size() < 3:
+		print("FAIL: MVP 3인 집계"); return 1
+	# ★3 이 나온 사도는 그 게임에서 더는 안 나옴
+	var m3 := Match.new([{"id": "a", "name": "a", "bot": false}, {"id": "b", "name": "b", "bot": true}], 11)
+	m3.start()
+	var p3 := m3.player("a")
+	for k in 9:
+		p3["bench"][k % 8] = null
+	p3["board"] = {}
+	p3["bench"][0] = {"uid": 1, "aid": "rohne", "star": 2, "arts": [], "pers": ""}
+	p3["bench"][1] = {"uid": 2, "aid": "rohne", "star": 2, "arts": [], "pers": ""}
+	m3._try_merge(p3, "rohne", 2, {"uid": 3, "aid": "rohne", "star": 2, "arts": [], "pers": ""})
+	if not m3.is_banned("rohne"):
+		print("FAIL: ★3 금지 표시"); return 1
+	var seen_rohne := false
+	for k in 400:
+		if m3._roll_unit([100, 0, 0, 0, 0]) == "rohne":
+			seen_rohne = true
+	if seen_rohne:
+		print("FAIL: ★3 사도가 상점에 나옴"); return 1
+	print("★3 금지 OK")
 	if m.state["phase"] != "over" or n_augs < 2:
 		print("FAIL: 증강 판"); return 1
 	# 증강 효과 단위 확인

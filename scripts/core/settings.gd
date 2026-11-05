@@ -12,7 +12,7 @@ const DEFAULTS := {
 	"board_motion": true,   # 준비 단계 보드에서 사도 모션
 	"battle_motion": true,  # 전투 모션 (끄면 초상화 카드)
 	"effects": true,        # 전투 이펙트 (탄환·타격·화면 흔들림)
-	"screen_shake": true,
+	"screen_shake": false,
 	"text_scale": 1.0,      # 1.0 / 1.15 / 1.3
 	"colorblind": false,    # 색약 모드: 좋음/위험 색을 파랑/주황으로
 	"tutorial_done": false,
