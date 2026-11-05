@@ -20,7 +20,7 @@ from PIL import Image
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT = os.path.join(ROOT, "assets", "motions")
-ANIMS = ["Idle", "Move", "Attack1_1", "Skill1_1", "Ultimate1_1", "Die", "Groggy"]
+ANIMS = ["Idle", "Move", "Attack1_1", "Skill1_1", "Ultimate1_1", "Die", "Groggy", "Victory"]
 SIZE = 192          # 512 칸 → 192 칸 (기준점 유지)
 TARGET_FPS = 8.0
 QUALITY = 78

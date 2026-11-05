@@ -116,6 +116,6 @@ godot --headless --path . res://tests/lan_test.tscn -- client
 
 ## 데이터 출처 / 라이선스
 
-- 사도·아티팩트 정보, 초상화·아이콘 이미지: [lootandwaifus.com](https://lootandwaifus.com), 나무위키 「트릭컬 리바이브/카드/아티팩트」 (CC BY-NC-SA 2.0 KR)
+- 사도·아티팩트 정보, 초상화·아이콘 이미지: [lootandwaifus.com](https://lootandwaifus.com), 아티팩트 아이콘 일부: [Trickal-Revive-Skill-Guide](https://github.com/mediate1082/Trickal-Revive-Skill-Guide-Beta-0.8) (팬 사이트), 전투 모션·보이스: 트릭컬 스파인 뷰어(viewer.dclnslde.com)의 저장 기능, 나무위키 「트릭컬 리바이브/카드/아티팩트」 (CC BY-NC-SA 2.0 KR)
 - 트릭컬 리바이브의 캐릭터와 설정의 권리는 원저작자(에피드게임즈)에게 있습니다. 비상업적 팬게임입니다.
 - 폰트: Noto Sans KR — SIL Open Font License 1.1 (`assets/fonts/OFL.txt`)

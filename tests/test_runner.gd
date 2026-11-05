@@ -9,6 +9,7 @@ func _ready() -> void:
 	fails += _test_match()
 	fails += _test_group_synergies()
 	fails += _test_special_rounds()
+	fails += _test_assets()
 	fails += await _test_ui()
 	print("TESTS DONE, failures=%d" % fails)
 	get_tree().quit(1 if fails > 0 else 0)
@@ -144,6 +145,21 @@ func _test_special_rounds() -> int:
 		print("FAIL: 몬스터 라운드가 체력·연승을 바꿈"); fails += 1
 	if rewards == 0:
 		print("FAIL: 몬스터 보상 없음"); fails += 1
+	return fails
+
+
+## 모션·보이스 파일을 실제로 읽을 수 있는지
+func _test_assets() -> int:
+	var fails := 0
+	var m := MotionSprite.meta_of("aya")
+	var tex = MotionSprite._sheet("aya", "Idle") if not m.is_empty() else null
+	var vm := Voice.meta_of("aya")
+	var snd = Voice._stream("res://assets/voices/aya/SPSkill_1.ogg") if not vm.is_empty() else null
+	print("자원: 모션 %s (%s), 보이스 %s (%.1f초)" % [not m.is_empty(), tex != null, not vm.is_empty(), snd.get_length() if snd != null else 0.0])
+	if m.is_empty() or tex == null:
+		print("FAIL: 모션을 읽지 못함"); fails += 1
+	if not vm.is_empty() and (snd == null or snd.get_length() <= 0.0):
+		print("FAIL: 보이스를 읽지 못함"); fails += 1
 	return fails
 
 

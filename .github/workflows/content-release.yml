@@ -16,6 +16,7 @@ on:
       - "assets/artifacts/**"
       - "assets/icons/**"
       - "assets/motions/**"
+      - "assets/voices/**"
       - "assets/icon.png"
       - "assets/fonts/**"
       - "boot/**"

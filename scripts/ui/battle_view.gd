@@ -137,6 +137,7 @@ func setup(bt: Dictionary, my_side: int, name_a: String, name_b: String) -> void
 		_sh[u["i"]] = 0.0
 	_layout()
 	_update_bars()
+	_say_spawn.call_deferred()
 
 
 func _cell_pos(u: Dictionary) -> Vector2:
@@ -336,10 +337,12 @@ func _apply(e: Array) -> void:
 		"skill":
 			_anim[src]["pulse"] = 0.35
 			_fx_skill(src, int(e[4]) == 1, String(e[5]))
+			_say(src, "Ultimate" if int(e[4]) == 1 else "SPSkill")
 			_motion(src, "Ultimate1_1" if int(e[4]) == 1 else "Skill1_1")
 			_float(src, "✦ " + String(e[5]), UI.ACCENT if int(e[4]) == 1 else Color("c9a7ff"), 26, -56, true)
 		"death":
 			_fx_at(dst, "spark", Color(0.8, 0.8, 0.85), 0.5, 70.0)
+			_say(dst, "Die")
 			_hp[dst] = 0.0
 			_anim[dst]["dead"] = true
 			if _sprites.has(dst):
@@ -372,6 +375,7 @@ func _apply(e: Array) -> void:
 			_float(dst, "처형!", UI.BAD, 30)
 		"end":
 			var w := int(e[4])
+			_say_end(w)
 			if w == -1:
 				_banner.text = "무승부"
 			elif w == _my_side:
@@ -466,6 +470,44 @@ func _fx_skill(src: int, senior: bool, sname: String) -> void:
 func _shake_cam(t: float) -> void:
 	if Settings.flag("screen_shake") and _fx_on():
 		_shake = maxf(_shake, t)
+
+
+# ─────────────────────────────── 보이스 ───────────────────────────────
+
+## 이 전투 화면이 보일 때만, 그림자 몬스터는 말하지 않음
+func _say(i: int, cat: String) -> void:
+	if not is_visible_in_tree() or not _udata.has(i):
+		return
+	var u: Dictionary = _udata[i]
+	if u.get("monster", false):
+		return
+	Voice.say(u["aid"], cat, i)
+
+
+## 전투 시작: 우리 편 사도 한 명이 등장 대사
+func _say_spawn() -> void:
+	var mine := []
+	for u in _units:
+		if int(u["side"]) == _my_side and not u.get("monster", false):
+			mine.append(u)
+	if not mine.is_empty():
+		var u: Dictionary = mine[randi() % mine.size()]
+		Voice.say(u["aid"], "Spawn", u["i"])
+
+
+## 전투 끝: 이기면 살아 있는 우리 사도의 승리 대사, 지면 패배 대사
+func _say_end(winner: int) -> void:
+	if winner == -1 or not is_visible_in_tree():
+		return
+	var cands := []
+	for u in _units:
+		if int(u["side"]) == _my_side and not u.get("monster", false) and (winner != _my_side or not _anim[u["i"]]["dead"]):
+			cands.append(u)
+	if not cands.is_empty():
+		var u: Dictionary = cands[randi() % cands.size()]
+		Voice.say(u["aid"], "Victory" if winner == _my_side else "Defeat", u["i"])
+		if winner == _my_side and _sprites.has(u["i"]):
+			_sprites[u["i"]].play("Victory", true)
 
 
 ## 모션 재생 (모션이 있는 사도만). 쓰러진 사도는 무시.
