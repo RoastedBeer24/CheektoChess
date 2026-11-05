@@ -9,18 +9,24 @@ extends Control
 ##
 ## 명령줄 옵션(테스트용): -- --manifest=<주소>  /  -- --offline  /  -- --no-self-update
 
-const BASE_VERSION := 3   # 이 시작 화면(APK/실행 파일) 버전. 묶음이 더 높은 값을 요구하면 새로 설치 안내.
+const BASE_VERSION := 4   # 이 시작 화면(APK/실행 파일) 버전. 묶음이 더 높은 값을 요구하면 새로 설치 안내.
 const RELEASES_PAGE := "https://github.com/RoastedBeer24/CheektoChess/releases/latest"
 const MANIFEST_URL := "https://github.com/RoastedBeer24/CheektoChess/releases/latest/download/manifest.json"
 const PACK_DIR := "user://packs/"
 const INSTALLED := "user://packs/installed.json"
 const EMBEDDED := "res://packs/index.json"
+const REQUIRED := ["core", "art"]   # 게임에 꼭 필요한 묶음. 나머지(모션·보이스)는 못 받아도 게임은 시작
+const PACK_LABEL := {"core": "게임 코드", "art": "그림", "motion": "전투 모션", "voice": "보이스"}
+const CHUNK := 4 * 1048576           # 큰 묶음은 4MB 조각으로 받는다 (이어받기)
+const STALL := 20.0                  # 이 시간(초) 동안 받은 양이 늘지 않으면 실패
 
 var _status: Label
 var _detail: Label
 var _bar: ProgressBar
 var _http: HTTPRequest
 var _restarting := false
+var _skip_extras := false
+var _skip_btn: Button
 const SELF_UPDATE_LOG := "user://self_update.json"
 
 
@@ -61,8 +67,13 @@ func _build_ui() -> void:
 	_detail.add_theme_font_size_override("font_size", 22)
 	_detail.add_theme_color_override("font_color", Color("a9adc1"))
 	v.add_child(_detail)
+	_skip_btn = Button.new()
+	_skip_btn.text = "  지금은 건너뛰기 (다음 실행 때 이어서)  "
+	_skip_btn.add_theme_font_size_override("font_size", 24)
+	_skip_btn.visible = false
+	_skip_btn.pressed.connect(func(): _skip_extras = true)
+	v.add_child(_skip_btn)
 	_http = HTTPRequest.new()
-	_http.timeout = 8.0
 	_http.use_threads = true
 	add_child(_http)
 
@@ -93,7 +104,7 @@ func _run() -> void:
 	var inst := _read_json(INSTALLED)
 	if inst.is_empty():
 		inst = {"build": 0, "packs": {}}
-	# 1) APK 에 든 묶음이 더 새것이면 복사
+	# 1) APK 에 든 묶음이 더 새것이면 복사 (이미 받아 둔 모션·보이스 묶음은 그대로 둔다)
 	if int(embedded.get("build", 0)) > int(inst.get("build", 0)):
 		await _say("게임 파일 준비 중...")
 		var ok := true
@@ -101,7 +112,10 @@ func _run() -> void:
 			var meta: Dictionary = embedded["packs"][name]
 			ok = ok and _copy("res://packs/" + meta["file"], PACK_DIR + meta["file"])
 		if ok:
-			inst = {"build": int(embedded["build"]), "version": embedded.get("version", ""), "packs": embedded["packs"]}
+			var packs: Dictionary = inst.get("packs", {}).duplicate()
+			for name in embedded["packs"]:
+				packs[name] = embedded["packs"][name]
+			inst = {"build": int(embedded["build"]), "version": embedded.get("version", ""), "packs": packs}
 			_write_json(INSTALLED, inst)
 	# 2) 온라인 업데이트
 	if _arg("offline") == "":
@@ -110,7 +124,7 @@ func _run() -> void:
 			return
 	# 3) 묶음 불러오기
 	await _say("불러오는 중...")
-	for name in ["core", "art"]:
+	for name in REQUIRED:
 		var meta: Dictionary = inst.get("packs", {}).get(name, {})
 		if meta.is_empty():
 			continue
@@ -120,13 +134,31 @@ func _run() -> void:
 	_launch()
 
 
+## 받아야 할 묶음 이름 (게임 필수 묶음 먼저)
+func _needed(remote: Dictionary, inst: Dictionary) -> Array:
+	var out: Array = []
+	var names: Array = remote["packs"].keys()
+	names.sort_custom(func(x, y): return (REQUIRED.find(x) if x in REQUIRED else 99) < (REQUIRED.find(y) if y in REQUIRED else 99))
+	for name in names:
+		var meta: Dictionary = remote["packs"][name]
+		var old: Dictionary = inst.get("packs", {}).get(name, {})
+		var have := not old.is_empty() and FileAccess.file_exists(PACK_DIR + String(old.get("file", "")))
+		if have and old.get("sha256", "") == meta["sha256"]:
+			continue
+		# 서버가 설치된 것보다 옛 빌드면(새 APK 를 먼저 설치한 경우) 없는 묶음만 받는다 — 되돌리지 않음
+		if have and int(remote.get("build", 0)) < int(inst.get("build", 0)):
+			continue
+		out.append(name)
+	return out
+
+
 func _update_online(inst: Dictionary) -> Dictionary:
 	await _say("업데이트 확인 중...")
 	print("[boot] 설치된 build=%d, 업데이트 확인" % int(inst.get("build", 0)))
 	var url := _arg("manifest")
 	if url == "":
 		url = MANIFEST_URL
-	var res := await _http_get(url, "")
+	var res := await _http_get(url, "", 10.0)
 	if res.is_empty():
 		await _say("업데이트 서버에 연결하지 못했습니다", "설치된 버전으로 시작합니다.")
 		await get_tree().create_timer(0.6).timeout
@@ -134,47 +166,171 @@ func _update_online(inst: Dictionary) -> Dictionary:
 	var remote = JSON.parse_string(res["body"].get_string_from_utf8())
 	if typeof(remote) != TYPE_DICTIONARY or not remote.has("packs"):
 		return inst
+	var base_url := url.get_base_dir() + "/"
 	# PC: 실행 파일이 더 새것이면 먼저 바꿔 끼운다 (성공하면 새 실행 파일로 다시 시작)
 	var desk: Dictionary = remote.get("desktop", {}).get(_desktop_key(), {})
 	# 같은 버전으로 이미 한 번 바꿨는데도 여전히 낮으면(잘못된 배포) 다시 시도하지 않는다 — 무한 재시작 방지
 	var tried := int(_read_json(SELF_UPDATE_LOG).get("base", 0))
 	if not desk.is_empty() and int(desk.get("base", 0)) > BASE_VERSION and int(desk["base"]) != tried and _arg("no-self-update") == "":
-		if await _self_update(url.get_base_dir() + "/", desk):
+		if await _self_update(base_url, desk):
 			_restarting = true
 			return inst
-	if int(remote.get("build", 0)) <= int(inst.get("build", 0)):
-		return inst
+	# 안드로이드: 새 APK 가 나왔으면 알림 (받을지는 사용자가 고름)
+	var apk: Dictionary = remote.get("android", {})
+	if OS.get_name() == "Android" and int(apk.get("base", 0)) > BASE_VERSION:
+		await _ask_apk(base_url + String(apk.get("file", "")), float(apk.get("size", 0)), int(remote.get("min_base", 1)) > BASE_VERSION)
 	if int(remote.get("min_base", 1)) > BASE_VERSION:
-		if OS.has_feature("pc"):
-			await _say("새 버전을 받아야 합니다", "자동으로 바꾸지 못했습니다. 열리는 페이지에서 새 버전을 받아 주세요. 설치된 버전으로 시작합니다.")
-			OS.shell_open(RELEASES_PAGE)
-		else:
-			await _say("새 APK가 필요합니다", "이번 업데이트는 앱을 새로 설치해야 합니다. 설치된 버전으로 시작합니다.")
-		await get_tree().create_timer(2.5).timeout
+		if int(remote.get("build", 0)) > int(inst.get("build", 0)):
+			if OS.has_feature("pc"):
+				await _say("새 버전을 받아야 합니다", "자동으로 바꾸지 못했습니다. 열리는 페이지에서 새 버전을 받아 주세요. 설치된 버전으로 시작합니다.")
+				OS.shell_open(RELEASES_PAGE)
+			else:
+				await _say("새 APK가 필요합니다", "이번 업데이트는 앱을 새로 설치해야 합니다. 설치된 버전으로 시작합니다.")
+			await get_tree().create_timer(2.5).timeout
 		return inst
-	var base_url := url.get_base_dir() + "/"
-	var new_packs: Dictionary = {}
-	var names: Array = remote["packs"].keys()
-	for i in names.size():
-		var name: String = names[i]
-		var meta: Dictionary = remote["packs"][name]
-		var old: Dictionary = inst.get("packs", {}).get(name, {})
-		if old.get("sha256", "") == meta["sha256"] and FileAccess.file_exists(PACK_DIR + old.get("file", "")):
-			new_packs[name] = old
+	var needed := _needed(remote, inst)
+	var newer := int(remote.get("build", 0)) >= int(inst.get("build", 0))
+	if needed.is_empty():
+		if int(remote.get("build", 0)) > int(inst.get("build", 0)):
+			inst["build"] = int(remote["build"])
+			inst["version"] = remote.get("version", "")
+			_write_json(INSTALLED, inst)
+		return inst
+	var total := 0.0
+	for name in needed:
+		total += float(remote["packs"][name].get("size", 0))
+	# 필수 묶음(core·art): 모두 받은 뒤에 한꺼번에 바꾼다 (반만 바뀐 상태 방지). 실패하면 이번에는 설치된 버전으로.
+	var req_new: Array = []
+	for name in needed:
+		if not name in REQUIRED:
 			continue
-		await _say("업데이트 받는 중... (%d/%d)" % [i + 1, names.size()], "%s  %.1f MB" % [name, float(meta.get("size", 0)) / 1048576.0])
-		var tmp: String = PACK_DIR + meta["file"] + ".download"
-		var got := await _http_get(base_url + meta["file"], tmp)
-		if got.is_empty() or FileAccess.get_sha256(tmp) != meta["sha256"]:
-			await _say("업데이트를 받지 못했습니다", "설치된 버전으로 시작합니다.")
-			await get_tree().create_timer(1.0).timeout
+		var meta: Dictionary = remote["packs"][name]
+		if not await _fetch_pack(base_url, name, meta, needed.find(name) + 1, needed.size(), total):
+			await _say("업데이트를 받지 못했습니다", "인터넷 연결을 확인해 주세요. 설치된 버전으로 시작하고, 다음 실행 때 이어서 받습니다.")
+			await get_tree().create_timer(1.5).timeout
 			return inst
-		DirAccess.rename_absolute(tmp, PACK_DIR + meta["file"])
+		req_new.append(name)
+	var packs: Dictionary = inst.get("packs", {}).duplicate()
+	for name in req_new:
+		var meta: Dictionary = remote["packs"][name]
+		DirAccess.rename_absolute(_part_path(meta), PACK_DIR + String(meta["file"]))
+		packs[name] = meta
 		print("[boot] %s 받음 (%d bytes)" % [name, int(meta.get("size", 0))])
-		new_packs[name] = meta
-	inst = {"build": int(remote["build"]), "version": remote.get("version", ""), "packs": new_packs}
+	if newer:
+		inst = {"build": int(remote["build"]), "version": remote.get("version", ""), "packs": packs}
+	else:
+		inst["packs"] = packs
 	_write_json(INSTALLED, inst)
+	# 추가 묶음(모션·보이스): 하나씩 받아 바로 반영. 실패하거나 건너뛰면 게임은 시작하고 다음 실행 때 이어서 받는다.
+	_skip_extras = false
+	for name in needed:
+		if name in REQUIRED:
+			continue
+		var meta: Dictionary = remote["packs"][name]
+		_skip_btn.visible = true
+		var ok := await _fetch_pack(base_url, name, meta, needed.find(name) + 1, needed.size(), total)
+		_skip_btn.visible = false
+		if not ok:
+			if not _skip_extras:
+				await _say("%s 묶음을 다 받지 못했습니다" % PACK_LABEL.get(name, name), "게임은 그대로 시작합니다. 다음 실행 때 받은 곳부터 이어서 받습니다.")
+				await get_tree().create_timer(1.5).timeout
+			break
+		DirAccess.rename_absolute(_part_path(meta), PACK_DIR + String(meta["file"]))
+		inst["packs"][name] = meta
+		_write_json(INSTALLED, inst)
+		print("[boot] %s 받음 (%d bytes)" % [name, int(meta.get("size", 0))])
 	return inst
+
+
+func _part_path(meta: Dictionary) -> String:
+	return PACK_DIR + String(meta["file"]) + "." + String(meta["sha256"]).substr(0, 12) + ".part"
+
+
+## 묶음 하나를 조각(CHUNK)으로 나눠 받는다. 받은 만큼은 .part 파일로 남아 다음에 이어서 받는다.
+func _fetch_pack(base_url: String, name: String, meta: Dictionary, idx: int, count: int, total: float) -> bool:
+	var size := int(meta.get("size", 0))
+	var part := _part_path(meta)
+	# 다른 버전의 받다 만 파일은 지운다
+	for f in DirAccess.get_files_at(PACK_DIR):
+		if f.begins_with(String(meta["file"]) + ".") and f.ends_with(".part") and PACK_DIR + f != part:
+			DirAccess.remove_absolute(PACK_DIR + f)
+	var have := 0
+	if FileAccess.file_exists(part):
+		var pf := FileAccess.open(part, FileAccess.READ)
+		have = pf.get_length() if pf else 0
+		pf = null
+		if have > size:
+			DirAccess.remove_absolute(part)
+			have = 0
+	var label: String = PACK_LABEL.get(name, name)
+	var big := size > 15 * 1048576
+	var started := Time.get_ticks_msec()
+	var start_have := have
+	while have < size:
+		if _skip_extras and not name in REQUIRED:
+			return false
+		var end: int = mini(size, have + CHUNK) - 1
+		var res := await _http_get(base_url + String(meta["file"]), "", 0.0, ["Range: bytes=%d-%d" % [have, end]],
+			func(got: int):
+				var done: int = have + got
+				_bar.value = 100.0 * done / maxf(1.0, size)
+				var secs: float = (Time.get_ticks_msec() - started) / 1000.0
+				var speed: float = (done - start_have) / maxf(0.5, secs)
+				var detail := "%s  %.1f / %.1f MB" % [label, done / 1048576.0, size / 1048576.0]
+				if speed > 1024 and secs > 1.5:
+					detail += "  ·  %.1f MB/s, 약 %d초 남음" % [speed / 1048576.0, int((size - done) / speed)]
+				if big:
+					detail += "\n용량이 큽니다 — 와이파이에서 받는 것을 권장합니다"
+				_status.text = "업데이트 받는 중... (%d/%d)" % [idx, count]
+				_detail.text = detail)
+		if res.is_empty():
+			return false
+		var body: PackedByteArray = res["body"]
+		var f: FileAccess
+		if int(res["code"]) == 206 and have > 0:
+			f = FileAccess.open(part, FileAccess.READ_WRITE)
+			if f:
+				f.seek_end()
+		else:
+			# 서버가 범위 요청을 무시하고 전체를 보냈거나 처음 조각
+			f = FileAccess.open(part, FileAccess.WRITE)
+			if int(res["code"]) == 200:
+				have = 0
+		if f == null:
+			return false
+		f.store_buffer(body)
+		f = null
+		have += body.size()
+	if FileAccess.get_sha256(part) != meta["sha256"]:
+		print("[boot] %s 확인값이 다름 — 처음부터 다시" % name)
+		DirAccess.remove_absolute(part)
+		return false
+	return true
+
+
+## 새 APK 알림: [받기] 를 누르면 브라우저로 APK 를 받는다. 필수가 아니면 [나중에] 로 계속.
+func _ask_apk(apk_url: String, size: float, required: bool) -> void:
+	await _say("새 버전의 앱(APK)이 있습니다", ("이번 업데이트는 새 앱이 필요합니다." if required else "시작 화면·업데이트 기능이 좋아졌습니다.") + " 받은 파일을 열어 덮어 설치하세요 (%.0f MB)." % (size / 1048576.0))
+	var h := HBoxContainer.new()
+	h.alignment = BoxContainer.ALIGNMENT_CENTER
+	h.add_theme_constant_override("separation", 24)
+	_detail.get_parent().add_child(h)
+	var get_btn := Button.new()
+	get_btn.text = "  받기  "
+	get_btn.add_theme_font_size_override("font_size", 30)
+	h.add_child(get_btn)
+	var later := Button.new()
+	later.text = "  나중에  "
+	later.add_theme_font_size_override("font_size", 30)
+	h.add_child(later)
+	var chosen: Array = []
+	get_btn.pressed.connect(func(): chosen.append(true))
+	later.pressed.connect(func(): chosen.append(false))
+	while chosen.is_empty():
+		await get_tree().process_frame
+	h.queue_free()
+	if chosen[0]:
+		OS.shell_open(apk_url)
 
 
 # ─────────────── PC 실행 파일 자체 업데이트 ───────────────
@@ -257,22 +413,45 @@ func _cleanup_old_exe() -> void:
 
 
 ## GET 요청. download_to 가 있으면 파일로 저장. 실패하면 {}.
-func _http_get(url: String, download_to: String) -> Dictionary:
+## limit > 0: 전체 시간 제한(초). 그 밖에는 STALL 초 동안 받은 양이 늘지 않을 때만 실패로 본다 (느린 연결에서도 큰 파일 OK).
+## on_progress(받은 바이트) 가 있으면 진행 중에 불린다.
+func _http_get(url: String, download_to: String, limit: float = 0.0, headers: Array = [], on_progress = null) -> Dictionary:
 	_http.download_file = download_to
-	_bar.value = 0
-	if _http.request(url) != OK:
+	_http.timeout = limit
+	if on_progress == null:
+		_bar.value = 0
+	if _http.request(url, PackedStringArray(headers)) != OK:
 		return {}
 	var result: Array = []
 	_http.request_completed.connect(func(r, code, _h, body): result.append([r, code, body]), CONNECT_ONE_SHOT)
+	var last := -1
+	var last_t := Time.get_ticks_msec()
 	while result.is_empty():
-		var total := _http.get_body_size()
-		if total > 0:
-			_bar.value = 100.0 * _http.get_downloaded_bytes() / total
+		var got := _http.get_downloaded_bytes()
+		if got != last:
+			last = got
+			last_t = Time.get_ticks_msec()
+			if on_progress != null:
+				on_progress.call(got)
+			else:
+				var total := _http.get_body_size()
+				if total > 0:
+					_bar.value = 100.0 * got / total
+		elif Time.get_ticks_msec() - last_t > STALL * 1000.0:
+			_http.cancel_request()
+			print("[boot] 받기 멈춤 (%d초 동안 진행 없음): %s" % [int(STALL), url])
+			return {}
+		if _skip_extras and on_progress != null:
+			_http.cancel_request()
+			return {}
 		await get_tree().process_frame
-	_bar.value = 100
-	if result[0][0] != HTTPRequest.RESULT_SUCCESS or result[0][1] != 200:
+	if on_progress == null:
+		_bar.value = 100
+	var code := int(result[0][1])
+	if result[0][0] != HTTPRequest.RESULT_SUCCESS or (code != 200 and code != 206):
+		print("[boot] 받기 실패 (result=%d, code=%d): %s" % [result[0][0], code, url])
 		return {}
-	return {"body": result[0][2]}
+	return {"body": result[0][2], "code": code}
 
 
 func _copy(src: String, dst: String) -> bool:

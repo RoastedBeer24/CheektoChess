@@ -3,6 +3,8 @@
 # GitHub 릴리스로 올린다. 게임은 실행할 때 releases/latest 의 manifest.json 을 확인해 바뀐 묶음만 받는다.
 # Windows 실행 파일(zip)도 함께 만들어 올린다. 실행 파일의 시작 화면 버전(boot.gd BASE_VERSION)이
 # 오르면 PC 게임은 실행할 때 새 실행 파일로 스스로 바꾼다 (manifest.json 의 desktop 항목).
+# 저장소 비밀값(ANDROID_KEYSTORE_BASE64 / _USER / _PASSWORD)이 있으면 서명된 APK 도 만들어 올린다
+# (manifest.json 의 android 항목 — 앱은 base 가 더 높은 APK 가 나오면 받을지 묻는다).
 name: content-release
 
 on:
@@ -67,16 +69,16 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.local/share/godot/export_templates
-          key: godot-templates-${{ env.GODOT_VERSION }}-windows-x64
+          key: godot-templates-${{ env.GODOT_VERSION }}-windows-x64-android
 
-      - name: 내보내기 템플릿 받기 (Windows만)
+      - name: 내보내기 템플릿 받기 (Windows·Android)
         if: steps.tpl.outputs.cache-hit != 'true'
         run: |
           VER_DIR="${GODOT_VERSION/-/.}"
           DEST="$HOME/.local/share/godot/export_templates/$VER_DIR"
           mkdir -p "$DEST"
           curl -sSL -o tpl.tpz "https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}/Godot_v${GODOT_VERSION}_export_templates.tpz"
-          unzip -j -o tpl.tpz templates/windows_release_x86_64.exe templates/windows_debug_x86_64.exe templates/version.txt -d "$DEST"
+          unzip -j -o tpl.tpz templates/windows_release_x86_64.exe templates/windows_debug_x86_64.exe templates/android_release.apk templates/android_debug.apk templates/version.txt -d "$DEST"
           rm tpl.tpz
           ls -la "$DEST"
 
@@ -114,20 +116,53 @@ jobs:
           print(m["desktop"])
           PY
 
+      - name: APK 만들기 (서명 키 비밀값이 있을 때만)
+        env:
+          KEY_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          GODOT_ANDROID_KEYSTORE_RELEASE_USER: ${{ secrets.ANDROID_KEYSTORE_USER }}
+          GODOT_ANDROID_KEYSTORE_RELEASE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+        run: |
+          if [ -z "$KEY_B64" ]; then echo "서명 키 비밀값이 없어 APK 는 건너뜀"; exit 0; fi
+          echo "$KEY_B64" | base64 -d > "$RUNNER_TEMP/release.keystore"
+          export GODOT_ANDROID_KEYSTORE_RELEASE_PATH="$RUNNER_TEMP/release.keystore"
+          JAVA="${JAVA_HOME_17_X64:-$JAVA_HOME}"
+          SDK="${ANDROID_HOME:-$ANDROID_SDK_ROOT}"
+          mkdir -p ~/.config/godot
+          VER_MM=$(echo "$GODOT_VERSION" | grep -oP '^[0-9]+\.[0-9]+')
+          printf '[gd_resource type="EditorSettings" format=3]\n\n[resource]\nexport/android/android_sdk_path = "%s"\nexport/android/java_sdk_path = "%s"\n' "$SDK" "$JAVA" > ~/.config/godot/editor_settings-${VER_MM}.tres
+          # 버전 코드 = 빌드 번호 (항상 커져서 덮어 설치 가능)
+          sed -i "s/^version\/code=.*/version\/code=${BUILD}/; s/^version\/name=.*/version\/name=\"1.$(grep -oP '^const BASE_VERSION := \K[0-9]+' boot/boot.gd).${BUILD}\"/" export_presets.cfg
+          ./godot --headless --path . --export-release "Android" out/CheektoChess.apk
+          rm -f "$RUNNER_TEMP/release.keystore"
+          ls -la out/CheektoChess.apk
+          BASE=$(grep -oP '^const BASE_VERSION := \K[0-9]+' boot/boot.gd)
+          python3 - "$BASE" <<'PY'
+          import hashlib, json, os, sys
+          a = "out/CheektoChess.apk"
+          m = json.load(open("out/manifest.json"))
+          m["android"] = {"base": int(sys.argv[1]), "file": os.path.basename(a),
+                          "sha256": hashlib.sha256(open(a, "rb").read()).hexdigest(), "size": os.path.getsize(a)}
+          json.dump(m, open("out/manifest.json", "w"), ensure_ascii=False, indent=1)
+          print(m["android"])
+          PY
+
       - name: 릴리스 올리기
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           VERSION=$(python3 -c "import json;print(json.load(open('out/manifest.json'))['version'])")
           TAG="content-${BUILD}"
+          FILES="out/manifest.json out/*.pck out/CheektoChess-windows.zip"
+          NOTE="PC(Windows)는 CheektoChess-windows.zip 을 받아 압축을 풀고 실행하세요."
+          if [ -f out/CheektoChess.apk ]; then FILES="$FILES out/CheektoChess.apk"; NOTE="$NOTE 안드로이드는 CheektoChess.apk 를 받아 설치하세요(덮어 설치)."; fi
           # GitHub 일시 오류(5xx)에 대비해 재시도. 릴리스가 이미 생겼으면 파일만 다시 올린다.
           for i in 1 2 3 4 5; do
             if gh release view "$TAG" >/dev/null 2>&1; then
-              gh release upload "$TAG" out/manifest.json out/*.pck out/CheektoChess-windows.zip --clobber && gh release edit "$TAG" --latest && exit 0
+              gh release upload "$TAG" $FILES --clobber && gh release edit "$TAG" --latest && exit 0
             else
-              gh release create "$TAG" out/manifest.json out/*.pck out/CheektoChess-windows.zip \
+              gh release create "$TAG" $FILES \
                 --title "콘텐츠 업데이트 ${VERSION}" \
-                --notes "자동 생성된 게임 콘텐츠 업데이트 (빌드 ${BUILD}, 커밋 ${GITHUB_SHA::7}). 게임 실행 시 자동으로 받습니다. PC(Windows)는 CheektoChess-windows.zip 을 받아 압축을 풀고 실행하세요." \
+                --notes "자동 생성된 게임 콘텐츠 업데이트 (빌드 ${BUILD}, 커밋 ${GITHUB_SHA::7}). 게임 실행 시 자동으로 받습니다. ${NOTE}" \
                 --target "${GITHUB_SHA}" \
                 --latest && exit 0
             fi

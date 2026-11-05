@@ -41,6 +41,9 @@
   - 게임은 시작할 때 GitHub 릴리스의 `manifest.json`을 확인하고, **바뀐 묶음만** 받습니다 (core ≈ 0.5MB, art ≈ 2.5MB).
   - 인터넷이 없으면 마지막으로 받은 버전으로 실행합니다.
 - **LAN**: 방에 들어갈 때 방장보다 버전이 낮으면, 방장 기기에서 바뀐 묶음만 직접 받습니다 (인터넷 불필요). 받은 뒤 앱을 다시 실행합니다.
+- 큰 묶음(모션 ≈ 71MB, 보이스 ≈ 18MB)은 4MB 조각으로 받고, 끊기면 다음 실행 때 받은 곳부터 이어서 받습니다. 게임 코드·그림을 먼저 받아 적용하므로 모션·보이스를 다 못 받아도 게임은 최신 버전으로 시작합니다('지금은 건너뛰기' 버튼).
+- 새 APK 가 나오면(시작 화면 버전 `BASE_VERSION` 이 오르면) 실행할 때 [받기]/[나중에]를 묻습니다. 받은 APK 는 덮어 설치합니다.
+- **APK 자동 빌드**: 저장소 Settings → Secrets and variables → Actions 에 `ANDROID_KEYSTORE_BASE64`(키 파일을 base64 로), `ANDROID_KEYSTORE_USER`(별칭), `ANDROID_KEYSTORE_PASSWORD` 를 넣어 두면, 업데이트마다 서명된 `CheektoChess.apk` 가 릴리스에 함께 올라갑니다 (버전 코드 = 빌드 번호).
 - APK 자체를 다시 설치해야 하는 경우: Godot 엔진 버전 변경, 앱 권한 변경, 시작 화면(`boot/`) 변경. 이때는 `boot/boot.gd`의 `BASE_VERSION`을 올리고, 옛 APK 로는 동작할 수 없는 묶음이면 `min_base`도 맞춥니다.
 
 ## PC(Windows) 설치 · 자동 업데이트
