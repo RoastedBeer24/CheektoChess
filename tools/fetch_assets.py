@@ -70,7 +70,7 @@ ARTIFACT_MAP = {
     "shining-tiara": "shining_tiara",
     "shoupans-magical-backpack": "shoupan_backpack",
     "snorkys-fedora": "snorky_fedora",
-    "sword-and-staff": "sharp_staff",
+    # "sword-and-staff": "sharp_staff",  # 다른 아이템 그림이라 제외 — 날카로운 지팡이는 초록 보석 지팡이(팬 사이트 저장소)
     "tigs-blazing-sword": "tig_sword",
     "vivis-silver-staff": "vivi_staff",
     "weathered-arrow": "old_arrow",

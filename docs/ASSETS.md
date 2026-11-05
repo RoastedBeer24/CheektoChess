@@ -14,7 +14,7 @@
 
 - 49종: lootandwaifus.com
 - 56종: 공개 팬 사이트 저장소 github.com/mediate1082/Trickal-Revive-Skill-Guide-Beta-0.8 (`assets/icons/artifacts`, 비상업 팬 작품 · 이미지 권리는 Epid Games) — 한글 이름·등급으로 대조
-- 확인 필요: `sharp_staff`(날카로운 지팡이) 아이콘이 두 출처에서 다름 (지금은 lootandwaifus 쪽: 검과 파란 구슬 지팡이)
+- `sharp_staff`(날카로운 지팡이): 초록 보석이 달린 지팡이 그림으로 확정 (팬 사이트 저장소 쪽)
 
 ## 사도 초상화: 125/125명 확보
 
