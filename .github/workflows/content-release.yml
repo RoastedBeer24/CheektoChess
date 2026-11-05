@@ -38,7 +38,7 @@ concurrency:
 
 env:
   GODOT_VERSION: "4.7-stable"
-  BUILD_OFFSET: "1000"   # APK 에 들어간 기본 묶음(빌드 1)보다 항상 크게
+  BUILD_OFFSET: "5000"   # 예전에 직접 만든 APK(빌드 3001)보다 항상 크게 — 설치된 빌드가 더 크면 업데이트를 안 받으므로 줄이지 말 것
 
 jobs:
   packs:

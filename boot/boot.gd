@@ -145,8 +145,9 @@ func _needed(remote: Dictionary, inst: Dictionary) -> Array:
 		var have := not old.is_empty() and FileAccess.file_exists(PACK_DIR + String(old.get("file", "")))
 		if have and old.get("sha256", "") == meta["sha256"]:
 			continue
-		# 서버가 설치된 것보다 옛 빌드면(새 APK 를 먼저 설치한 경우) 없는 묶음만 받는다 — 되돌리지 않음
-		if have and int(remote.get("build", 0)) < int(inst.get("build", 0)):
+		# 서버가 옛 빌드여도, 지금 APK 자체가 서버보다 새것일 때만 되돌리지 않는다
+		# (설치 기록의 빌드 번호만 크고 실제 내용은 옛것인 경우 — 번호 체계가 바뀐 경우 — 에는 서버를 따른다)
+		if have and int(remote.get("build", 0)) < int(inst.get("build", 0)) and int(_read_json(EMBEDDED).get("build", 0)) > int(remote.get("build", 0)):
 			continue
 		out.append(name)
 	return out
@@ -189,7 +190,7 @@ func _update_online(inst: Dictionary) -> Dictionary:
 			await get_tree().create_timer(2.5).timeout
 		return inst
 	var needed := _needed(remote, inst)
-	var newer := int(remote.get("build", 0)) >= int(inst.get("build", 0))
+	var newer := int(remote.get("build", 0)) >= int(inst.get("build", 0)) or int(_read_json(EMBEDDED).get("build", 0)) <= int(remote.get("build", 0))
 	if needed.is_empty():
 		if int(remote.get("build", 0)) > int(inst.get("build", 0)):
 			inst["build"] = int(remote["build"])
