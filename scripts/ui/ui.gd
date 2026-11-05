@@ -164,6 +164,7 @@ static func button(text: String, size: int = 22, min_size: Vector2 = Vector2(0, 
 	b.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
 	b.add_theme_color_override("font_disabled_color", Color(1, 1, 1, 0.35))
 	b.focus_mode = Control.FOCUS_NONE
+	b.pressed.connect(func(): Sfx.play("click", 0.45))
 	return b
 
 

@@ -254,10 +254,15 @@ func _update_bars() -> void:
 
 
 ## 남은 이벤트를 모두 바로 적용 (건너뛰기)
+var _skipping := false
+
+
 func skip_to_end() -> void:
+	_skipping = true
 	while _ev_i < _events.size():
 		_apply(_events[_ev_i])
 		_ev_i += 1
+	_skipping = false
 	_t = float(_events[-1][0]) if not _events.is_empty() else _t
 	_update_bars()
 	_playing = false
@@ -267,17 +272,23 @@ func _stat(i: int, key: String, v: float) -> void:
 	if i < 0:
 		return
 	if not _stats.has(i):
-		_stats[i] = {"dealt": 0.0, "taken": 0.0, "heal": 0.0}
+		_stats[i] = {"dealt": 0.0, "taken": 0.0, "heal": 0.0, "blocked": 0.0}
 	_stats[i][key] += v
 
 
-## 전투가 끝나면 우리 편 사도별 피해 통계
-func _show_stats() -> void:
+## 전투가 끝나면 사도별 통계 (준 피해·받은 피해·막은 피해·회복, MVP). 우리 편/상대 편 전환.
+var _stats_side := -1
+
+
+func _show_stats(side: int = -1) -> void:
+	if side < 0:
+		side = _my_side
+	_stats_side = side
 	if _stats_panel and is_instance_valid(_stats_panel):
-		return
+		_stats_panel.queue_free()
 	var mine := []
 	for u in _units:
-		if u["side"] == _my_side:
+		if u["side"] == side:
 			mine.append(u)
 	if mine.is_empty():
 		return
@@ -285,40 +296,61 @@ func _show_stats() -> void:
 	var top := 1.0
 	for u in mine:
 		var st: Dictionary = _stats.get(u["i"], {})
-		top = maxf(top, maxf(st.get("dealt", 0.0), maxf(st.get("taken", 0.0), st.get("heal", 0.0))))
-	var panel := UI.panel(Color(0.06, 0.07, 0.11, 0.94), 14, UI.LINE, 2)
-	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		for k in ["dealt", "taken", "heal", "blocked"]:
+			top = maxf(top, st.get(k, 0.0))
+	# MVP: 준 피해 + 회복 + 막은 피해의 합이 가장 큰 사도
+	var mvp := -1
+	var mvp_v := -1.0
+	for u in mine:
+		var st: Dictionary = _stats.get(u["i"], {})
+		var v: float = st.get("dealt", 0.0) + st.get("heal", 0.0) + st.get("blocked", 0.0) * 0.8 + st.get("taken", 0.0) * 0.3
+		if v > mvp_v:
+			mvp_v = v
+			mvp = u["i"]
+	var panel := UI.panel(Color(0.06, 0.07, 0.11, 0.95), 14, UI.LINE, 2)
 	var v := VBoxContainer.new()
 	v.add_theme_constant_override("separation", 6)
 	panel.add_child(v)
 	var head := HBoxContainer.new()
+	head.add_theme_constant_override("separation", 10)
 	v.add_child(head)
 	var t := UI.label("전투 통계", 24, UI.ACCENT)
 	t.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	head.add_child(t)
-	head.add_child(UI.label("■ 준 피해  ", 16, Color("ffb27a")))
-	head.add_child(UI.label("■ 받은 피해  ", 16, Color("ff7b7b")))
-	head.add_child(UI.label("■ 회복", 16, UI.GOOD))
+	for sd in [_my_side, 1 - _my_side]:
+		var b := UI.button("우리 편" if sd == _my_side else "상대 편", 18, Vector2(110, 40), UI.ACCENT.darkened(0.55) if sd == side else UI.PANEL_LIGHT)
+		var sdk: int = sd
+		b.pressed.connect(func(): _show_stats(sdk))
+		head.add_child(b)
+	var legend := HBoxContainer.new()
+	legend.add_theme_constant_override("separation", 14)
+	v.add_child(legend)
+	for pair in STAT_KINDS:
+		legend.add_child(UI.label("■ " + pair[1], 16, pair[2]))
 	for u in mine:
-		var st: Dictionary = _stats.get(u["i"], {"dealt": 0.0, "taken": 0.0, "heal": 0.0})
+		var st: Dictionary = _stats.get(u["i"], {})
 		var row := HBoxContainer.new()
 		row.add_theme_constant_override("separation", 8)
 		v.add_child(row)
 		row.add_child(UI.tex_rect(UI.portrait(u["aid"]), Vector2(44, 44), true))
-		var nl := UI.label(u["name"] + " " + UI.stars(int(u["star"])), 18, UI.TEXT)
+		var nl := UI.label(u["name"] + " " + UI.stars(int(u["star"])), 18, UI.ACCENT if u["i"] == mvp else UI.TEXT)
 		nl.custom_minimum_size.x = 170
 		nl.clip_text = true
 		row.add_child(nl)
+		var badge := UI.label("MVP" if u["i"] == mvp else "", 16, UI.ACCENT)
+		badge.add_theme_font_override("font", UI.bold())
+		badge.custom_minimum_size.x = 40
+		row.add_child(badge)
 		var bars := VBoxContainer.new()
 		bars.add_theme_constant_override("separation", 1)
-		bars.custom_minimum_size.x = 420
+		bars.custom_minimum_size.x = 400
 		row.add_child(bars)
-		for pair in [["dealt", Color("ffb27a")], ["taken", Color("ff7b7b")], ["heal", UI.GOOD]]:
+		for pair in STAT_KINDS:
 			var val: float = st.get(pair[0], 0.0)
-			if pair[0] == "heal" and val <= 0.0:
+			if pair[0] != "dealt" and pair[0] != "taken" and val <= 0.0:
 				continue
 			var bh := HBoxContainer.new()
-			var b := UI.bar(pair[1], 10)
+			var b := UI.bar(pair[2], 10)
 			b.value = 100.0 * val / top
 			b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 			b.size_flags_vertical = Control.SIZE_SHRINK_CENTER
@@ -329,10 +361,29 @@ func _show_stats() -> void:
 			bars.add_child(bh)
 	add_child(panel)
 	panel.reset_size()
-	panel.position = Vector2((size.x - panel.size.x) / 2.0, maxf(110.0, (size.y - panel.size.y) / 2.0 + 30.0))
+	panel.position = Vector2((size.x - panel.size.x) / 2.0, maxf(70.0, (size.y - panel.size.y) / 2.0 + 20.0))
 	panel.modulate.a = 0.0
-	create_tween().tween_property(panel, "modulate:a", 1.0, 0.3)
+	create_tween().tween_property(panel, "modulate:a", 1.0, 0.2)
 	_stats_panel = panel
+
+
+const STAT_KINDS := [["dealt", "준 피해", Color("ffb27a")], ["taken", "받은 피해", Color("ff7b7b")], ["blocked", "막은 피해", Color("bfe3ff")], ["heal", "회복", Color("5ee39b")]]
+
+
+## 전투 결과 요약 (라운드 기록용): 우리 편 준 피해 합계, MVP 이름
+func summary() -> Dictionary:
+	var dealt := 0.0
+	var best := ""
+	var best_v := -1.0
+	for u in _units:
+		if u["side"] != _my_side:
+			continue
+		var d: float = _stats.get(u["i"], {}).get("dealt", 0.0)
+		dealt += d
+		if d > best_v:
+			best_v = d
+			best = u["name"]
+	return {"dealt": int(dealt), "mvp": best}
 
 
 func elapsed() -> float:
@@ -381,6 +432,10 @@ func _apply(e: Array) -> void:
 		"dmg":
 			_stat(src, "dealt", float(e[4]))
 			_stat(dst, "taken", float(e[4]))
+			# 보호막이 줄어든 만큼 = 막은 피해
+			var sh_before: float = _sh.get(dst, 0.0)
+			if float(e[7]) < sh_before:
+				_stat(dst, "blocked", sh_before - float(e[7]))
 			_hp[dst] = float(e[6])
 			_sh[dst] = float(e[7])
 			var crit := String(e[5]).ends_with("!")
@@ -394,6 +449,7 @@ func _apply(e: Array) -> void:
 				col = UI.ACCENT
 			if dkind != "status":
 				_fx_at(dst, "ring", col, 0.25, 30.0 if not crit else 44.0)
+				_sfx("crit" if crit else ("hit_magic" if _dtype.get(src, "physical") == "magic" else "hit"), 0.55)
 			if crit:
 				_fx_at(dst, "spark", UI.ACCENT, 0.35, 60.0)
 				_shake_cam(0.12)
@@ -419,11 +475,13 @@ func _apply(e: Array) -> void:
 			_anim[src]["pulse"] = 0.35
 			_fx_skill(src, int(e[4]) == 1, String(e[5]))
 			_say(src, "Ultimate" if int(e[4]) == 1 else "SPSkill")
+			_sfx("ultimate" if int(e[4]) == 1 else "skill", 0.8)
 			_motion(src, "Ultimate1_1" if int(e[4]) == 1 else "Skill1_1")
 			_bubble(src, String(e[5]), UI.ACCENT if int(e[4]) == 1 else Color("c9a7ff"))
 		"death":
 			_fx_at(dst, "spark", Color(0.8, 0.8, 0.85), 0.5, 70.0)
 			_say(dst, "Die")
+			_sfx("death", 0.7)
 			_hp[dst] = 0.0
 			_anim[dst]["dead"] = true
 			if _plates.has(dst):
@@ -591,6 +649,12 @@ func _shake_cam(t: float) -> void:
 
 
 # ─────────────────────────────── 보이스 ───────────────────────────────
+
+## 효과음 (이 전투 화면이 보일 때만, 건너뛰기로 한꺼번에 적용할 때는 울리지 않음)
+func _sfx(name: String, vol: float) -> void:
+	if is_visible_in_tree() and _playing and not _skipping:
+		Sfx.play(name, vol)
+
 
 ## 이 전투 화면이 보일 때만, 그림자 몬스터는 말하지 않음
 func _say(i: int, cat: String) -> void:

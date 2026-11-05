@@ -43,6 +43,10 @@ func _initialize() -> void:
 				if imported != "":
 					art.append(imported)
 
+	# 효과음: 가져오기 없이 원본 ogg 그대로 (assets/sfx/.gdignore)
+	if DirAccess.dir_exists_absolute("res://assets/sfx"):
+		_collect("res://assets/sfx", ["ogg"], art)
+
 	var motion := []
 	if DirAccess.dir_exists_absolute("res://assets/motions"):
 		_collect("res://assets/motions", ["json", "webp"], motion)

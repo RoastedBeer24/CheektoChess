@@ -38,6 +38,9 @@ static func start(root: Node) -> void:
 	var voice := Voice.new()
 	voice.name = "Voice"
 	root.add_child.call_deferred(voice)
+	var sfx := Sfx.new()
+	sfx.name = "Sfx"
+	root.add_child.call_deferred(sfx)
 	# PC: 전체 화면 전환(F11), 창 크기·위치 기억
 	if OS.has_feature("pc") and DisplayServer.get_name() != "headless" and not OS.has_feature("editor"):
 		var dw := DesktopWindow.new()

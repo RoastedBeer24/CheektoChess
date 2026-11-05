@@ -19,6 +19,7 @@ on:
       - "assets/icons/**"
       - "assets/motions/**"
       - "assets/voices/**"
+      - "assets/sfx/**"
       - "assets/icon*"
       - "assets/fonts/**"
       - "boot/**"

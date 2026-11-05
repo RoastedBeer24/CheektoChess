@@ -470,6 +470,13 @@ func _process(_delta: float) -> void:
 		if App.session.tutorial and phase == "prep":
 			_phase_lbl.text = "준비 (튜토리얼 — 시간 제한 없음)"
 		_time_bar.value = 100.0 * left / maxf(1.0, _phase_total)
+		# 준비 시간 마지막 5초: 째깍 소리
+		if phase == "prep" and not App.session.tutorial and left > 0.0 and left <= 5.0 and ceili(left) != _last_tick:
+			_last_tick = ceili(left)
+			Sfx.play("tick", 0.7, 0.0)
+
+
+var _last_tick := -1
 
 
 func refresh() -> void:
@@ -489,6 +496,7 @@ func refresh() -> void:
 		var inc := _income_parts(p)
 		_income_lbl.text = "다음 +%d  (이자 %d%s)" % [inc[0], inc[1], ("· %s %d" % ["연승" if int(p["streak"]) > 0 else "연패", absi(int(p["streak"]))]) if absi(int(p["streak"])) >= 2 else ""]
 		_check_merge_fx(p)
+		_sound_diff(p, phase)
 		var maxed := int(p["level"]) >= int(B()["max_level"])
 		var need := 0 if maxed else int(B()["xp_to_next"][int(p["level"]) - 1])
 		_lvl_lbl.text = "Lv %d  %s" % [int(p["level"]), "MAX" if maxed else "%d/%d" % [int(p["xp"]), need]]
@@ -543,6 +551,7 @@ func _on_phase_changed(phase: String, rnd: int) -> void:
 	_phase_total = maxf(1.0, float(st.get("phase_end", 1.0)))
 	match phase:
 		"prep":
+			Sfx.play("round", 0.8)
 			var subs := []
 			if st.get("round_kind", "") == "monster":
 				subs.append("몬스터 라운드 (연승·연패 영향 없음)")
@@ -557,6 +566,7 @@ func _on_phase_changed(phase: String, rnd: int) -> void:
 		"battle":
 			_start_battle_view()
 		"result":
+			_record_round()
 			_show_result_banner()
 
 
@@ -601,10 +611,12 @@ func _show_result_banner() -> void:
 			if String(rw.get("art", "")) != "":
 				parts.append("아티팩트: " + String(GameData.artifact(rw["art"]).get("name", "")))
 			_show_banner("몬스터 격파!" if w == 0 else "몬스터 라운드 종료", UI.GOOD if w == 0 else UI.SUB, " · ".join(parts) + "  (연승·연패·체력 변화 없음)")
+			Sfx.play("win" if w == 0 else "lose", 0.7)
 			return
 		var base := int(B()["damage_base"]) + int(st["round"]) / int(B()["damage_per_round_div"])
 		var opp: String = bt["b"] if side == 0 else bt["a"]
 		var opp_name: String = "유령 상대" if opp == "" else String(st["players"].get(opp, {}).get("name", ""))
+		Sfx.play("win" if w == side else "lose", 0.8)
 		if w == side:
 			_show_banner("승리!", UI.GOOD, "vs %s · +1 골드 · 살아남은 사도 %d명" % [opp_name, int(bt["survivors"])])
 		elif w == -1:
@@ -1225,11 +1237,79 @@ func _check_merge_fx(p: Dictionary) -> void:
 		for key in now:
 			if now[key] > _star_seen.get(key, 0):
 				var parts: PackedStringArray = key.split(":")
-				_show_banner("%s  %s 합성!" % [UI.stars(int(parts[1])), GameData.apostle(parts[0])["name"]], Color("ffe066"))
-				_vibrate(60)
+				var st := int(parts[1])
+				_show_banner("%s  %s 합성!" % [UI.stars(st), GameData.apostle(parts[0])["name"]], Color("ffe066"))
+				_vibrate(60 if st < 3 else 160)
+				Sfx.play("star3" if st >= 3 else "merge")
+				Voice.say(parts[0], "Spawn", "merge")
+				_merge_burst(p, parts[0], st)
 				break
 	_star_seen = now
 	_star_init = true
+
+
+## 합성된 사도 칸 위에 빛 연출
+func _merge_burst(p: Dictionary, aid: String, star: int) -> void:
+	if not Settings.flag("effects"):
+		return
+	var tile: Control = null
+	for k in p.get("board", {}):
+		var u: Dictionary = p["board"][k]
+		if u["aid"] == aid and int(u["star"]) == star and _board_tiles.has(k):
+			tile = _board_tiles[k]
+	if tile == null:
+		var bench: Array = p.get("bench", [])
+		for i in bench.size():
+			if bench[i] != null and bench[i]["aid"] == aid and int(bench[i]["star"]) == star and i < _bench_tiles.size():
+				tile = _bench_tiles[i]
+	if tile == null or not tile.is_visible_in_tree():
+		return
+	var fx := BurstFx.new(star)
+	var r := tile.get_global_rect()
+	var grow := 60.0 if star >= 3 else 30.0
+	fx.position = r.position - Vector2(grow, grow)
+	fx.size = r.size + Vector2(grow, grow) * 2.0
+	_drag_layer.add_child(fx)
+
+
+## 내 상태가 바뀐 것을 보고 효과음·대사 (구매·판매·새로고침·레벨업·장착)
+var _snd := {}
+
+
+func _sound_diff(p: Dictionary, phase: String) -> void:
+	var units := {}
+	var n_units := 0
+	var n_arts := 0
+	for u in p.get("bench", []):
+		if u != null:
+			n_units += 1
+			units[u["aid"]] = units.get(u["aid"], 0) + 1
+			n_arts += u["arts"].size()
+	for k in p.get("board", {}):
+		var u: Dictionary = p["board"][k]
+		n_units += 1
+		units[u["aid"]] = units.get(u["aid"], 0) + 1
+		n_arts += u["arts"].size()
+	var cur := {"gold": int(p.get("gold", 0)), "level": int(p.get("level", 1)), "n": n_units, "units": units,
+		"shop": p.get("shop", []).duplicate(), "inv": p.get("inv", []).size(), "arts": n_arts, "phase": phase, "round": App.session.state.get("round", 0)}
+	var old := _snd
+	_snd = cur
+	if old.is_empty() or old["phase"] != phase or old["round"] != cur["round"]:
+		return
+	if cur["level"] > old["level"]:
+		Sfx.play("levelup")
+	if cur["n"] > old["n"] and cur["gold"] < old["gold"]:
+		Sfx.play("buy")
+		for aid in units:
+			if units[aid] > old["units"].get(aid, 0):
+				Voice.say(aid, "Spawn", "buy")
+				break
+	elif cur["n"] < old["n"] and cur["gold"] > old["gold"]:
+		Sfx.play("sell")
+	elif cur["shop"] != old["shop"] and cur["n"] == old["n"]:
+		Sfx.play("reroll")
+	if cur["arts"] > old["arts"] and cur["inv"] < old["inv"]:
+		Sfx.play("equip")
 
 
 ## 다른 플레이어 보드 보기 (정찰)
@@ -1288,6 +1368,10 @@ func _show_player(pid: String) -> void:
 		else:
 			t.set_unit(u)
 		bench.add_child(t)
+	if pid == App.session.my_pid:
+		var rl := UI.button("라운드 기록 · 다시보기", 22, Vector2(0, 60), Color("4a3f6b"))
+		rl.pressed.connect(func(): _show_round_log(false))
+		v.add_child(rl)
 	var close := UI.button("닫기", 22, Vector2(0, 60))
 	close.pressed.connect(_close_modal)
 	v.add_child(close)
@@ -1872,7 +1956,7 @@ func _refresh_overlay() -> void:
 	var st := App.session.state
 	var p := me()
 	if st["phase"] == "over":
-		if _overlay_kind != "over":
+		if not _overlay_kind in ["over", "log", "replay"]:
 			_show_game_over()
 		return
 	if st["phase"] == "carousel":
@@ -2004,7 +2088,9 @@ func _show_offer(offer: Dictionary) -> void:
 
 func _show_game_over() -> void:
 	var st := App.session.state
-	History.record(st, App.session.my_pid, App.session.mode)
+	if _recorded_seed != int(st.get("seed", 0)):
+		_recorded_seed = int(st.get("seed", 0))
+		History.record(st, App.session.my_pid, App.session.mode)
 	var v := _modal("게임 종료", "over")
 	var list: Array = st["players"].values()
 	list.sort_custom(func(a, b): return int(a["place"]) < int(b["place"]))
@@ -2051,9 +2137,123 @@ func _show_game_over() -> void:
 		n.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		h.add_child(n)
 		v.add_child(row)
+	var bh := HBoxContainer.new()
+	bh.add_theme_constant_override("separation", 14)
+	v.add_child(bh)
+	var rl := UI.button("라운드 기록 · 다시보기", 24, Vector2(0, 70), Color("4a3f6b"))
+	rl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	rl.pressed.connect(func(): _show_round_log(true))
+	bh.add_child(rl)
 	var b := UI.button("처음 화면으로", 26, Vector2(0, 70), Color("2f4f86"))
+	b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	b.pressed.connect(App.session.leave)
-	v.add_child(b)
+	bh.add_child(b)
+
+
+# ─────────────────────────────── 라운드 기록 · 다시보기 ───────────────────────────────
+## 내 전투를 라운드마다 기록 (전투 입력 = 군대 + seed 만 있으면 똑같이 다시 볼 수 있음)
+var _round_log: Array = []
+var _log_seed := -1
+
+
+func _record_round() -> void:
+	var st := App.session.state
+	if int(st.get("seed", 0)) != _log_seed:
+		_log_seed = int(st.get("seed", 0))
+		_round_log.clear()
+	for bt in st.get("battles", []):
+		var side := -1
+		if bt["a"] == App.session.my_pid:
+			side = 0
+		elif bt["b"] == App.session.my_pid:
+			side = 1
+		if side < 0:
+			continue
+		var opp: String = bt["b"] if side == 0 else bt["a"]
+		var opp_name: String = "그림자 몬스터" if bt.get("monster", false) else ("유령 상대" if opp == "" else String(st["players"].get(opp, {}).get("name", "?")))
+		var sm: Dictionary = _battle_view.summary() if _watch < 0 else {}
+		_round_log.append({"round": int(st["round"]), "opp": opp_name, "side": side, "win": int(bt["winner"]),
+			"hp": int(me().get("hp", 0)), "bt": bt.duplicate(true), "dealt": sm.get("dealt", -1), "mvp": sm.get("mvp", ""),
+			"me_name": String(me().get("name", ""))})
+		return
+
+
+func _show_round_log(from_over: bool = false) -> void:
+	var v := _modal("라운드 기록", "log")
+	if _round_log.is_empty():
+		v.add_child(UI.label("아직 기록된 전투가 없습니다.", 22, UI.SUB, HORIZONTAL_ALIGNMENT_CENTER))
+	var sc := ScrollContainer.new()
+	sc.custom_minimum_size = Vector2(980, mini(620, 66 * _round_log.size() + 10))
+	sc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	v.add_child(sc)
+	var list := VBoxContainer.new()
+	list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	list.add_theme_constant_override("separation", 6)
+	sc.add_child(list)
+	for k in range(_round_log.size() - 1, -1, -1):
+		var e: Dictionary = _round_log[k]
+		var won: bool = int(e["win"]) == int(e["side"])
+		var draw: bool = int(e["win"]) == -1
+		var col: Color = UI.SUB if draw else (UI.GOOD if won else UI.BAD)
+		var row := UI.panel(col.darkened(0.78), 10, col.darkened(0.2), 2)
+		list.add_child(row)
+		var h := HBoxContainer.new()
+		h.add_theme_constant_override("separation", 14)
+		row.add_child(h)
+		var r := UI.label("R%d" % int(e["round"]), 22, UI.ACCENT)
+		r.custom_minimum_size.x = 60
+		h.add_child(r)
+		var res := UI.label("무승부" if draw else ("승리" if won else "패배"), 22, col)
+		res.custom_minimum_size.x = 80
+		h.add_child(res)
+		var info := "vs %s   ♥ %d" % [e["opp"], int(e["hp"])]
+		if int(e.get("dealt", -1)) >= 0:
+			info += "   준 피해 %d   MVP %s" % [int(e["dealt"]), e["mvp"]]
+		var il := UI.label(info, 20, UI.TEXT)
+		il.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		h.add_child(il)
+		var rb := UI.button("다시보기", 20, Vector2(140, 48), Color("2f4f86"))
+		var ek: Dictionary = e
+		rb.pressed.connect(func(): _show_replay(ek, from_over))
+		h.add_child(rb)
+	var close := UI.button("닫기", 22, Vector2(0, 60))
+	close.pressed.connect(func():
+		if from_over:
+			_show_game_over_again()
+		else:
+			_close_modal())
+	v.add_child(close)
+
+
+var _recorded_seed := -1
+
+
+func _show_game_over_again() -> void:
+	_overlay_kind = ""
+	_show_game_over()
+
+
+## 다시보기: 큰 전투 화면에서 처음부터 재생 (속도·처음부터·닫기)
+func _show_replay(e: Dictionary, from_over: bool) -> void:
+	var v := _modal("다시보기 — 라운드 %d  vs %s" % [int(e["round"]), e["opp"]], "replay")
+	var vp := get_viewport_rect().size
+	var bv := BattleView.new()
+	bv.custom_minimum_size = Vector2(minf(1500.0, vp.x - 120.0), minf(720.0, vp.y - 260.0))
+	v.add_child(bv)
+	var bt: Dictionary = e["bt"]
+	var names: Array = [e["me_name"], e["opp"]] if int(e["side"]) == 0 else [e["opp"], e["me_name"]]
+	var start := func(): bv.setup(bt, int(e["side"]), names[0], names[1])
+	start.call_deferred()
+	var bh := HBoxContainer.new()
+	bh.alignment = BoxContainer.ALIGNMENT_CENTER
+	bh.add_theme_constant_override("separation", 14)
+	v.add_child(bh)
+	var again := UI.button("처음부터", 22, Vector2(180, 58))
+	again.pressed.connect(start)
+	bh.add_child(again)
+	var back := UI.button("기록으로", 22, Vector2(180, 58))
+	back.pressed.connect(func(): _show_round_log(from_over))
+	bh.add_child(back)
 
 
 func _confirm_quit() -> void:
