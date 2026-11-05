@@ -15,6 +15,7 @@ var face_right := false
 var box := 200.0                 # 시트 한 칸(512 원본 기준)을 화면에 그릴 크기
 var speed := 1.0
 var tint := Color.WHITE
+var shadow := false              # 발밑 그림자
 var _meta: Dictionary = {}
 var _anim := ""
 var _loop := true
@@ -144,6 +145,11 @@ func _draw() -> void:
 	if flip:
 		# 컨트롤 가운데를 기준으로 좌우 뒤집기
 		draw_set_transform(Vector2(size.x, 0), 0.0, Vector2(-1, 1))
+	if shadow:
+		var c := Vector2(size.x / 2.0, size.y - 2.0)
+		draw_set_transform(c, 0.0, Vector2(1.0, 0.28))
+		draw_circle(Vector2.ZERO, box * 0.22, Color(0, 0, 0, 0.35 * tint.a))
+		draw_set_transform(Vector2(size.x, 0) if flip else Vector2.ZERO, 0.0, Vector2(-1, 1) if flip else Vector2.ONE)
 	draw_texture_rect_region(tex, dst, src, tint)
 	if flip:
 		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)

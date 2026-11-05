@@ -37,7 +37,9 @@ var _inner: Panel
 var _stripe: ColorRect
 var _cost := 0
 var _clock := 0.0
-var motion_mode := false    # 전투 모션이 있을 때: 초상화·배경 없이 이름·별·HP 만 (모션은 BattleView 가 그림)
+var motion_mode := false
+var show_motion := false    # 보드 칸: 초상화 대신 대기 모션 (모션 파일이 있을 때)
+var _motion: MotionSprite    # 전투 모션이 있을 때: 초상화·배경 없이 이름·별·HP 만 (모션은 BattleView 가 그림)
 
 
 func _init(size: Vector2 = Vector2(140, 140)) -> void:
@@ -201,8 +203,33 @@ func _press_fx(down: bool) -> void:
 	_press_tw.tween_property(self, "scale", Vector2(0.95, 0.95) if down else Vector2.ONE, 0.07)
 
 
+## 보드 칸 모션: 같은 사도면 그대로 두고, 바뀌면 새로 만든다
+func _set_motion(id: String) -> void:
+	var want := show_motion and id != "" and MotionSprite.available(id)
+	if _motion != null and (not want or _motion.aid != id):
+		_motion.queue_free()
+		_motion = null
+	if want and _motion == null:
+		_motion = MotionSprite.new(id)
+		_motion.face_right = true
+		_motion.shadow = true
+		add_child(_motion)
+		move_child(_motion, _tex.get_index() + 1)
+	if _motion != null:
+		_motion.size = Vector2(size.x if size.x > 0 else custom_minimum_size.x, (size.y if size.y > 0 else custom_minimum_size.y) - 36.0)
+		_motion.box = _motion.size.y / 0.82
+	_tex.visible = _motion == null and not motion_mode
+	if _motion != null:
+		_tex.texture = UI.portrait(id)
+		_tex.modulate = Color(1, 1, 1, 0.12)   # 초상화는 은은한 배경으로
+		_tex.visible = true
+	else:
+		_tex.modulate = Color.WHITE
+
+
 func set_empty(hint: String = "") -> void:
 	aid = ""
+	_set_motion("")
 	draggable = false
 	_bg = UI.BG2
 	_border = UI.LINE
@@ -250,6 +277,7 @@ func set_unit(unit: Dictionary, sub_text: String = "", border: Color = Color.TRA
 	_corner.text = ""
 	_corner.visible = false
 	_tex.texture = UI.portrait(aid)
+	_set_motion(aid)
 	_hint.text = ""
 	_strip.visible = true
 	_name.text = a.get("name", aid)
@@ -305,6 +333,12 @@ func _set_icons(unit: Dictionary) -> void:
 		var tex := UI.trait_icon(key)
 		if tex != null:
 			_icons.add_child(UI.tex_rect(tex, Vector2(s, s)))
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_RESIZED and _motion != null:
+		_motion.size = Vector2(size.x, size.y - 36.0)
+		_motion.box = _motion.size.y / 0.82
 
 
 func _process(delta: float) -> void:

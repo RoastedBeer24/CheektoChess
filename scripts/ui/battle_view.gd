@@ -31,6 +31,10 @@ var _anim := {}           # 유닛 index -> {lunge, dir, flash, pulse, dead} (�
 var _clock := 0.0
 var _stats := {}          # 유닛 index -> {dealt, taken, heal}
 var _stats_panel: Control
+var _fx: BattleFx
+var _udata := {}          # 유닛 index -> 스냅샷 (열·진영)
+var _shake := 0.0
+var _skill_banner: Label
 
 
 func _ready() -> void:
@@ -50,6 +54,15 @@ func _ready() -> void:
 	_field.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_field.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_field)
+	_fx = BattleFx.new()
+	add_child(_fx)
+	_skill_banner = UI.outlined("", 34, UI.ACCENT, 9)
+	_skill_banner.set_anchors_preset(Control.PRESET_TOP_WIDE)
+	_skill_banner.offset_top = 64
+	_skill_banner.offset_bottom = 120
+	_skill_banner.modulate.a = 0.0
+	_skill_banner.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_skill_banner)
 	_banner = UI.label("", 64, UI.ACCENT, HORIZONTAL_ALIGNMENT_CENTER)
 	_banner.set_anchors_preset(Control.PRESET_CENTER)
 	_banner.add_theme_color_override("font_outline_color", Color.BLACK)
@@ -80,6 +93,10 @@ func setup(bt: Dictionary, my_side: int, name_a: String, name_b: String) -> void
 	_stats_panel = null
 	_hp.clear()
 	_sh.clear()
+	_udata.clear()
+	_fx.clear_all()
+	_speed = Settings.num("battle_speed")
+	_speed_btn.text = "속도 x%d" % int(_speed)
 	_banner.text = ""
 	var sim := BattleSim.new(bt["army_a"], bt["army_b"], int(bt["seed"]))
 	var res := sim.run()
@@ -94,12 +111,14 @@ func setup(bt: Dictionary, my_side: int, name_a: String, name_b: String) -> void
 	_left_tag.text = left
 	_right_tag.text = right
 	for u in _units:
-		if MotionSprite.available(u["aid"]):
+		_udata[u["i"]] = u
+		if Settings.flag("battle_motion") and MotionSprite.available(u["aid"]):
 			var sp := MotionSprite.new(u["aid"])
 			sp.face_right = u["side"] == my_side   # 왼쪽(우리 편)은 오른쪽을 봄
 			sp.size = TILE
 			sp.box = SPRITE_BOX
 			sp.pivot_offset = Vector2(TILE.x / 2.0, TILE.y)
+			sp.shadow = true
 			_field.add_child(sp)
 			_sprites[u["i"]] = sp
 		var tile := UnitTile.new(TILE)
@@ -250,6 +269,15 @@ func _process(delta: float) -> void:
 		return
 	_clock += delta
 	_animate(delta)
+	_fx.speed = _speed
+	if _shake > 0.0:
+		_shake = maxf(0.0, _shake - delta)
+		var amp := 10.0 * _shake / 0.35
+		_field.position = Vector2(randf_range(-amp, amp), randf_range(-amp, amp))
+		_fx.position = _field.position
+	elif _field.position != Vector2.ZERO:
+		_field.position = Vector2.ZERO
+		_fx.position = Vector2.ZERO
 	if not _playing:
 		return
 	_t += delta * _speed
@@ -282,25 +310,34 @@ func _apply(e: Array) -> void:
 				col = Color("d9a6ff")
 			if crit:
 				col = UI.ACCENT
+			if dkind != "status":
+				_fx_at(dst, "ring", col, 0.25, 30.0 if not crit else 44.0)
 			if crit:
+				_fx_at(dst, "spark", UI.ACCENT, 0.35, 60.0)
+				_shake_cam(0.12)
 				_float(dst, "치명 " + str(int(e[4])) + "!", col, 36, 0.0, true)
 			else:
 				_float(dst, str(int(e[4])), col, 28 if dkind == "fresh" or dkind == "senior" else 23)
 		"heal":
+			_fx_at(dst, "ring", UI.GOOD, 0.45, 46.0)
 			_stat(src, "heal", float(e[4]))
 			_hp[dst] = float(e[6])
 			_float(dst, "+" + str(int(e[4])), UI.GOOD, 22)
 		"shield":
+			_fx_at(dst, "ring", Color("bfe3ff"), 0.5, 54.0)
 			_sh[dst] = float(e[7])
 			_float(dst, "보호막", Color("cfe8ff"), 18)
 		"attack":
 			_lunge(src, dst)
 			_motion(src, "Attack1_1")
+			_fx_attack(src, dst)
 		"skill":
 			_anim[src]["pulse"] = 0.35
+			_fx_skill(src, int(e[4]) == 1, String(e[5]))
 			_motion(src, "Ultimate1_1" if int(e[4]) == 1 else "Skill1_1")
 			_float(src, "✦ " + String(e[5]), UI.ACCENT if int(e[4]) == 1 else Color("c9a7ff"), 26, -56, true)
 		"death":
+			_fx_at(dst, "spark", Color(0.8, 0.8, 0.85), 0.5, 70.0)
 			_hp[dst] = 0.0
 			_anim[dst]["dead"] = true
 			if _sprites.has(dst):
@@ -365,6 +402,68 @@ func _float(i: int, text: String, color: Color, fsize: int, dy: float = 0.0, pop
 		l.scale = Vector2(1.45, 1.45)
 		tw.tween_property(l, "scale", Vector2.ONE, 0.18).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	tw.chain().tween_callback(l.queue_free)
+
+
+# ─────────────────────────────── 이펙트 ───────────────────────────────
+
+## 유닛 몸 가운데 (모션이면 캐릭터 몸, 카드면 카드 가운데)
+func _center(i: int) -> Vector2:
+	if not _tiles.has(i):
+		return Vector2.ZERO
+	var c: Vector2 = _tiles[i].position + TILE / 2.0
+	if _sprites.has(i):
+		c.y -= SPRITE_LIFT + 20.0
+	return c
+
+
+func _fx_on() -> bool:
+	return Settings.flag("effects")
+
+
+func _fx_at(i: int, kind: String, color: Color, dur: float, r: float) -> void:
+	if _fx_on() and _tiles.has(i):
+		var c := _center(i)
+		_fx.add(kind, c, c, color, dur, r)
+
+
+## 공격: 앞 열 물리 공격은 베기, 그 외(원거리·마법)는 탄환
+func _fx_attack(src: int, dst: int) -> void:
+	if not _fx_on() or not _tiles.has(src) or not _tiles.has(dst):
+		return
+	var magic: bool = _dtype.get(src, "physical") == "magic"
+	var col := Color("8cc4ff") if magic else Color("ffcf8a")
+	var u: Dictionary = _udata.get(src, {})
+	if int(u.get("row", 0)) == 0 and not magic:
+		_fx.add("slash", _center(dst), _center(dst), col, 0.25, 46.0)
+	else:
+		_fx.add("proj", _center(src), _center(dst), col, 0.18, 10.0)
+
+
+## 스킬: 시전자 바닥 빛, 고학년(궁극기)은 화면 흔들림 + 이름 배너
+func _fx_skill(src: int, senior: bool, sname: String) -> void:
+	if not _tiles.has(src):
+		return
+	var col := UI.ACCENT if senior else Color("c9a7ff")
+	if _fx_on():
+		var foot: Vector2 = _tiles[src].position + Vector2(TILE.x / 2.0, TILE.y - SPRITE_LIFT)
+		_fx.add("glow", foot, foot, col, 0.7 if senior else 0.5, 70.0 if senior else 52.0)
+		_fx.add("ring", _center(src), _center(src), col, 0.5, 80.0 if senior else 56.0)
+	if senior:
+		_shake_cam(0.3)
+		var u: Dictionary = _udata.get(src, {})
+		var mine: bool = int(u.get("side", 0)) == _my_side
+		_skill_banner.text = "✦ %s — %s ✦" % [u.get("name", ""), sname]
+		_skill_banner.add_theme_color_override("font_color", UI.ACCENT if mine else Color("ff9a9a"))
+		var tw := create_tween()
+		_skill_banner.modulate.a = 0.0
+		tw.tween_property(_skill_banner, "modulate:a", 1.0, 0.12)
+		tw.tween_interval(0.9 / maxf(0.5, _speed))
+		tw.tween_property(_skill_banner, "modulate:a", 0.0, 0.3)
+
+
+func _shake_cam(t: float) -> void:
+	if Settings.flag("screen_shake") and _fx_on():
+		_shake = maxf(_shake, t)
 
 
 ## 모션 재생 (모션이 있는 사도만). 쓰러진 사도는 무시.

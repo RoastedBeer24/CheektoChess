@@ -13,8 +13,9 @@ const SUB := Color("b9bed3")
 const DIM := Color("8a8fa6")
 ## 화면 어디서나 이보다 작은 글자는 쓰지 않는다 (모바일 가독성)
 const MIN_FONT := 18
-const GOOD := Color("5ee39b")
-const BAD := Color("ff6b6b")
+## 좋음/위험 색 (색약 모드면 파랑/주황) — apply_settings() 가 바꾼다
+static var GOOD := Color("5ee39b")
+static var BAD := Color("ff6b6b")
 const BLUE := Color("4fa3ff")
 
 const PERS_COLOR := {
@@ -28,6 +29,25 @@ const COST_COLOR := [Color("9aa0b4"), Color("4fc77a"), Color("3f9cff"), Color("b
 
 
 ## 전체 화면에 쓰는 기본 테마 (모바일에서 누르기 쉽게 크게)
+## 글자 크기 (최소 크기 + 설정의 글자 배율)
+static var text_scale := 1.0
+
+
+static func fs(size: int) -> int:
+	return int(round(maxi(size, MIN_FONT) * text_scale))
+
+
+## 설정 반영 (시작할 때와 설정을 바꿀 때)
+static func apply_settings() -> void:
+	text_scale = Settings.num("text_scale")
+	if Settings.flag("colorblind"):
+		GOOD = Color("4fa3ff")
+		BAD = Color("ff9f1c")
+	else:
+		GOOD = Color("5ee39b")
+		BAD = Color("ff6b6b")
+
+
 static func make_theme() -> Theme:
 	var t := Theme.new()
 	t.default_font_size = 22
@@ -88,7 +108,7 @@ static func panel(color: Color = PANEL, radius: int = 14, border: Color = Color.
 static func label(text: String, size: int = 22, color: Color = TEXT, align: int = HORIZONTAL_ALIGNMENT_LEFT) -> Label:
 	var l := Label.new()
 	l.text = text
-	l.add_theme_font_size_override("font_size", maxi(size, MIN_FONT))
+	l.add_theme_font_size_override("font_size", fs(size))
 	l.add_theme_color_override("font_color", color)
 	l.horizontal_alignment = align
 	l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
@@ -112,7 +132,7 @@ static func wrap_label(text: String, size: int = 18, color: Color = SUB) -> Labe
 static func button(text: String, size: int = 22, min_size: Vector2 = Vector2(0, 56), color: Color = PANEL_LIGHT) -> Button:
 	var b := Button.new()
 	b.text = text
-	b.add_theme_font_size_override("font_size", maxi(size, MIN_FONT))
+	b.add_theme_font_size_override("font_size", fs(size))
 	b.custom_minimum_size = min_size
 	b.add_theme_stylebox_override("normal", box(color, 12, color.lightened(0.18), 2))
 	b.add_theme_stylebox_override("hover", box(color.lightened(0.1), 12, color.lightened(0.3), 2))

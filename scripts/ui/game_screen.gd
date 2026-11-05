@@ -42,6 +42,8 @@ var _board_info: Label
 var _board_tiles := {}
 var _battle_view: BattleView
 var _banner: Label
+var _banner_sub: Label
+var _banner_box: PanelContainer
 var _detail_box: VBoxContainer
 var _inv_grid: GridContainer
 var _inv_title: Label
@@ -116,11 +118,24 @@ func _build() -> void:
 	_battle_view.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_battle_view.visible = false
 	cstack.add_child(_battle_view)
-	_banner = UI.outlined("", 64, UI.ACCENT, 14)
-	_banner.set_anchors_preset(Control.PRESET_FULL_RECT)
+	# 라운드·결과 배너: 가운데 가로 띠 + 큰 글자 + 작은 설명
+	_banner_box = PanelContainer.new()
+	_banner_box.set_anchors_preset(Control.PRESET_HCENTER_WIDE)
+	_banner_box.offset_top = -70
+	_banner_box.offset_bottom = 70
+	_banner_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_banner_box.modulate.a = 0.0
+	cstack.add_child(_banner_box)
+	var bv := VBoxContainer.new()
+	bv.alignment = BoxContainer.ALIGNMENT_CENTER
+	bv.add_theme_constant_override("separation", 0)
+	_banner_box.add_child(bv)
+	_banner = UI.outlined("", 60, UI.ACCENT, 12)
 	_banner.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_banner.modulate.a = 0.0
-	cstack.add_child(_banner)
+	bv.add_child(_banner)
+	_banner_sub = UI.outlined("", 24, UI.TEXT, 6)
+	_banner_sub.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	bv.add_child(_banner_sub)
 	mid.add_child(_build_right())
 
 	root.add_child(_build_bench())
@@ -336,6 +351,7 @@ func _build_board() -> Control:
 	for s in int(B()["board_slots"]):
 		for r in [2, 1, 0]:
 			var t := UnitTile.new(Vector2(170, 170))
+			t.show_motion = Settings.flag("board_motion")
 			var key := Match.key_of(r, s)
 			t.loc = {"board": key}
 			var loc: Dictionary = t.loc
@@ -495,22 +511,41 @@ func _on_phase_changed(phase: String, rnd: int) -> void:
 	_phase_total = maxf(1.0, float(st.get("phase_end", 1.0)))
 	match phase:
 		"prep":
-			var art := " · 아티팩트 획득!" if not me().get("art_offer", {}).is_empty() else ""
-			_show_banner("라운드 %d%s" % [rnd, art], UI.ACCENT)
+			var subs := []
+			if not me().get("art_offer", {}).is_empty():
+				subs.append("아티팩트 선택")
+			var stk := int(me().get("streak", 0))
+			if absi(stk) >= 2:
+				subs.append("%d%s 중" % [absi(stk), "연승" if stk > 0 else "연패"])
+			_show_banner("라운드 %d" % rnd, UI.ACCENT, " · ".join(subs))
 		"battle":
 			_start_battle_view()
 		"result":
 			_show_result_banner()
 
 
-func _show_banner(text: String, color: Color) -> void:
+func _show_banner(text: String, color: Color, sub: String = "") -> void:
 	_banner.text = text
 	_banner.add_theme_color_override("font_color", color)
+	_banner_sub.text = sub
+	_banner_sub.visible = sub != ""
+	var band := StyleBoxFlat.new()
+	band.bg_color = Color(color.darkened(0.75), 0.82)
+	band.border_color = Color(color, 0.8)
+	band.border_width_top = 3
+	band.border_width_bottom = 3
+	band.content_margin_top = 8
+	band.content_margin_bottom = 8
+	_banner_box.add_theme_stylebox_override("panel", band)
 	var tw := create_tween()
-	_banner.modulate.a = 0.0
-	tw.tween_property(_banner, "modulate:a", 1.0, 0.2)
-	tw.tween_interval(1.1)
-	tw.tween_property(_banner, "modulate:a", 0.0, 0.5)
+	_banner_box.modulate.a = 0.0
+	_banner_box.scale = Vector2(1, 0.4)
+	_banner_box.pivot_offset = Vector2(_banner_box.size.x / 2.0, _banner_box.size.y / 2.0)
+	tw.set_parallel(true)
+	tw.tween_property(_banner_box, "modulate:a", 1.0, 0.18)
+	tw.tween_property(_banner_box, "scale", Vector2.ONE, 0.22).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tw.chain().tween_interval(1.2)
+	tw.chain().tween_property(_banner_box, "modulate:a", 0.0, 0.45)
 
 
 func _show_result_banner() -> void:
@@ -525,12 +560,14 @@ func _show_result_banner() -> void:
 			continue
 		var w := int(bt["winner"])
 		var base := int(B()["damage_base"]) + int(st["round"]) / int(B()["damage_per_round_div"])
+		var opp: String = bt["b"] if side == 0 else bt["a"]
+		var opp_name: String = "유령 상대" if opp == "" else String(st["players"].get(opp, {}).get("name", ""))
 		if w == side:
-			_show_banner("승리!  +1 골드", UI.GOOD)
+			_show_banner("승리!", UI.GOOD, "vs %s · +1 골드 · 살아남은 사도 %d명" % [opp_name, int(bt["survivors"])])
 		elif w == -1:
-			_show_banner("무승부  ♥ -%d" % base, UI.SUB)
+			_show_banner("무승부", UI.SUB, "vs %s · ♥ -%d" % [opp_name, base])
 		else:
-			_show_banner("패배  ♥ -%d" % (base + int(bt["survivors"])), UI.BAD)
+			_show_banner("패배", UI.BAD, "vs %s · ♥ -%d (기본 %d + 살아남은 적 %d)" % [opp_name, base + int(bt["survivors"]), base, int(bt["survivors"])])
 		return
 
 
@@ -1213,7 +1250,7 @@ func _on_sell() -> void:
 # 손가락 아래 칸에는 놓일 모습과 결과(놓기/교체/구매/판매 또는 불가 사유)가 보인다.
 
 func _vibrate(ms: int = 20) -> void:
-	if OS.has_feature("android"):
+	if OS.has_feature("android") and Settings.flag("vibrate"):
 		Input.vibrate_handheld(ms)
 
 
@@ -1776,6 +1813,37 @@ func _show_game_over() -> void:
 	var v := _modal("게임 종료", "over")
 	var list: Array = st["players"].values()
 	list.sort_custom(func(a, b): return int(a["place"]) < int(b["place"]))
+	# 시상대: 1~3위의 대표 사도(별·코스트 높은 순 3명)가 모션으로
+	var podium := HBoxContainer.new()
+	podium.alignment = BoxContainer.ALIGNMENT_CENTER
+	podium.add_theme_constant_override("separation", 30)
+	v.add_child(podium)
+	for idx in mini(3, list.size()):
+		var p: Dictionary = list[idx]
+		var col := VBoxContainer.new()
+		col.alignment = BoxContainer.ALIGNMENT_END
+		podium.add_child(col)
+		var units := []
+		for k in p.get("board", {}):
+			units.append(p["board"][k])
+		units.sort_custom(func(a, b): return int(a["star"]) * 10 + GameData.cost_of.get(a["aid"], 1) > int(b["star"]) * 10 + GameData.cost_of.get(b["aid"], 1))
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", -20)
+		col.add_child(row)
+		for u in units.slice(0, 3):
+			if MotionSprite.available(u["aid"]) and Settings.flag("battle_motion"):
+				var sp := MotionSprite.new(u["aid"])
+				sp.face_right = true
+				sp.shadow = true
+				var h := 150.0 if idx == 0 else 120.0
+				sp.custom_minimum_size = Vector2(h * 0.75, h)
+				sp.box = h / 0.82
+				sp.play("Victory" if sp.has_anim("Victory") else "Idle")
+				row.add_child(sp)
+			else:
+				row.add_child(UI.tex_rect(UI.portrait(u["aid"]), Vector2(90, 90), true))
+		var medal_col: Color = [UI.ACCENT, Color("d8dde8"), Color("e0a070")][idx]
+		col.add_child(UI.label("%d위  %s" % [idx + 1, p["name"]], 30 if idx == 0 else 24, medal_col, HORIZONTAL_ALIGNMENT_CENTER))
 	for p in list:
 		var mine: bool = p["id"] == App.session.my_pid
 		var row := UI.panel(Color(UI.ACCENT, 0.15) if mine else UI.BG2, 10, UI.ACCENT if mine else Color.TRANSPARENT, 2 if mine else 0)

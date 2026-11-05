@@ -15,6 +15,7 @@ var _modal: Control
 
 func _ready() -> void:
 	set_anchors_preset(Control.PRESET_FULL_RECT)
+	UI.apply_settings()
 	theme = UI.make_theme()
 	var bg := ColorRect.new()
 	bg.color = UI.BG
