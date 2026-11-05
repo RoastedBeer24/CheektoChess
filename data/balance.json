@@ -40,7 +40,7 @@
  "monster": {"count_base": 2, "count_per_round": 0.25, "count_max": 7, "power_base": 0.55, "power_per_round": 0.05, "kill_gold_max": 3},
  "carousel_rounds": [4, 9, 13, 17],
  "carousel_turn": 7,
- "move": {"speed": 2.0, "range": {"front": 1.3, "mid": 3.0, "back": 4.6}, "col_w": 1.5, "slot_h": 1.4, "field_w": 16.0, "margin": 0.8, "spacing": 1.35, "lane_pull": 0.25, "body": 0.9},
+ "move": {"speed": 2.0, "range": {"front": 1.4, "mid": 3.2, "back": 4.8}, "col_w": 1.5, "slot_h": 1.4, "field_w": 16.0, "margin": 0.8, "spacing": 1.35, "lane_pull": 0.25, "body": 0.9},
  "artifact_slots": 3,
  "artifact_choices": 3,
  "artifact_odds": {

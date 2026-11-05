@@ -592,9 +592,9 @@ func _dist(a: Dictionary, b: Dictionary) -> float:
 	return Vector2(a["x"], a["y"]).distance_to(Vector2(b["x"], b["y"]))
 
 
-## 공격 거리: 앞뒤(가로) 거리 + 줄 차이는 조금만 (원작처럼 줄 맞춰 앞으로 나가 싸움)
+## 공격 거리: 두 사도 사이의 실제 거리 (사거리 원 안에 들어오면 공격)
 func _reach(a: Dictionary, b: Dictionary) -> float:
-	return absf(a["x"] - b["x"]) + float(B["move"]["lane_pull"]) * absf(a["y"] - b["y"])
+	return Vector2(a["x"], a["y"]).distance_to(Vector2(b["x"], b["y"]))
 
 
 ## 전장 크기 (가로: 양 진영 끝에서 끝, 세로: 3줄)
@@ -631,44 +631,39 @@ func _nearest(u: Dictionary) -> Variant:
 	return best
 
 
-## 줄을 지켜 앞으로 걸어간다. 같은 줄 앞의 아군·적의 몸을 지나치지 않음.
-## 앞뒤로는 이미 가깝지만 줄이 달라 닿지 않으면(근접) 그 줄로 옮겨 간다.
+## 목표 적을 향해 곧장(대각선·위아래 포함) 걸어가 사거리에 들어오면 멈춘다.
+## 다른 사도와 몸이 겹치면 옆으로 밀려나 비켜 선다 (아군끼리는 spacing, 적과는 body 간격).
 func _move_toward(u: Dictionary, target: Dictionary) -> void:
 	var mv: Dictionary = B["move"]
-	var step := float(mv["speed"]) * DT
-	var dx: float = target["x"] - u["x"]
-	var dy: float = target["y"] - u["y"]
-	var need: float = _reach(u, target) - float(u["range"])
-	var x: float = u["x"]
-	var y: float = u["y"]
-	if absf(dx) > u["range"] * 0.75:
-		var dir := signf(dx)
-		var mx := minf(step, minf(need, absf(dx) - float(mv["body"]) * 0.5))
-		if mx <= 0.0:
-			return
-		var nx := x + dir * mx
-		# 같은 줄 앞쪽의 아군(간격) · 적(몸)을 넘어가지 않음
-		for a in units:
-			if a == u or not a["alive"] or absf(a["y"] - y) > 0.55:
-				continue
-			var ahead: float = (a["x"] - x) * dir
-			if ahead <= 0.0:
-				continue
-			var gap := float(mv["spacing"]) if a["side"] == u["side"] else float(mv["body"])
-			nx = x + dir * minf(absf(nx - x), maxf(0.0, ahead - gap))
-		if absf(nx - x) < 0.0005:
-			# 앞이 막혔으면 비어 있는 옆 줄로 비켜 선다
-			if absf(dy) > 0.3:
-				y += signf(dy) * minf(step * 0.6, absf(dy))
-			else:
-				return
-		x = nx
-	else:
-		if absf(dy) < 0.01:
-			return
-		y += signf(dy) * minf(step * 0.8, absf(dy))
-	u["x"] = x
-	u["y"] = clampf(y, 0.3, field_size().y - 0.3)
+	var p := Vector2(u["x"], u["y"])
+	var goal := Vector2(target["x"], target["y"])
+	var d := p.distance_to(goal)
+	var step := minf(float(mv["speed"]) * DT, d - float(u["range"]))
+	if step <= 0.0 or d < 0.001:
+		return
+	var dir := (goal - p) / d
+	var np := p + dir * step
+	# 몸 겹침 풀기: 가까운 사도에게서 밀려나되, 목표 쪽으로 가는 성분은 남긴다
+	for o in units:
+		if o == u or not o["alive"]:
+			continue
+		var q := Vector2(o["x"], o["y"])
+		var gap := float(mv["spacing"]) if o["side"] == u["side"] else float(mv["body"])
+		var off := np - q
+		var dist := off.length()
+		if dist < gap:
+			var push := off / dist if dist > 0.001 else Vector2(0, 1 if u["i"] % 2 == 0 else -1)
+			# 정면으로 막히면 옆(위/아래)으로 비켜 돌아간다
+			if push.dot(dir) < -0.7:
+				push = Vector2(-dir.y, dir.x) * (1.0 if (u["i"] + int(o["i"])) % 2 == 0 else -1.0)
+			np += push * (gap - dist) * 0.6
+	var fs := field_size()
+	np.x = clampf(np.x, 0.2, fs.x - 0.2)
+	np.y = clampf(np.y, 0.3, fs.y - 0.3)
+	if np.distance_to(p) < 0.0005:
+		return
+	u["x"] = np.x
+	u["y"] = np.y
 	u["moving"] = true
 	if _tick_count % 2 == 0:
 		_emit_pos(u)
