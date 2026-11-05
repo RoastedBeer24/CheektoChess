@@ -25,6 +25,7 @@ SIZE = 192          # 512 칸 → 192 칸 (기준점 유지)
 TARGET_FPS = 8.0
 QUALITY = 78
 MAX_COLS = 12
+MAX_FRAMES = 48      # 동작 하나 최대 프레임 (약 6초) — 너무 긴 궁극기는 뒤를 자름
 FEET = 461 / 512
 STD_FEET = 461        # 512 원본에서 발 위치
 STD_CX = 256          # 512 원본에서 가운데
@@ -82,7 +83,7 @@ def pack_one(src_dir: str, aid: str) -> int:
         d = os.path.join(src_dir, anim)
         if not os.path.isdir(d):
             continue
-        frames = sorted(f for f in os.listdir(d) if f.endswith(".png"))[::step]
+        frames = sorted(f for f in os.listdir(d) if f.endswith(".png"))[::step][:MAX_FRAMES]
         if not frames:
             continue
         cols = min(len(frames), MAX_COLS)
