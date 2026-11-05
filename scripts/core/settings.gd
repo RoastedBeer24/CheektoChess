@@ -16,6 +16,7 @@ const DEFAULTS := {
 	"text_scale": 1.0,      # 1.0 / 1.15 / 1.3
 	"colorblind": false,    # 색약 모드: 좋음/위험 색을 파랑/주황으로
 	"tutorial_done": false,
+	"rules": {},            # 방 규칙 (방장·혼자 하기): {fast, augments, hp, gold, prep}
 }
 
 static var _data: Dictionary = {}

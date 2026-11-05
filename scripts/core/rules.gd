@@ -20,6 +20,14 @@ static func count_traits(units: Array) -> Dictionary:
 	return counts
 
 
+## 상징 증강: 그 시너지 사도가 1명 이상이면 인원 +1
+static func apply_emblems(counts: Dictionary, augs: Array) -> Dictionary:
+	for a in augs:
+		if a.get("id", "") == "emblem" and counts.get(a.get("trait", ""), 0) > 0:
+			counts[a["trait"]] += 1
+	return counts
+
+
 ## 시너지 이름 -> 발동 단계(0 = 미발동, 1~)
 static func active_tiers(counts: Dictionary) -> Dictionary:
 	var out := {}

@@ -14,9 +14,10 @@ var _bot_second_done := false
 var tutorial := false   # 튜토리얼 연습 판: 준비 시간이 멈춤
 
 
-func _init(players: Array, seed: int) -> void:
+## rules: 방 규칙 {fast, augments, hp, gold, prep} (방장이 고름, 없으면 기본)
+func _init(players: Array, seed: int, rules: Dictionary = {}) -> void:
 	# players: [{id, name, bot}]
-	B = GameData.balance
+	B = rules_balance(rules)
 	rng.seed = seed
 	var pool := {}
 	for aid in GameData.roster:
@@ -29,12 +30,71 @@ func _init(players: Array, seed: int) -> void:
 			"streak": 0, "alive": true, "place": 0,
 			"shop": [], "locks": [], "bench": _empty_bench(), "board": {}, "inv": [],
 			"art_offer": {}, "connected": true, "dc_round": 0, "last_opp": "", "ready": false,
+			"augs": [], "aug_offer": {}, "aug_st": {}, "style": p.get("style", ""),
 		}
 	state = {
 		"round": 0, "phase": "lobby", "phase_end": 0.0, "players": ps, "pool": pool,
 		"battles": [], "next_uid": 1, "log": [], "winner": "", "seed": seed,
-		"group": GameData.group_id,
+		"group": GameData.group_id, "rules": rules, "bal": rules_overrides(rules),
 	}
+
+
+# ─────────────────────────────── 방 규칙 ───────────────────────────────
+
+const HP_CHOICES := [0, 150, 70]          # 0 = 기본
+const GOLD_CHOICES := [0, 5, 10]
+const PREP_CHOICES := [1.0, 0.7, 1.5]
+
+
+## 규칙으로 바뀌는 밸런스 값만 (화면에서도 같은 값을 쓰도록 state["bal"] 에 싣는다)
+static func rules_overrides(rules: Dictionary) -> Dictionary:
+	var base: Dictionary = GameData.balance
+	var o := {}
+	var hp := int(HP_CHOICES[clampi(int(rules.get("hp", 0)), 0, 2)])
+	if hp > 0:
+		o["player_hp"] = hp
+	var g := int(GOLD_CHOICES[clampi(int(rules.get("gold", 0)), 0, 2)])
+	if g > 0:
+		o["start_gold"] = int(base["start_gold"]) + g
+	var pk := float(PREP_CHOICES[clampi(int(rules.get("prep", 0)), 0, 2)])
+	if rules.get("fast", false):
+		# 빠른 모드: 체력 60, 준비 시간 짧게, 레벨·골드·경험치를 앞당김
+		o["player_hp"] = 60
+		pk *= 0.7
+		o["start_level"] = int(base["start_level"]) + 1
+		o["start_gold"] = int(o.get("start_gold", base["start_gold"])) + 4
+		o["xp_per_round"] = int(base.get("xp_per_round", 2)) + 2
+	if not is_equal_approx(pk, 1.0):
+		o["prep_time"] = roundf(float(base["prep_time"]) * pk)
+		o["first_prep_time"] = roundf(float(base.get("first_prep_time", base["prep_time"])) * pk)
+	return o
+
+
+static func rules_balance(rules: Dictionary) -> Dictionary:
+	var b: Dictionary = GameData.balance.duplicate(true)
+	var o := rules_overrides(rules)
+	for k in o:
+		b[k] = o[k]
+	return b
+
+
+## 규칙 요약 (대기실 표시용)
+static func rules_text(rules: Dictionary) -> String:
+	var parts := []
+	if rules.get("fast", false):
+		parts.append("빠른 모드")
+	var hp := int(HP_CHOICES[clampi(int(rules.get("hp", 0)), 0, 2)])
+	if hp > 0 and not rules.get("fast", false):
+		parts.append("체력 %d" % hp)
+	var g := int(GOLD_CHOICES[clampi(int(rules.get("gold", 0)), 0, 2)])
+	if g > 0:
+		parts.append("시작 골드 +%d" % g)
+	var pk := int(clampi(int(rules.get("prep", 0)), 0, 2))
+	if pk > 0:
+		parts.append(["", "준비 시간 짧게", "준비 시간 길게"][pk])
+	if rules.get("augments", false):
+		parts.append("증강")
+	return "기본 규칙" if parts.is_empty() else " · ".join(parts)
 
 
 func _empty_bench() -> Array:
@@ -155,7 +215,15 @@ func _start_prep() -> void:
 		else:
 			p["gold"] += income(p)
 			_add_xp(p, int(B["xp_per_round"]))
+		if has_aug(p, "xp_round") and r > 1:
+			_add_xp(p, 2)
+		if has_aug(p, "free_reroll"):
+			p["aug_st"]["free_rr"] = 2
+		if int(p["aug_st"].get("debt_left", 0)) > 0:
+			p["aug_st"]["debt_left"] = int(p["aug_st"]["debt_left"]) - 1
 		_refresh_shop(p)
+		if state["rules"].get("augments", false) and _in(GameData.augments.get("rounds", []), r):
+			p["aug_offer"] = {"options": _roll_augments(p, 3), "rerolled": false}
 		if is_artifact_round(r):
 			p["art_offer"] = {"options": _roll_artifacts(r, int(B["artifact_choices"])), "rerolled": [false, false, false]}
 	state["round_kind"] = "monster" if _in(B.get("monster_rounds", []), r) else "pvp"
@@ -197,6 +265,11 @@ func _start_carousel(r: int) -> void:
 		ids[i] = ids[j]
 		ids[j] = t
 	ids.sort_custom(func(a, b): return int(player(a)["hp"]) < int(player(b)["hp"]))
+	# 선착순 증강: 맨 앞으로
+	var firsts := ids.filter(func(x): return has_aug(player(x), "first_pick"))
+	for x in firsts:
+		ids.erase(x)
+	ids = firsts + ids
 	var max_cost := clampi(1 + r / 4, 1, 5)
 	var opts := []
 	for i in ids.size() + 2:
@@ -255,13 +328,18 @@ func is_artifact_round(r: int) -> bool:
 
 func income(p: Dictionary) -> int:
 	var g := int(B["base_income"])
-	g += mini(int(p["gold"]) / int(B["interest_per"]), int(B["interest_max"]))
+	var imax := int(B["interest_max"]) + (3 if has_aug(p, "interest_cap") else 0)
+	g += mini(int(p["gold"]) / int(B["interest_per"]), imax)
 	var s: int = abs(int(p["streak"]))
 	var bonus := 0
 	for pair in B["streak_bonus"]:
 		if s >= int(pair[0]):
 			bonus = int(pair[1])
-	return g + bonus
+	if has_aug(p, "streak_x2"):
+		bonus *= 2
+	if int(p.get("aug_st", {}).get("debt_left", 0)) > 0:
+		g -= 3
+	return maxi(0, g + bonus)
 
 
 func _start_battle() -> void:
@@ -270,6 +348,8 @@ func _start_battle() -> void:
 		var p := player(pid)
 		if not p["art_offer"].is_empty():
 			_cmd_art_pick(p, {"i": 0})
+		if not p.get("aug_offer", {}).is_empty():
+			_cmd_aug_pick(p, {"i": 0})
 	state["phase"] = "battle"
 	if state.get("round_kind", "pvp") == "monster":
 		_start_monster_battles()
@@ -312,7 +392,8 @@ func _start_battle() -> void:
 		if _is_human(a) or (b != "" and _is_human(b)):
 			longest = maxf(longest, float(result["end_time"]))
 		battles.append({"a": a, "b": b, "ghost": ghost, "seed": seed, "army_a": army_a, "army_b": army_b,
-			"winner": result["winner"], "survivors": result["survivors"], "end_time": result["end_time"]})
+			"winner": result["winner"], "survivors": result["survivors"], "end_time": result["end_time"],
+			"deaths": result.get("deaths", [0, 0])})
 		player(a)["last_opp"] = b if ghost == "" else ghost
 		if b != "":
 			player(b)["last_opp"] = a
@@ -382,6 +463,8 @@ func _monster_reward(bt: Dictionary) -> void:
 	var p := player(bt["a"])
 	var r: int = state["round"]
 	var gold := mini(int(bt.get("kills", 0)), int(B["monster"]["kill_gold_max"]))
+	if has_aug(p, "monster_x2"):
+		gold *= 2
 	var art := ""
 	if int(bt["winner"]) == 0:
 		if r <= 2:
@@ -402,6 +485,12 @@ func _end_battle() -> void:
 			continue
 		var a := player(bt["a"])
 		var b := player(bt["b"]) if bt["b"] != "" else {}
+		# 현상금: 쓰러뜨린 적 1명마다 1골드 (최대 4)
+		var dth: Array = bt.get("deaths", [0, 0])
+		if has_aug(a, "b_bounty"):
+			a["gold"] += mini(4, int(dth[1]))
+		if not b.is_empty() and has_aug(b, "b_bounty"):
+			b["gold"] += mini(4, int(dth[0]))
 		match int(bt["winner"]):
 			0:
 				_win(a)
@@ -451,12 +540,28 @@ func _win(p: Dictionary) -> void:
 	p["streak"] = maxi(1, int(p["streak"]) + 1)
 	p["gold"] += 1
 	_synergy_reward(p, true)
+	var gm: Dictionary = p["aug_st"].get("gamble", {})
+	if not gm.is_empty():
+		gm["won"] = int(gm["won"]) + 1
+		if int(gm["won"]) >= 3:
+			p["aug_st"].erase("gamble")
+			p["gold"] += 15
+			p["inv"].append({"uid": _uid(), "id": _random_of_grade("legend")})
+			_log("%s 도박사 성공! 전설 아티팩트 + 15골드" % p["name"])
 
 
 func _lose(p: Dictionary, dmg: int) -> void:
 	p["streak"] = mini(-1, int(p["streak"]) - 1)
-	p["hp"] -= dmg
+	if p["aug_st"].get("insurance", false):
+		p["aug_st"].erase("insurance")
+		_log("%s 보험으로 체력 피해 없음" % p["name"])
+	else:
+		p["hp"] -= dmg
 	_synergy_reward(p, false)
+	if p["aug_st"].has("gamble"):
+		p["aug_st"].erase("gamble")
+	if has_aug(p, "lose_xp"):
+		_add_xp(p, 4)
 
 
 ## 전투 결과에 따른 시너지 보상 (델리아 탐험대: 골드, n승마다 아티팩트)
@@ -464,7 +569,7 @@ func _synergy_reward(p: Dictionary, won: bool) -> void:
 	var specs := []
 	for k in p["board"]:
 		specs.append(p["board"][k])
-	var tiers := Rules.active_tiers(Rules.count_traits(specs))
+	var tiers := Rules.active_tiers(Rules.apply_emblems(Rules.count_traits(specs), p.get("augs", [])))
 	for name in tiers:
 		var tier: int = tiers[name]
 		if tier <= 0:
@@ -533,7 +638,7 @@ func pack_host_meta() -> void:
 
 
 static func from_state(s: Dictionary) -> Match:
-	var m := Match.new([], 0)
+	var m := Match.new([], 0, s.get("rules", {}))
 	m.state = s.duplicate(true)
 	var meta: Dictionary = m.state.get("_host_meta", {})
 	m.rng.seed = int(meta.get("seed", 1))
@@ -556,6 +661,34 @@ func army_of(pid: String) -> Array:
 		for a in u["arts"]:
 			arts.append(a["id"])
 		out.append({"aid": u["aid"], "star": u["star"], "row": rs[0], "slot": rs[1], "arts": arts, "pers": u["pers"]})
+	var augs := battle_augs(p)
+	if not augs.is_empty():
+		for spec in out:
+			spec["augs"] = augs
+	return out
+
+
+## 전투에 쓰이는 증강 효과 (시너지 형식 spec). 조건·수량이 있는 것은 지금 상태로 계산해 넣는다.
+func battle_augs(p: Dictionary) -> Array:
+	var out := []
+	for a in p.get("augs", []):
+		var id: String = a["id"]
+		if id == "emblem":
+			out.append({"id": id, "emblem": a.get("trait", "")})
+			continue
+		if id == "b_underdog" and int(p["hp"]) > 50:
+			continue
+		if id == "b_cheer":
+			var n := 0
+			for u in p["bench"]:
+				if u != null:
+					n += 1
+			if n > 0:
+				out.append({"id": id, "spec": {"team_mods": {"atk": 3 * n}}})
+			continue
+		var d: Dictionary = GameData.augment(id)
+		if d.has("spec"):
+			out.append({"id": id, "spec": d["spec"]})
 	return out
 
 
@@ -626,6 +759,18 @@ func _refresh_shop(p: Dictionary) -> void:
 	for i in n:
 		if shop[i] == "":
 			shop[i] = _roll_unit(odds)
+	# 인연: 첫 칸(잠기지 않았으면)에 내가 가진 사도
+	if has_aug(p, "fated") and locks[0] != true:
+		var owned := []
+		for u in _all_units(p):
+			if int(u["star"]) < 3 and int(state["pool"].get(u["aid"], 0)) > 0 and not owned.has(u["aid"]):
+				owned.append(u["aid"])
+		if not owned.is_empty():
+			var pick: String = owned[rng.randi_range(0, owned.size() - 1)]
+			if shop[0] != "":
+				state["pool"][shop[0]] += 1
+			state["pool"][pick] -= 1
+			shop[0] = pick
 	p["shop"] = shop
 	p["locks"] = locks
 
@@ -713,7 +858,7 @@ func command(pid: String, cmd: Dictionary) -> String:
 			return "이미 가져간 묶음"
 		_carousel_pick(pid, ci)
 		return ""
-	var prep_only := ["buy", "sell", "move", "reroll", "buy_xp", "art_reroll", "art_pick", "equip", "art_merge", "ready"]
+	var prep_only := ["buy", "sell", "move", "reroll", "buy_xp", "art_reroll", "art_pick", "equip", "art_merge", "ready", "aug_pick", "aug_reroll"]
 	if prep_only.has(t) and state["phase"] != "prep":
 		return "준비 단계가 아님"
 	var err := ""
@@ -727,6 +872,8 @@ func command(pid: String, cmd: Dictionary) -> String:
 		"art_pick": err = _cmd_art_pick(p, cmd)
 		"equip": err = _cmd_equip(p, cmd)
 		"art_merge": err = _cmd_art_merge(p, cmd)
+		"aug_pick": err = _cmd_aug_pick(p, cmd)
+		"aug_reroll": err = _cmd_aug_reroll(p)
 		"ready":
 			p["ready"] = bool(cmd.get("on", true))
 		_:
@@ -779,7 +926,7 @@ func _valid_empty_target(p: Dictionary, aid: String, to: Dictionary) -> bool:
 		var rs := _parse_key(String(to["board"]))
 		if rs[0] < 0 or rs[0] >= int(B["board_rows"]) or rs[1] < 0 or rs[1] >= int(B["board_slots"]):
 			return false
-		return not p["board"].has(to["board"]) and GameData.can_place(aid, rs[0]) and p["board"].size() < int(p["level"])
+		return not p["board"].has(to["board"]) and can_place_p(p, aid, rs[0]) and p["board"].size() < board_cap(p)
 	return false
 
 
@@ -822,6 +969,8 @@ func _try_merge(p: Dictionary, aid: String, star: int, extra = null) -> void:
 	var merged := {"uid": _uid(), "aid": aid, "star": star + 1, "arts": [], "pers": kept["pers"]}
 	_set_at(p, keep, merged)
 	_log("%s %s %d성 합성" % [p["name"], GameData.apostle(aid).get("name", aid), star + 1])
+	if has_aug(p, "merge_gold"):
+		p["gold"] += 2
 	_try_merge(p, aid, star + 1)
 
 
@@ -855,12 +1004,12 @@ func _cmd_move(p: Dictionary, cmd: Dictionary) -> String:
 		return "잘못된 칸"
 	var other = unit_at(p, to)
 	# 열 제한 검사
-	if to.has("board") and not GameData.can_place(u["aid"], _parse_key(to["board"])[0]):
+	if to.has("board") and not can_place_p(p, u["aid"], _parse_key(to["board"])[0]):
 		return "%s은(는) %s에만 배치할 수 있음" % [GameData.apostle(u["aid"])["name"], GameData.ROW_NAME[GameData.apostle(u["aid"])["row"]]]
-	if other != null and from.has("board") and not GameData.can_place(other["aid"], _parse_key(from["board"])[0]):
+	if other != null and from.has("board") and not can_place_p(p, other["aid"], _parse_key(from["board"])[0]):
 		return "자리를 바꿀 수 없는 열"
 	# 보드 인원 제한
-	if to.has("board") and not from.has("board") and other == null and p["board"].size() >= int(p["level"]):
+	if to.has("board") and not from.has("board") and other == null and p["board"].size() >= board_cap(p):
 		return "보드 인원 제한 (레벨 %d)" % p["level"]
 	_set_at(p, from, other)
 	_set_at(p, to, u)
@@ -885,6 +1034,10 @@ func _fix_pers(u: Dictionary, loc: Dictionary, wanted: String) -> void:
 
 
 func _cmd_reroll(p: Dictionary) -> String:
+	if int(p["aug_st"].get("free_rr", 0)) > 0:
+		p["aug_st"]["free_rr"] = int(p["aug_st"]["free_rr"]) - 1
+		_refresh_shop(p)
+		return ""
 	if p["gold"] < int(B["reroll_cost"]):
 		return "골드 부족"
 	p["gold"] -= int(B["reroll_cost"])
@@ -1034,3 +1187,117 @@ func _cmd_art_merge(p: Dictionary, cmd: Dictionary) -> String:
 	p["inv"].append({"uid": _uid(), "id": new_id})
 	_log("%s 아티팩트 합성 → %s" % [p["name"], GameData.artifact(new_id)["name"]])
 	return ""
+
+
+# ─────────────────────────────── 증강 ───────────────────────────────
+
+static func has_aug(p: Dictionary, id: String) -> bool:
+	for a in p.get("augs", []):
+		if a["id"] == id:
+			return true
+	return false
+
+
+## 보드 인원 = 레벨 (+ 확장 보드)
+static func board_cap(p: Dictionary) -> int:
+	return int(p["level"]) + (1 if has_aug(p, "board_plus") else 0)
+
+
+## 열 제한 (자유 배치 증강이면 아무 열)
+static func can_place_p(p: Dictionary, aid: String, row: int) -> bool:
+	return has_aug(p, "free_row") or GameData.can_place(aid, row)
+
+
+func _roll_augments(p: Dictionary, n: int) -> Array:
+	var pool := []
+	for a in GameData.augments.get("list", []):
+		if a["id"] != "emblem" and has_aug(p, a["id"]):
+			continue
+		pool.append(a["id"])
+	var out := []
+	var guard := 0
+	while out.size() < n and not pool.is_empty() and guard < 100:
+		guard += 1
+		var id: String = pool[rng.randi_range(0, pool.size() - 1)]
+		pool.erase(id)
+		if id == "emblem":
+			var traits: Array = GameData.synergies.keys().filter(func(t): return GameData.synergies[t].get("kind", "") != "unique")
+			traits.sort()
+			if traits.is_empty():
+				continue
+			out.append({"id": "emblem", "trait": traits[rng.randi_range(0, traits.size() - 1)]})
+		else:
+			out.append({"id": id})
+	return out
+
+
+func _cmd_aug_reroll(p: Dictionary) -> String:
+	var off: Dictionary = p.get("aug_offer", {})
+	if off.is_empty():
+		return "고를 증강이 없음"
+	if off.get("rerolled", false):
+		return "이미 다시 뽑음"
+	off["options"] = _roll_augments(p, 3)
+	off["rerolled"] = true
+	return ""
+
+
+func _cmd_aug_pick(p: Dictionary, cmd: Dictionary) -> String:
+	var off: Dictionary = p.get("aug_offer", {})
+	if off.is_empty():
+		return "고를 증강이 없음"
+	var i := int(cmd.get("i", -1))
+	if i < 0 or i >= off["options"].size():
+		return "잘못된 선택"
+	var a: Dictionary = off["options"][i]
+	p["aug_offer"] = {}
+	p["augs"].append(a)
+	_apply_aug_now(p, a)
+	_log("%s 증강: %s" % [p["name"], GameData.augment_name(a)])
+	return ""
+
+
+## 고른 즉시 효과
+func _apply_aug_now(p: Dictionary, a: Dictionary) -> void:
+	match String(a["id"]):
+		"gold_now":
+			p["gold"] += 18
+		"debt":
+			p["gold"] += 30
+			p["aug_st"]["debt_left"] = 5
+		"free_reroll":
+			p["aug_st"]["free_rr"] = 2
+		"rookie3":
+			_give_unit(p, 3, 2)
+		"talent4":
+			_give_unit(p, 4, 1)
+			p["gold"] += 5
+		"heal_hp":
+			p["hp"] = mini(int(B["player_hp"]), int(p["hp"]) + 25)
+		"arts2":
+			for k in 2:
+				p["inv"].append({"uid": _uid(), "id": _random_of_grade("advanced")})
+		"art_rare":
+			p["inv"].append({"uid": _uid(), "id": _random_of_grade("rare")})
+			p["gold"] += 5
+		"gamble":
+			p["aug_st"]["gamble"] = {"won": 0}
+		"insurance":
+			p["aug_st"]["insurance"] = true
+
+
+## 무작위 cost 코스트 사도 ★star 를 대기석에 (자리가 없으면 그 값만큼 골드)
+func _give_unit(p: Dictionary, cost: int, star: int) -> void:
+	var cands := []
+	for aid in state["pool"]:
+		if GameData.cost_of.get(aid, 0) == cost and int(state["pool"][aid]) >= (3 if star == 2 else 1):
+			cands.append(aid)
+	cands.sort()
+	var free: int = p["bench"].find(null)
+	if cands.is_empty() or free < 0:
+		p["gold"] += cost * (3 if star == 2 else 1)
+		return
+	var aid: String = cands[rng.randi_range(0, cands.size() - 1)]
+	state["pool"][aid] -= 3 if star == 2 else 1
+	p["bench"][free] = {"uid": _uid(), "aid": aid, "star": star, "arts": [], "pers": ""}
+	_try_merge(p, aid, star)

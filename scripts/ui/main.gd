@@ -205,6 +205,17 @@ func _show_title() -> void:
 	b_solo.pressed.connect(func():
 		App.net.stop()
 		App.session.start_offline(int(_bots_spin.value)))
+	# 방 규칙 (혼자 하기·방 만들기에 함께 쓰임)
+	var rules_row := HBoxContainer.new()
+	rules_row.add_theme_constant_override("separation", 10)
+	cv.add_child(rules_row)
+	_rules_lbl = UI.label("규칙: " + Match.rules_text(Settings.get_value("rules")), 20, UI.SUB)
+	_rules_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_rules_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	rules_row.add_child(_rules_lbl)
+	var rb := UI.button("규칙 설정", 20, Vector2(150, 52), Color("4a3f6b"))
+	rb.pressed.connect(_show_rules)
+	rules_row.add_child(rb)
 	var b_host := UI.button("방 만들기 (LAN)", 30, Vector2(0, 84), Color("2f4f86"))
 	b_host.pressed.connect(func():
 		var err := App.session.host_room()
@@ -305,6 +316,17 @@ func _show_lobby() -> void:
 	_group_box = HBoxContainer.new()
 	_group_box.add_theme_constant_override("separation", 10)
 	v.add_child(_group_box)
+	# 방 규칙 (방장만 바꿈)
+	var rh := HBoxContainer.new()
+	rh.add_theme_constant_override("separation", 12)
+	v.add_child(rh)
+	rh.add_child(UI.label("규칙", 26, UI.ACCENT))
+	_rules_lbl = UI.label("", 24, UI.TEXT)
+	rh.add_child(_rules_lbl)
+	if App.session.mode == "host":
+		var rb := UI.button("규칙 설정", 22, Vector2(160, 56), Color("4a3f6b"))
+		rb.pressed.connect(_show_rules)
+		rh.add_child(rb)
 	_lobby_list = GridContainer.new()
 	_lobby_list.columns = 4
 	_lobby_list.add_theme_constant_override("h_separation", 14)
@@ -358,6 +380,8 @@ func _on_lobby_changed() -> void:
 	if _lobby_list == null or not is_instance_valid(_lobby_list):
 		return
 	_refresh_group_box()
+	if _rules_lbl and is_instance_valid(_rules_lbl):
+		_rules_lbl.text = Match.rules_text(App.session.rules)
 	UI.clear(_lobby_list)
 	var n := App.session.lobby.size()
 	_lobby_count.text = "%d / %d명  (최소 %d명)" % [n, App.session.MAX_PLAYERS, App.session.MIN_PLAYERS]
@@ -473,3 +497,75 @@ func _on_reconnecting(text: String) -> void:
 	_reconn.reset_size()
 	_reconn.position = Vector2((get_viewport_rect().size.x - _reconn.size.x) / 2.0, 120.0)
 	move_child(_reconn, get_child_count() - 1)
+
+
+# ─────────────────────────────── 방 규칙 ───────────────────────────────
+var _rules_lbl: Label
+
+
+## 규칙 설정 창: 빠른 모드·증강·체력·시작 골드·준비 시간 (혼자 하기와 방장 공통, 다음에도 기억)
+func _show_rules() -> void:
+	var r: Dictionary = Dictionary(App.session.rules if App.session.mode == "host" else Settings.get_value("rules")).duplicate()
+	var v := _modal_box("규칙 설정")
+	var rows := VBoxContainer.new()
+	rows.add_theme_constant_override("separation", 14)
+	v.add_child(rows)
+	var redraw := func(): pass
+	var add_choice := func(title: String, desc: String, key: String, opts: Array, is_bool: bool):
+		var h := HBoxContainer.new()
+		h.add_theme_constant_override("separation", 10)
+		rows.add_child(h)
+		var lv := VBoxContainer.new()
+		lv.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		lv.add_child(UI.label(title, 24, UI.TEXT))
+		var d := UI.wrap_label(desc, 17, UI.SUB)
+		lv.add_child(d)
+		h.add_child(lv)
+		for i in opts.size():
+			var val = (i == 1) if is_bool else i
+			var on: bool = (bool(r.get(key, false)) == val) if is_bool else (int(r.get(key, 0)) == i)
+			var b := UI.button(opts[i], 20, Vector2(120, 52), UI.ACCENT.darkened(0.55) if on else UI.PANEL_LIGHT)
+			b.pressed.connect(func():
+				r[key] = val
+				_show_rules_with(r))
+			h.add_child(b)
+	add_choice.call("빠른 모드", "체력 60, 준비 시간 짧게, 시작 레벨·골드·경험치 증가 — 15~20분 정도에 끝나는 판", "fast", ["끔", "켬"], true)
+	add_choice.call("증강", "3·8·13라운드에 판 전체에 적용되는 효과를 3개 중 하나 고름 (경제·사도·시너지·전투·성장)", "augments", ["끔", "켬"], true)
+	add_choice.call("체력", "시작 체력 (빠른 모드면 60 고정)", "hp", ["기본", "150", "70"], false)
+	add_choice.call("시작 골드", "1라운드에 받는 골드", "gold", ["기본", "+5", "+10"], false)
+	add_choice.call("준비 시간", "라운드마다 사도를 사고 배치하는 시간", "prep", ["기본", "짧게", "길게"], false)
+	v.add_child(UI.label("지금: " + Match.rules_text(r), 22, UI.ACCENT, HORIZONTAL_ALIGNMENT_CENTER))
+	var bh := HBoxContainer.new()
+	bh.alignment = BoxContainer.ALIGNMENT_CENTER
+	bh.add_theme_constant_override("separation", 14)
+	v.add_child(bh)
+	var reset := UI.button("기본으로", 22, Vector2(180, 60))
+	reset.pressed.connect(func(): _show_rules_with({}))
+	bh.add_child(reset)
+	var ok := UI.button("저장", 24, Vector2(220, 60), Color("2f6b4a"))
+	ok.pressed.connect(func():
+		Settings.set_value("rules", r)
+		App.session.set_rules(r)
+		if _rules_lbl and is_instance_valid(_rules_lbl):
+			_rules_lbl.text = ("규칙: " if App.session.mode != "host" else "") + Match.rules_text(r)
+		_close_modal())
+	bh.add_child(ok)
+	var cancel := UI.button("취소", 22, Vector2(160, 60))
+	cancel.pressed.connect(_close_modal)
+	bh.add_child(cancel)
+
+
+## 고르는 중인 값으로 창을 다시 그림 (저장 전)
+func _show_rules_with(r: Dictionary) -> void:
+	var keep: Dictionary = App.session.rules
+	var keep_set = Settings.get_value("rules")
+	# 임시로 바꿔 그린 뒤 되돌린다
+	if App.session.mode == "host":
+		App.session.rules = r
+	else:
+		Settings._data["rules"] = r
+	_show_rules()
+	if App.session.mode == "host":
+		App.session.rules = keep
+	else:
+		Settings._data["rules"] = keep_set

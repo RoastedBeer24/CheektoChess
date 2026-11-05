@@ -84,8 +84,21 @@ func me() -> Dictionary:
 	return App.session.state.get("players", {}).get(App.session.my_pid, {})
 
 
+## 밸런스 값 (방 규칙으로 바뀐 값 반영)
 func B() -> Dictionary:
-	return GameData.balance
+	var o: Dictionary = App.session.state.get("bal", {})
+	if o.is_empty():
+		return GameData.balance
+	if _bal_cache_src != o:
+		_bal_cache_src = o
+		_bal_cache = GameData.balance.duplicate()
+		for k in o:
+			_bal_cache[k] = o[k]
+	return _bal_cache
+
+
+var _bal_cache := {}
+var _bal_cache_src := {}
 
 
 func _toast(msg: String) -> void:
@@ -487,17 +500,23 @@ func refresh() -> void:
 	var prep: bool = phase == "prep" and p.get("alive", false)
 	var gold := int(p.get("gold", 0))
 	_ready_btn.disabled = not (prep or (phase == "battle" and p.get("alive", false) and not p.get("skip", false)))
-	_reroll_btn.disabled = not prep or gold < int(B()["reroll_cost"])
+	_reroll_btn.disabled = not prep or (gold < int(B()["reroll_cost"]) and int(p.get("aug_st", {}).get("free_rr", 0)) <= 0)
 	var lv_max := int(p.get("level", 1)) >= int(B()["max_level"])
 	_xp_btn.disabled = not prep or gold < int(B()["xp_cost"]) or lv_max
 	# 누를 수 없을 때는 이유를 버튼에 적는다 (골드 부족은 빨간 글씨)
-	_reroll_btn.text = "새로고침\n%d골드%s" % [int(B()["reroll_cost"]), "  부족" if gold < int(B()["reroll_cost"]) else ""]
+	var free_rr := int(p.get("aug_st", {}).get("free_rr", 0))
+	if free_rr > 0:
+		_reroll_btn.text = "새로고침\n무료 %d회" % free_rr
+	else:
+		_reroll_btn.text = "새로고침\n%d골드%s" % [int(B()["reroll_cost"]), "  부족" if gold < int(B()["reroll_cost"]) else ""]
 	_xp_btn.text = "경험치 +%d\n%s" % [int(B()["xp_amount"]), "최대 레벨" if lv_max else ("%d골드%s" % [int(B()["xp_cost"]), "  부족" if gold < int(B()["xp_cost"]) else ""])]
 	for b in [_reroll_btn, _xp_btn]:
 		b.add_theme_color_override("font_disabled_color", Color("ff9a9a", 0.85) if prep and b.text.ends_with("부족") else Color(1, 1, 1, 0.35))
 	_sell_btn.disabled = not prep
 	_merge_btn.disabled = not prep
-	_offer_btn.visible = prep and not p.get("art_offer", {}).is_empty() and _offer_hidden
+	var has_aug_offer: bool = not p.get("aug_offer", {}).is_empty()
+	_offer_btn.visible = prep and (not p.get("art_offer", {}).is_empty() or has_aug_offer) and _offer_hidden
+	_offer_btn.text = "증강 선택" if has_aug_offer else "아티팩트 선택"
 	_board_root.visible = phase != "battle"
 	_battle_view.visible = phase == "battle"
 	# 전투 중에는 오른쪽 정보 패널을 접어 전투 화면을 넓게 (전투 중에는 장착·합성 불가)
@@ -527,6 +546,8 @@ func _on_phase_changed(phase: String, rnd: int) -> void:
 			var subs := []
 			if st.get("round_kind", "") == "monster":
 				subs.append("몬스터 라운드 (연승·연패 영향 없음)")
+			if not me().get("aug_offer", {}).is_empty():
+				subs.append("증강 선택")
 			if not me().get("art_offer", {}).is_empty():
 				subs.append("아티팩트 선택")
 			var stk := int(me().get("streak", 0))
@@ -652,8 +673,9 @@ func _refresh_synergy() -> void:
 	var specs := []
 	for k in p["board"]:
 		specs.append(p["board"][k])
-	var counts := Rules.count_traits(specs)
+	var counts := Rules.apply_emblems(Rules.count_traits(specs), p.get("augs", []))
 	var tiers := Rules.active_tiers(counts)
+	_add_aug_chips(p)
 	var names := counts.keys()
 	names.sort_custom(func(a, b): return tiers.get(a, 0) * 100 + counts[a] > tiers.get(b, 0) * 100 + counts[b])
 	for n in names:
@@ -707,6 +729,78 @@ func _refresh_synergy() -> void:
 		_syn_box.add_child(UI.wrap_label("보드에 사도를 올리면 시너지가 표시됩니다.", 18))
 
 
+const AUG_KIND := {"econ": ["경제", Color("ffd25e")], "unit": ["사도", Color("7fb6ff")], "syn": ["시너지", Color("5ee39b")], "battle": ["전투", Color("ff8a7a")], "grow": ["성장", Color("c9a7ff")]}
+
+
+## 가진 증강 (시너지 목록 위, 마우스를 올리거나 꾹 누르면 설명)
+func _add_aug_chips(p: Dictionary) -> void:
+	var augs: Array = p.get("augs", [])
+	if augs.is_empty():
+		return
+	var flow := HFlowContainer.new()
+	flow.add_theme_constant_override("h_separation", 6)
+	flow.add_theme_constant_override("v_separation", 6)
+	_syn_box.add_child(flow)
+	for a in augs:
+		var kind: String = GameData.augment(a["id"]).get("kind", "grow")
+		var col: Color = AUG_KIND.get(kind, ["", UI.ACCENT])[1]
+		var chip := UI.chip("◆ " + GameData.augment_name(a), col, 18)
+		chip.mouse_filter = Control.MOUSE_FILTER_STOP
+		var desc := GameData.augment_desc(a)
+		var nm := GameData.augment_name(a)
+		Tips.set_tip(chip, func(): return "[b]%s[/b]  [color=#8a8fa6]증강[/color]\n%s" % [nm, desc])
+		flow.add_child(chip)
+
+
+## 증강 선택 (방 규칙에서 켰을 때 3·8·13라운드)
+func _show_aug_offer(offer: Dictionary) -> void:
+	var v := _modal("증강 선택", "aug")
+	v.add_child(UI.label("이번 판 내내 적용되는 효과를 하나 고르세요. 세 개를 한 번 다시 뽑을 수 있습니다.", 20, UI.SUB, HORIZONTAL_ALIGNMENT_CENTER))
+	var h := HBoxContainer.new()
+	h.alignment = BoxContainer.ALIGNMENT_CENTER
+	h.add_theme_constant_override("separation", 16)
+	v.add_child(h)
+	for i in offer["options"].size():
+		var a: Dictionary = offer["options"][i]
+		var kind: String = GameData.augment(a["id"]).get("kind", "grow")
+		var kd: Array = AUG_KIND.get(kind, ["", UI.ACCENT])
+		var col: Color = kd[1]
+		var card := UI.panel(col.darkened(0.72), 16, col, 3)
+		card.custom_minimum_size = Vector2(380, 360)
+		h.add_child(card)
+		var cv := VBoxContainer.new()
+		cv.add_theme_constant_override("separation", 10)
+		card.add_child(cv)
+		cv.add_child(UI.chip(kd[0], col, 18))
+		var nl := UI.outlined(GameData.augment_name(a), 30, col.lightened(0.25), 6, HORIZONTAL_ALIGNMENT_LEFT)
+		nl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		cv.add_child(nl)
+		var txt := UI.rich_desc(GameData.augment_desc(a), 21, UI.TEXT)
+		txt.size_flags_vertical = Control.SIZE_EXPAND_FILL
+		cv.add_child(txt)
+		var idx: int = i
+		var pick := UI.button("선택", 24, Vector2(0, 64), Color("2f6b4a"))
+		pick.pressed.connect(func():
+			App.session.submit({"t": "aug_pick", "i": idx})
+			_close_modal())
+		cv.add_child(pick)
+	var bh := HBoxContainer.new()
+	bh.alignment = BoxContainer.ALIGNMENT_CENTER
+	bh.add_theme_constant_override("separation", 14)
+	v.add_child(bh)
+	var used: bool = offer.get("rerolled", false)
+	var rr := UI.button("다시 뽑기 사용함" if used else "세 개 모두 다시 뽑기", 20, Vector2(280, 58), Color("2f4f86"))
+	rr.disabled = used
+	rr.pressed.connect(func(): App.session.submit({"t": "aug_reroll"}))
+	bh.add_child(rr)
+	var hide := UI.button("잠시 접기 (보드 보기)", 20, Vector2(280, 58))
+	hide.pressed.connect(func():
+		_offer_hidden = true
+		_close_modal()
+		refresh())
+	bh.add_child(hide)
+
+
 func _refresh_board() -> void:
 	var p := me()
 	var prep: bool = App.session.state.get("phase", "") == "prep" and p.get("alive", false)
@@ -717,7 +811,7 @@ func _refresh_board() -> void:
 		var u = p.get("board", {}).get(key)
 		if u == null:
 			t.set_empty(GameData.ROW_NAME[GameData.ROWS[row]])
-			t.set_highlight(su != null and GameData.can_place(su["aid"], row))
+			t.set_highlight(su != null and Match.can_place_p(p, su["aid"], row))
 		else:
 			t.set_unit(u, _pers_tag(u))
 			t.set_highlight(false)
@@ -725,7 +819,7 @@ func _refresh_board() -> void:
 			if not _merge_pairs(u).is_empty():
 				t.set_corner("◆ 합성", Color("c9a7ff"))
 		t.set_selected(sel.get("unit", {}) == {"board": key})
-	_board_info.text = "보드 %d / %d   (레벨만큼 올릴 수 있음)" % [p.get("board", {}).size(), int(p.get("level", 1))]
+	_board_info.text = "보드 %d / %d   (레벨만큼 올릴 수 있음%s)" % [p.get("board", {}).size(), Match.board_cap(p), ", 확장 보드 +1" if Match.has_aug(p, "board_plus") else ""]
 
 
 ## 사도 칸 아래 작은 글씨 (성격·종족은 아이콘으로 표시하므로 공명/이면 선택만)
@@ -863,7 +957,11 @@ func _player_tip(p: Dictionary) -> String:
 		out += " · [color=#ffd25e]%d%s[/color]" % [absi(stk), "연승" if stk > 0 else "연패"]
 	out += " · 보드 %d명" % cur.get("board", {}).size()
 	if cur.get("bot", false):
-		out += " · 봇"
+		out += " · 봇 (%s)" % Bot.STYLE_NAME.get(cur.get("style", ""), "균형형")
+	elif not cur.get("connected", true):
+		out += " · [color=#ff9a9a]연결 끊김 (봇이 대신)[/color]"
+	if not cur.get("augs", []).is_empty():
+		out += "\n증강: " + ", ".join(cur["augs"].map(func(a): return GameData.augment_name(a)))
 	return out + "\n[color=#8a8fa6]눌러서 보드 보기[/color]"
 
 
@@ -1545,23 +1643,23 @@ func _check_drop(target: Dictionary) -> Dictionary:
 			return {"ok": false, "text": "빈칸에\n놓으세요"}
 		if target.has("board"):
 			var row: int = Match._parse_key(target["board"])[0]
-			if not GameData.can_place(aid, row):
+			if not Match.can_place_p(p, aid, row):
 				return {"ok": false, "text": "%s\n전용" % GameData.ROW_NAME[a["row"]]}
-			if p.get("board", {}).size() >= int(p.get("level", 1)):
-				return {"ok": false, "text": "보드 가득\n(Lv %d)" % int(p["level"])}
+			if p.get("board", {}).size() >= Match.board_cap(p):
+				return {"ok": false, "text": "보드 가득\n(%d명)" % Match.board_cap(p)}
 			return {"ok": true, "text": "구매 후\n배치"}
 		return {"ok": true, "text": "구매"}
 	if target.has("board"):
 		var row: int = Match._parse_key(target["board"])[0]
-		if not GameData.can_place(aid, row):
+		if not Match.can_place_p(p, aid, row):
 			return {"ok": false, "text": "%s\n전용" % GameData.ROW_NAME[a["row"]]}
-		if occupant == null and src.has("bench") and p.get("board", {}).size() >= int(p.get("level", 1)):
-			return {"ok": false, "text": "보드 가득\n(Lv %d)" % int(p["level"])}
-		if occupant != null and src.has("board") and not GameData.can_place(occupant["aid"], Match._parse_key(src["board"])[0]):
+		if occupant == null and src.has("bench") and p.get("board", {}).size() >= Match.board_cap(p):
+			return {"ok": false, "text": "보드 가득\n(%d명)" % Match.board_cap(p)}
+		if occupant != null and src.has("board") and not Match.can_place_p(p, occupant["aid"], Match._parse_key(src["board"])[0]):
 			return {"ok": false, "text": "교체 불가\n(%s)" % GameData.ROW_NAME[GameData.apostle(occupant["aid"])["row"]]}
 		return {"ok": true, "text": "교체" if occupant != null else ""}
 	# 대기석
-	if occupant != null and src.has("board") and not GameData.can_place(occupant["aid"], Match._parse_key(src["board"])[0]):
+	if occupant != null and src.has("board") and not Match.can_place_p(p, occupant["aid"], Match._parse_key(src["board"])[0]):
 		return {"ok": false, "text": "교체 불가"}
 	return {"ok": true, "text": "교체" if occupant != null else ""}
 
@@ -1782,11 +1880,15 @@ func _refresh_overlay() -> void:
 		return
 	if _overlay_kind == "carousel":
 		_close_modal()
+	var aoffer: Dictionary = p.get("aug_offer", {})
+	if st["phase"] == "prep" and not aoffer.is_empty() and not _offer_hidden:
+		_show_aug_offer(aoffer)
+		return
 	var offer: Dictionary = p.get("art_offer", {})
 	if st["phase"] == "prep" and not offer.is_empty() and not _offer_hidden:
 		_show_offer(offer)
 		return
-	if _overlay_kind == "offer" or (_overlay_kind == "pers" and st["phase"] != "prep"):
+	if _overlay_kind == "offer" or _overlay_kind == "aug" or (_overlay_kind == "pers" and st["phase"] != "prep"):
 		_close_modal()
 
 

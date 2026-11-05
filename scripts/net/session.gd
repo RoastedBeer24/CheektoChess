@@ -22,6 +22,7 @@ var token := ""             # 기기별 고유 id (재접속 확인용)
 var my_pid := ""
 var lobby: Array = []       # [{id, name, bot, connected}]
 var group_id := ""          # 이번 판 그룹 (방장이 고름, 참가자에게 전달)
+var rules: Dictionary = {}  # 방 규칙 (방장이 고름, 참가자에게 전달): {fast, augments, hp, gold, prep}
 var state: Dictionary = {}  # 최신 게임 상태
 var game: Match = null      # 방장만 가짐
 var peer_to_pid := {}
@@ -81,8 +82,9 @@ func in_game() -> bool:
 
 # ─────────────────────────────── 시작 / 종료 ───────────────────────────────
 
-func start_offline(bots: int) -> void:
+func start_offline(bots: int, use_rules: bool = true) -> void:
 	_reset()
+	rules = Dictionary(Settings.get_value("rules")).duplicate() if use_rules else {}
 	mode = "offline"
 	my_pid = token
 	lobby = [{"id": my_pid, "name": my_name, "bot": false, "connected": true}]
@@ -96,7 +98,7 @@ var tutorial := false
 
 
 func start_tutorial() -> void:
-	start_offline(3)
+	start_offline(3, false)
 	tutorial = true
 	if game == null:
 		return
@@ -112,6 +114,7 @@ func start_tutorial() -> void:
 
 func host_room() -> Error:
 	_reset()
+	rules = Dictionary(Settings.get_value("rules")).duplicate()
 	var err := App.net.host("%s의 방" % my_name)
 	if err != OK:
 		return err
@@ -161,7 +164,9 @@ func add_bot() -> void:
 	if not is_host() or lobby.size() >= MAX_PLAYERS or in_game():
 		return
 	_bot_seq += 1
-	lobby.append({"id": "bot%d" % _bot_seq, "name": "봇 %d" % _bot_seq, "bot": true, "connected": true})
+	# 봇 성향: 차례로 돌아가며 (난이도는 같음)
+	var style: String = Bot.STYLES[(_bot_seq - 1) % Bot.STYLES.size()]
+	lobby.append({"id": "bot%d" % _bot_seq, "name": "봇 %d" % _bot_seq, "bot": true, "connected": true, "style": style})
 	_lobby_updated()
 
 
@@ -188,12 +193,22 @@ func set_group(id: String) -> void:
 	_lobby_updated()
 
 
+## (방장·혼자 하기) 방 규칙 바꾸기 — 다음에도 쓰도록 저장
+func set_rules(r: Dictionary) -> void:
+	if in_game():
+		return
+	rules = r.duplicate()
+	Settings.set_value("rules", rules)
+	if mode == "host":
+		_lobby_updated()
+
+
 func _lobby_updated() -> void:
 	if group_id == "":
 		group_id = GameData.group_id
-	App.net.room_info = {"players": lobby.size(), "max": MAX_PLAYERS, "started": in_game(), "group": GameData.group_name(group_id)}
+	App.net.room_info = {"players": lobby.size(), "max": MAX_PLAYERS, "started": in_game(), "group": GameData.group_name(group_id), "rules": Match.rules_text(rules)}
 	if mode == "host":
-		_rpc_lobby.rpc(lobby, group_id)
+		_rpc_lobby.rpc(lobby, group_id, rules)
 	lobby_changed.emit()
 
 
@@ -204,7 +219,7 @@ func start_game() -> void:
 		toast.emit("최소 %d명이 필요합니다. 봇을 추가하세요." % MIN_PLAYERS)
 		return
 	GameData.set_group(group_id if group_id != "" else GameData.group_id)
-	game = Match.new(lobby, randi())
+	game = Match.new(lobby, randi(), rules)
 	game.state_changed.connect(func(): _dirty = true)
 	game.start()
 	state = game.state
@@ -490,8 +505,9 @@ func _rpc_welcome(pid: String) -> void:
 
 
 @rpc("authority", "reliable")
-func _rpc_lobby(l: Array, gid: String = "") -> void:
+func _rpc_lobby(l: Array, gid: String = "", r: Dictionary = {}) -> void:
 	lobby = l
+	rules = r
 	if gid != "" and gid != GameData.group_id:
 		GameData.set_group(gid)
 	group_id = gid

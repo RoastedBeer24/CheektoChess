@@ -20,6 +20,8 @@ static var artifacts_by_grade: Dictionary = {}  # grade -> [id]
 static var synergies: Dictionary = {}     # 시너지 이름 -> 정의 (지금 그룹: id, kind, tiers, color, effect, levels)
 static var balance: Dictionary = {}
 static var skill_specs: Dictionary = {}  # 사도별 원작 스킬·어사이드·애착 동작 (data/skill_specs.json)
+static var augments: Dictionary = {}     # 증강 (data/augments.json): {rounds, list}
+static var _aug_by_id: Dictionary = {}
 
 
 static var loaded := false
@@ -38,6 +40,10 @@ static func load_all() -> void:
 		artifacts[item["id"]] = item
 		artifacts_by_grade[item["grade"]].append(item["id"])
 	skill_specs = _load("res://data/skill_specs.json") if FileAccess.file_exists("res://data/skill_specs.json") else {}
+	augments = _load("res://data/augments.json") if FileAccess.file_exists("res://data/augments.json") else {"rounds": [], "list": []}
+	_aug_by_id.clear()
+	for ag in augments.get("list", []):
+		_aug_by_id[ag["id"]] = ag
 	_base_balance = balance.duplicate(true)
 	groups = _load("res://data/groups.json").get("groups", [])
 	set_group(groups[0]["id"] if not groups.is_empty() else "")
@@ -131,3 +137,20 @@ static func in_group(apostle_id: String) -> bool:
 ## 공명/이면 사도가 고를 수 있는 성격 목록 (일반 사도는 빈 배열)
 static func personality_options(apostle_id: String) -> Array:
 	return apostle(apostle_id).get("personality_options", [])
+
+
+static func augment(id: String) -> Dictionary:
+	return _aug_by_id.get(id, {})
+
+
+## 증강 이름 (상징은 시너지 이름 포함)
+static func augment_name(a: Dictionary) -> String:
+	var d := augment(String(a.get("id", "")))
+	if a.get("id", "") == "emblem":
+		return "상징: " + String(a.get("trait", ""))
+	return String(d.get("name", a.get("id", "")))
+
+
+static func augment_desc(a: Dictionary) -> String:
+	var d := augment(String(a.get("id", "")))
+	return String(d.get("desc", "")).replace("{trait}", String(a.get("trait", "")))

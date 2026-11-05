@@ -52,7 +52,7 @@ func _build_side(army: Array, side: int) -> void:
 			"n_hits_taken": 0, "n_skill_hits": 0, "counters": {}, "cds": {}, "once": {},
 			"pending_normal": [], "force_crit": false, "invuln": 0.0, "untarget": 0.0,
 			"taunt": 0.0, "regens": [], "damaged_by": {}, "power": 1.0, "arts": spec.get("arts", []),
-			"monster": spec.get("monster", false),
+			"monster": spec.get("monster", false), "augs": spec.get("augs", []),
 		}
 		# 위치·사거리 (이동하며 싸우기): 배치 칸 → 전장 좌표
 		var mv: Dictionary = B["move"]
@@ -136,6 +136,12 @@ func _apply_team_effects() -> void:
 			if not u["monster"]:
 				specs.append({"aid": u["aid"], "pers": u["pers"]})
 		var counts := Rules.count_traits(specs)
+		var side_augs: Array = allies[0]["augs"] if not allies.is_empty() else []
+		var emblems := []
+		for a in side_augs:
+			if a.has("emblem"):
+				emblems.append({"id": "emblem", "trait": a["emblem"]})
+		Rules.apply_emblems(counts, emblems)
 		var tiers := Rules.active_tiers(counts)
 		var names: Array = tiers.keys()
 		names.sort()   # 결정론: 항상 같은 순서
@@ -158,6 +164,23 @@ func _apply_team_effects() -> void:
 				# 공명/이면: 시너지 사도가 고른 성격에 따라 (첫 사도 기준)
 				spec = spec["by_pers"].get(members[0]["pers"], spec["by_pers"].values()[0])
 			_apply_synergy(side, name, spec, members, allies, enemies)
+		# 증강 (전투 효과): 시너지 형식 spec 을 아군 전체에
+		for a in side_augs:
+			var aspec: Dictionary = a.get("spec", {})
+			if aspec.is_empty():
+				continue
+			if aspec.has("cost_mods"):
+				for u in allies:
+					if int(GameData.cost_of.get(u["aid"], 9)) <= int(aspec["cost_mods"]["max"]):
+						_add_static(u, aspec["cost_mods"]["mods"])
+			if aspec.has("ace_mods") and not allies.is_empty():
+				var ace: Dictionary = allies[0]
+				for u in allies:
+					var key: int = int(GameData.cost_of.get(u["aid"], 0)) * 10 + int(u["star"])
+					if key > int(GameData.cost_of.get(ace["aid"], 0)) * 10 + int(ace["star"]):
+						ace = u
+				_add_static(ace, aspec["ace_mods"])
+			_apply_synergy(side, "증강", aspec, allies, allies, enemies)
 		# 어사이드 3성: 데이터가 있으면 그것 (자신/같은 열/아군 전체), 없으면 간이 해석
 		for src in allies:
 			if src["star"] < 3:

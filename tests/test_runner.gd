@@ -9,6 +9,7 @@ func _ready() -> void:
 	fails += _test_match()
 	fails += _test_group_synergies()
 	fails += _test_special_rounds()
+	fails += _test_rules_augments()
 	fails += _test_assets()
 	fails += await _test_ui()
 	print("TESTS DONE, failures=%d" % fails)
@@ -154,6 +155,52 @@ func _test_special_rounds() -> int:
 
 
 ## 모션·보이스 파일을 실제로 읽을 수 있는지
+## 방 규칙(빠른 모드·증강) + 봇 성향으로 한 판 끝까지
+func _test_rules_augments() -> int:
+	var players := []
+	for i in 8:
+		players.append({"id": "p%d" % i, "name": "봇%d" % i, "bot": true, "style": Bot.STYLES[i % 4]})
+	var m := Match.new(players, 4242, {"fast": true, "augments": true})
+	if int(m.B["player_hp"]) != 60 or int(m.state["bal"]["player_hp"]) != 60:
+		print("FAIL: 빠른 모드 체력"); return 1
+	m.start()
+	var g := 0
+	var picked := {}
+	while m.state["phase"] != "over" and g < 200000:
+		g += 1
+		m.advance(0.25)
+		for pid in m.state["players"]:
+			for a in m.player(pid)["augs"]:
+				picked[a["id"]] = true
+	var rounds: int = m.state["round"]
+	var n_augs := 0
+	for pid in m.state["players"]:
+		n_augs = maxi(n_augs, m.player(pid)["augs"].size())
+	print("규칙·증강 판: 라운드 %d에 끝, 증강 최대 %d개, 나온 증강 %d종: %s" % [rounds, n_augs, picked.size(), picked.keys()])
+	if m.state["phase"] != "over" or n_augs < 2:
+		print("FAIL: 증강 판"); return 1
+	# 증강 효과 단위 확인
+	var m2 := Match.new([{"id": "a", "name": "a", "bot": false}, {"id": "b", "name": "b", "bot": true}], 7, {"augments": true})
+	m2.start()
+	var pa := m2.player("a")
+	pa["augs"] = [{"id": "board_plus"}, {"id": "free_row"}, {"id": "interest_cap"}]
+	if Match.board_cap(pa) != int(pa["level"]) + 1 or not Match.can_place_p(pa, "rohne", 2):
+		print("FAIL: 확장 보드·자유 배치"); return 1
+	pa["gold"] = 80
+	if m2.income(pa) < int(m2.B["base_income"]) + 8:
+		print("FAIL: 복리 이자"); return 1
+	pa["augs"].append({"id": "b_shield"})
+	pa["board"] = {"0,1": {"uid": 1, "aid": "rohne", "star": 1, "arts": [], "pers": ""}}
+	var army := m2.army_of("a")
+	if army.is_empty() or army[0].get("augs", []).is_empty():
+		print("FAIL: 전투 증강 전달"); return 1
+	var sim := BattleSim.new(army, [{"aid": "bana", "star": 1, "row": 0, "slot": 1, "arts": [], "pers": ""}], 3)
+	if float(sim.units[0].get("start_shield", 0.0)) < 18.0:
+		print("FAIL: 보호막 전개 적용 안 됨"); return 1
+	print("증강 단위 확인 OK")
+	return 0
+
+
 func _test_assets() -> int:
 	var fails := 0
 	var m := MotionSprite.meta_of("aya")
