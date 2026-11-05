@@ -7,7 +7,7 @@ const DEFAULTS := {
 	"vol_master": 0.8,      # 0~1
 	"vol_voice": 0.9,
 	"vol_sfx": 0.8,
-	"battle_speed": 1.0,    # 전투 기본 배속 (1, 2)
+	"battle_speed": 1.0,    # 전투 기본 배속 (1, 1.25, 1.5, 2)
 	"vibrate": true,
 	"board_motion": true,   # 준비 단계 보드에서 사도 모션
 	"battle_motion": true,  # 전투 모션 (끄면 초상화 카드)

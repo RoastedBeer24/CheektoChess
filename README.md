@@ -115,6 +115,10 @@ LAN 테스트 (같은 기기에서 두 프로세스):
 ```bash
 godot --headless --path . res://tests/lan_test.tscn -- host &
 godot --headless --path . res://tests/lan_test.tscn -- client
+# 화면 조작 시험 (휴대폰 배율): 끌기 조합 / 누를 수 있는지 / 무작위 입력
+CHEEKTO_UI_SCALE=1.3 xvfb-run -a godot --path . --resolution 2340x1080 res://tests/drag_suite.tscn
+CHEEKTO_UI_SCALE=1.3 xvfb-run -a godot --path . --resolution 2340x1080 res://tests/hit_check.tscn
+CHEEKTO_UI_SCALE=1.3 xvfb-run -a godot --path . --resolution 2340x1080 res://tests/monkey.tscn -- 120
 # 방장 넘기기 (방장 1 + 참가자 2, crash 를 붙이면 방장이 알리지 않고 꺼짐)
 godot --headless --path . res://tests/lan_migrate.tscn -- host crash &
 godot --headless --path . res://tests/lan_migrate.tscn -- c1 &

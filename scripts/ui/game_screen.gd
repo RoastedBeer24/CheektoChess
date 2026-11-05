@@ -63,6 +63,8 @@ var _players_panel: Control
 var _bench_row: Control
 var _shop_row: Control
 var _undo_btn: Button
+var _sel_bar: PanelContainer
+var _sel_lbl: Label
 var _drag_layer: Control
 var _drag := {}               # 끌기 중 정보 {src, aid, star, unit, start, active, ghost, hover}
 var _suppress_click := false  # 끌기 직후 버튼 클릭 무시
@@ -142,6 +144,29 @@ func _build() -> void:
 	_battle_view.visible = false
 	_battle_view.full_toggled.connect(func(): refresh())
 	cstack.add_child(_battle_view)
+	# 선택 안내 줄 (보드 위): 지금 무엇을 골랐는지 + 취소
+	_sel_bar = UI.panel(Color(0.06, 0.07, 0.12, 0.94), 12, UI.ACCENT, 2)
+	# 보드 위쪽 열 이름 줄 자리에 겹쳐 띄움 (칸을 가리지 않게)
+	_sel_bar.set_anchors_preset(Control.PRESET_CENTER_TOP)
+	_sel_bar.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	_sel_bar.offset_top = 2
+	_sel_bar.visible = false
+	_sel_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var sbh := HBoxContainer.new()
+	sbh.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	sbh.add_theme_constant_override("separation", 14)
+	_sel_bar.add_child(sbh)
+	_sel_lbl = UI.label("", 21, UI.TEXT)
+	_sel_lbl.clip_text = true
+	_sel_lbl.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	sbh.add_child(_sel_lbl)
+	var sbc := UI.button("취소", 20, Vector2(100, 46), Color("4a3a3a"))
+	sbc.pressed.connect(func():
+		sel = {}
+		merge_mode = false
+		refresh())
+	sbh.add_child(sbc)
+	cstack.add_child(_sel_bar)
 	# 라운드·결과 배너: 가운데 가로 띠 + 큰 글자 + 작은 설명
 	_banner_box = PanelContainer.new()
 	_banner_box.set_anchors_preset(Control.PRESET_HCENTER_WIDE)
@@ -153,6 +178,7 @@ func _build() -> void:
 	var bv := VBoxContainer.new()
 	bv.alignment = BoxContainer.ALIGNMENT_CENTER
 	bv.add_theme_constant_override("separation", 0)
+	bv.mouse_filter = Control.MOUSE_FILTER_IGNORE   # 배너가 보드 가운데 줄 터치를 가로채지 않게
 	_banner_box.add_child(bv)
 	_banner = UI.outlined("", 60, UI.ACCENT, 12)
 	_banner.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -583,6 +609,7 @@ func refresh() -> void:
 	_players_panel.visible = not full
 	_bench_row.visible = not full
 	_shop_row.visible = not full
+	_refresh_sel_bar(prep)
 	var ls: Dictionary = p.get("last_sold", {})
 	_undo_btn.visible = prep and not ls.is_empty() and int(ls.get("round", -1)) == int(App.session.state.get("round", 0))
 	if _undo_btn.visible:
@@ -787,14 +814,15 @@ func _refresh_synergy() -> void:
 		var cnt := UI.label(str(counts[n]), 22, col if active > 0 else UI.SUB, HORIZONTAL_ALIGNMENT_CENTER)
 		cnt.custom_minimum_size.x = 22
 		h.add_child(cnt)
-		var nl := UI.label(UI.syn_short(n), 20, UI.TEXT if active > 0 else UI.SUB)
+		var nl := UI.label(UI.syn_short(n), 21, UI.TEXT if active > 0 else UI.SUB)
+		nl.add_theme_font_override("font", UI.bold())
 		nl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		nl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		nl.custom_minimum_size.x = 60
 		h.add_child(nl)
 		var tl: Array = syn["tiers"]
 		for i in tl.size():
-			var tlab := UI.label(str(int(tl[i])), 18, col if i < active else Color(1, 1, 1, 0.3))
+			var tlab := UI.label(str(int(tl[i])), 18, col if i < active else Color(1, 1, 1, 0.45))
 			if i == active:
 				tlab.add_theme_color_override("font_color", Color(1, 1, 1, 0.6))
 			h.add_child(tlab)
@@ -1072,11 +1100,33 @@ func _tile_tip(loc: Dictionary) -> String:
 	return UI.unit_tip(u, extra)
 
 
+## 선택 안내: 아티팩트를 고르면 '장착할 사도를 누르세요', 사도를 고르면 '옮길 칸을 누르세요'
+func _refresh_sel_bar(prep: bool) -> void:
+	var text := ""
+	if prep and sel.has("art"):
+		var where := _find_art(int(sel["art"]))
+		var nm: String = GameData.artifact(where.get("art", {}).get("id", "")).get("name", "아티팩트") if not where.is_empty() else "아티팩트"
+		if merge_mode:
+			text = "합성: 같은 등급 아티팩트를 누르세요"
+		elif where.has("inv"):
+			text = "%s: 장착할 사도를 누르세요" % nm
+	elif prep and sel.has("unit") and _unit_at(sel["unit"]) != null:
+		text = "%s: 옮길 칸이나 판매를 누르세요" % GameData.apostle(_unit_at(sel["unit"])["aid"]).get("name", "")
+	_sel_bar.visible = text != ""
+	_sel_lbl.text = text
+	# 보드 칸 너비 안에 (취소 버튼이 밀려나지 않게)
+	var maxw: float = maxf(160.0, (_sel_bar.get_parent() as Control).size.x - 160.0)
+	var tw: float = _sel_lbl.get_theme_font("font").get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, _sel_lbl.get_theme_font_size("font_size")).x
+	_sel_lbl.custom_minimum_size.x = minf(tw + 4.0, maxw)
+	_sel_bar.reset_size()
+
+
 ## 다음 상대: 준비 단계에 미리 정해진 대진에서 내 상대
 func _refresh_next_opp() -> void:
 	var st := App.session.state
 	_next_btn.visible = false
-	if st.get("phase", "") != "prep" or not me().get("alive", false):
+	# 선택 안내 줄이 떠 있는 동안은 숨김 (같은 자리)
+	if _sel_bar.visible or st.get("phase", "") != "prep" or not me().get("alive", false):
 		return
 	if st.get("round_kind", "pvp") == "monster":
 		_next_btn.text = "다음: 몬스터"
@@ -1678,7 +1728,7 @@ func _hide_syn_popup() -> void:
 
 ## 꾹 누르기: 움직이지 않고 일정 시간 누르고 있으면 발동
 func _check_long_press() -> void:
-	if _drag.is_empty() or _drag.get("active", false):
+	if _drag.is_empty() or _drag.get("active", false) or _drag.get("long", false):
 		return
 	if DragScroll.scrolling:
 		_drag = {}
@@ -1686,7 +1736,8 @@ func _check_long_press() -> void:
 	if Time.get_ticks_msec() - int(_drag["t0"]) < LONG_PRESS_MS:
 		return
 	var src: Dictionary = _drag["src"]
-	_drag = {}
+	# 꾹 누르기를 해도 끌기 후보는 그대로 둔다 — 누르고 있다가 움직이면 바로 끌기 (휴대폰에서 흔한 동작)
+	_drag["long"] = true
 	_long_fired = true
 	_vibrate(30)
 	if src.has("art"):
@@ -1700,7 +1751,8 @@ func _check_long_press() -> void:
 		_toast("상점 칸 잠금 — 새로고침·다음 라운드에도 유지" if on else "잠금 해제")
 		sel = {"shop_aid": me().get("shop", [])[src["shop"]]}
 		refresh()
-	else:
+	elif not sel.has("art"):
+		# 아티팩트를 고른 중이면 그 선택은 유지 (사도 정보만 보려고 꾹 누른 경우)
 		sel = {"unit": src}
 		refresh()
 
@@ -1709,9 +1761,10 @@ func _input(event: InputEvent) -> void:
 	# 시너지 팝업: 손을 떼면 닫힘 (모바일 '꾹 누르는 동안 보기')
 	if _syn_popup and event is InputEventMouseButton and not event.pressed:
 		_hide_syn_popup()
-	# 꾹 누르기 후 손을 떼면 버튼 클릭(구매 등)이 일어나지 않게 막는다
-	if _long_fired and event is InputEventMouseButton and not event.pressed:
+	# 꾹 누르기 후 (끌지 않고) 손을 떼면 버튼 클릭(구매 등)이 일어나지 않게 막는다
+	if _long_fired and event is InputEventMouseButton and not event.pressed and not _drag.get("active", false):
 		_long_fired = false
+		_drag = {}
 		_suppress_click = true
 		(func(): _suppress_click = false).call_deferred()
 		return
@@ -1733,6 +1786,7 @@ func _input(event: InputEvent) -> void:
 			_move_drag(pos)
 	elif event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and not event.pressed:
 		DragScroll.external_drag = false
+		_long_fired = false
 		if _drag.get("active", false):
 			_suppress_click = true
 			_finish_drag()

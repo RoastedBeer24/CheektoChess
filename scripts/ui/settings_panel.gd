@@ -74,7 +74,7 @@ func _build_settings() -> void:
 	_slider("보이스 (사도 대사)", "vol_voice")
 	_slider("효과음", "vol_sfx")
 	Info.section(_body, "전투")
-	_choice("전투 기본 속도", "battle_speed", [["x1", 1.0], ["x2", 2.0]])
+	_choice("전투 기본 속도", "battle_speed", [["x1", 1.0], ["x1.25", 1.25], ["x1.5", 1.5], ["x2", 2.0]])
 	_toggle("전투 모션 (끄면 초상화 카드로 싸움 — 저사양 기기용)", "battle_motion")
 	_toggle("준비 단계 보드에서 사도 모션", "board_motion")
 	_choice("모션 화질 (낮음: 메모리 1/4 — 저사양 기기용, 다음 전투부터)", "motion_quality", [["높음", 1], ["낮음", 0]])

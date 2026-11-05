@@ -89,8 +89,14 @@ func _ready() -> void:
 	_speed_btn.offset_right = -8
 	_speed_btn.offset_bottom = -8
 	_speed_btn.pressed.connect(func():
-		_speed = 2.0 if _speed < 1.5 else 1.0
-		_speed_btn.text = "속도 x%d" % int(_speed))
+		# 1 → 1.25 → 1.5 → 2 → 1 …
+		var steps := [1.0, 1.25, 1.5, 2.0]
+		var at := 0
+		for k in steps.size():
+			if absf(steps[k] - _speed) < 0.01:
+				at = k
+		_speed = steps[(at + 1) % steps.size()]
+		_speed_btn.text = speed_text(_speed))
 	add_child(_speed_btn)
 	_full_btn = UI.button("", 20, Vector2(150, 48))
 	_full_btn.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
@@ -105,6 +111,10 @@ func _ready() -> void:
 		full_toggled.emit())
 	add_child(_full_btn)
 	resized.connect(_layout)
+
+
+static func speed_text(v: float) -> String:
+	return "속도 x" + (str(int(v)) if is_equal_approx(v, roundf(v)) else str(snappedf(v, 0.01)))
 
 
 func setup(bt: Dictionary, my_side: int, name_a: String, name_b: String) -> void:
@@ -128,7 +138,7 @@ func setup(bt: Dictionary, my_side: int, name_a: String, name_b: String) -> void
 	_disp.clear()
 	_fx.clear_all()
 	_speed = Settings.num("battle_speed")
-	_speed_btn.text = "속도 x%d" % int(_speed)
+	_speed_btn.text = speed_text(_speed)
 	_banner.text = ""
 	var sim := BattleSim.new(bt["army_a"], bt["army_b"], int(bt["seed"]))
 	var res := sim.run()
