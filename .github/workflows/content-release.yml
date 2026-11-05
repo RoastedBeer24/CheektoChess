@@ -17,7 +17,7 @@ on:
       - "assets/icons/**"
       - "assets/motions/**"
       - "assets/voices/**"
-      - "assets/icon.png"
+      - "assets/icon*"
       - "assets/fonts/**"
       - "boot/**"
       - "project.godot"

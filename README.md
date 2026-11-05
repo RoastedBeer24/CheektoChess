@@ -95,7 +95,7 @@ assets/portraits/    사도 초상화 (<사도 id>.webp)
 assets/artifacts/    아티팩트 아이콘 (<아티팩트 id>.png)
 assets/icons/        성격·종족·엘다인·열·역할·공격 타입 아이콘
 tests/               자동 테스트
-tools/               데이터 변환, 에셋 받기(fetch_assets.py), 묶음 만들기(build_packs.gd), 릴리스 빌드(build_release.sh)
+tools/               데이터 변환, 에셋 받기(fetch_assets.py), 묶음 만들기(build_packs.gd), 릴리스 빌드(build_release.sh), 앱 아이콘(make_icons.py)
 ```
 
 ## 테스트

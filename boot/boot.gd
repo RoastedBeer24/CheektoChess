@@ -9,7 +9,7 @@ extends Control
 ##
 ## 명령줄 옵션(테스트용): -- --manifest=<주소>  /  -- --offline  /  -- --no-self-update
 
-const BASE_VERSION := 2   # 이 시작 화면(APK/실행 파일) 버전. 묶음이 더 높은 값을 요구하면 새로 설치 안내.
+const BASE_VERSION := 3   # 이 시작 화면(APK/실행 파일) 버전. 묶음이 더 높은 값을 요구하면 새로 설치 안내.
 const RELEASES_PAGE := "https://github.com/RoastedBeer24/CheektoChess/releases/latest"
 const MANIFEST_URL := "https://github.com/RoastedBeer24/CheektoChess/releases/latest/download/manifest.json"
 const PACK_DIR := "user://packs/"
