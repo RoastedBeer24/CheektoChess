@@ -40,6 +40,7 @@
  "monster": {"count_base": 2, "count_per_round": 0.25, "count_max": 7, "power_base": 0.55, "power_per_round": 0.05, "kill_gold_max": 3},
  "carousel_rounds": [4, 9, 13, 17],
  "carousel_turn": 7,
+ "move": {"speed": 1.8, "range": {"front": 1.4, "mid": 3.4, "back": 5.4}, "col_w": 1.2, "slot_h": 1.6, "side_gap": 3.0, "spacing": 0.75},
  "artifact_slots": 3,
  "artifact_choices": 3,
  "artifact_odds": {

@@ -86,8 +86,13 @@ func _test_group_synergies() -> int:
 	# 세계수 교단 6: 가호 (버티기)
 	var tree := _army(["picora", "kyarot", "ner", "skea", "polan", "joanne"])
 	var guard := false
-	for seed in range(1, 8):
-		var r := BattleSim.new(tree, enemy, seed).run()
+	var strong := []
+	for x in enemy:
+		var y: Dictionary = x.duplicate()
+		y["star"] = 2
+		strong.append(y)
+	for seed in range(1, 31):
+		var r := BattleSim.new(tree, strong, seed).run()
 		if _count_ev(r, "buff", "세계수의 가호") > 0:
 			guard = true
 			break

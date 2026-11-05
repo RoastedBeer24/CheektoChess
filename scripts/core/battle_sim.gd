@@ -54,6 +54,15 @@ func _build_side(army: Array, side: int) -> void:
 			"taunt": 0.0, "regens": [], "damaged_by": {}, "power": 1.0, "arts": spec.get("arts", []),
 			"monster": spec.get("monster", false),
 		}
+		# 위치·사거리 (이동하며 싸우기): 배치 칸 → 전장 좌표
+		var mv: Dictionary = B["move"]
+		var col: int = (2 - u["row"]) if side == 0 else (3 + u["row"])
+		u["x"] = 0.6 + col * float(mv["col_w"]) + (float(mv["side_gap"]) if col >= 3 else 0.0)
+		u["y"] = 0.8 + u["slot"] * float(mv["slot_h"])
+		var rkey: String = a.get("row", "mid")
+		if rkey == "all":
+			rkey = GameData.ROWS[u["row"]]
+		u["range"] = float(mv["range"].get(rkey, 3.4))
 		if u["monster"]:
 			# 그림자 몬스터: 라운드에 따라 약하게/강하게, 시너지 없음
 			var mp := float(spec.get("mpow", 1.0))
@@ -385,6 +394,8 @@ func _alive_count(side: int) -> int:
 
 func run() -> Dictionary:
 	_emit("start", -1, -1, 0)
+	for u in units:
+		_emit_pos(u)
 	# 전투 시작 효과
 	for u in units:
 		if u.get("start_shield", 0.0) > 0.0:
@@ -495,7 +506,7 @@ func _update_unit(u: Dictionary) -> void:
 		return
 	# SP
 	u["sp"] += float(B["sp_regen"]) * maxf(0.0, 1.0 + mod(u, "sp_regen") / 100.0) * DT
-	var target = _pick_target(u, "front")
+	var target = _nearest(u)
 	if target == null:
 		return
 	# 고학년 스킬 (재사용 대기시간)
@@ -509,11 +520,73 @@ func _update_unit(u: Dictionary) -> void:
 		u["sp"] = 0.0
 		_cast(u, "fresh")
 		return
+	# 사거리 밖이면 다가간다
+	if _dist(u, target) > u["range"] + 0.01:
+		_move_toward(u, target)
+		return
+	if u.get("moving", false):
+		u["moving"] = false
+		_emit_pos(u)
 	# 일반 공격
 	u["atk_timer"] -= DT
 	if u["atk_timer"] <= 0.0:
 		u["atk_timer"] = 1.0 / aspd(u)
 		_normal_attack(u, target)
+
+
+# ─────────────────────────────── 이동 ───────────────────────────────
+
+func _dist(a: Dictionary, b: Dictionary) -> float:
+	return Vector2(a["x"], a["y"]).distance_to(Vector2(b["x"], b["y"]))
+
+
+## 가장 가까운 적 (도발 중인 적이 있으면 그중 가장 가까운 적)
+func _nearest(u: Dictionary) -> Variant:
+	var best = null
+	var best_d := INF
+	var taunting := false
+	for e in units:
+		if e["side"] == u["side"] or not _targetable(e):
+			continue
+		var t: bool = e["taunt"] > 0.0
+		if taunting and not t:
+			continue
+		var d := _dist(u, e)
+		if (t and not taunting) or d < best_d - 0.0001:
+			best = e
+			best_d = d
+			taunting = taunting or t
+	return best
+
+
+func _move_toward(u: Dictionary, target: Dictionary) -> void:
+	var mv: Dictionary = B["move"]
+	var p := Vector2(u["x"], u["y"])
+	var goal := Vector2(target["x"], target["y"])
+	var d := p.distance_to(goal)
+	var step := minf(float(mv["speed"]) * DT, d - u["range"])
+	if step <= 0.0:
+		return
+	p += (goal - p).normalized() * step
+	# 아군과 겹치지 않게 살짝 비켜 선다
+	var sp := float(mv["spacing"])
+	for a in units:
+		if a == u or not a["alive"] or a["side"] != u["side"]:
+			continue
+		var q := Vector2(a["x"], a["y"])
+		var dd := p.distance_to(q)
+		if dd < sp:
+			var push := (p - q).normalized() if dd > 0.001 else Vector2(0, 1 if u["i"] % 2 == 0 else -1)
+			p += push * (sp - dd) * 0.5
+	u["x"] = p.x
+	u["y"] = clampf(p.y, 0.2, 0.8 + 2.0 * float(mv["slot_h"]) + 0.6)
+	u["moving"] = true
+	if _tick_count % 2 == 0:
+		_emit_pos(u)
+
+
+func _emit_pos(u: Dictionary) -> void:
+	_emit("pos", u["i"], -1, [snappedf(u["x"], 0.01), snappedf(u["y"], 0.01)])
 
 
 func _expire(u: Dictionary) -> void:

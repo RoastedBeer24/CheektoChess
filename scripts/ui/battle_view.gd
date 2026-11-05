@@ -35,6 +35,10 @@ var _fx: BattleFx
 var _udata := {}          # 유닛 index -> 스냅샷 (열·진영)
 var _shake := 0.0
 var _skill_banner: Label
+var _pos := {}            # 유닛 index -> 전투 계산 좌표 (목표)
+var _disp := {}           # 유닛 index -> 화면에 보이는 좌표 (목표로 부드럽게 이동)
+var _field_base := Vector2.ZERO
+var _sc := 1.0
 
 
 func _ready() -> void:
@@ -94,6 +98,8 @@ func setup(bt: Dictionary, my_side: int, name_a: String, name_b: String) -> void
 	_hp.clear()
 	_sh.clear()
 	_udata.clear()
+	_pos.clear()
+	_disp.clear()
 	_fx.clear_all()
 	_speed = Settings.num("battle_speed")
 	_speed_btn.text = "속도 x%d" % int(_speed)
@@ -112,6 +118,8 @@ func setup(bt: Dictionary, my_side: int, name_a: String, name_b: String) -> void
 	_right_tag.text = right
 	for u in _units:
 		_udata[u["i"]] = u
+		_pos[u["i"]] = _start_pos(u)
+		_disp[u["i"]] = _pos[u["i"]]
 		if Settings.flag("battle_motion") and MotionSprite.available(u["aid"]):
 			var sp := MotionSprite.new(u["aid"])
 			sp.face_right = u["side"] == my_side   # 왼쪽(우리 편)은 오른쪽을 봄
@@ -140,35 +148,61 @@ func setup(bt: Dictionary, my_side: int, name_a: String, name_b: String) -> void
 	_say_spawn.call_deferred()
 
 
-func _cell_pos(u: Dictionary) -> Vector2:
-	var on_left: bool = u["side"] == _my_side
-	# 왼쪽 진영: 후열·중열·전열 / 오른쪽 진영: 전열·중열·후열
-	var col: int = (2 - int(u["row"])) if on_left else (3 + int(u["row"]))
-	var total_w := 6 * TILE.x + 5 * GAP + 60.0
-	var x0 := (size.x - total_w) / 2.0
-	var x := x0 + col * (TILE.x + GAP) + (60.0 if col >= 3 else 0.0)
-	var total_h := 3 * TILE.y + 2 * GAP
-	var y0 := (size.y - total_h) / 2.0 + 20.0
-	return Vector2(x, y0 + int(u["slot"]) * (TILE.y + GAP))
+# ─────────────────────────────── 위치 (이동하며 싸우기) ───────────────────────────────
+## 전투 계산의 좌표(x: 진영 사이 거리, y: 칸) → 전장 안 좌표. 내가 오른쪽 진영이면 좌우를 뒤집는다.
+
+func _mv() -> Dictionary:
+	return GameData.balance["move"]
+
+
+func _span() -> Vector2:
+	var mv := _mv()
+	return Vector2(1.2 + 5.0 * float(mv["col_w"]) + float(mv["side_gap"]), 1.6 + 2.0 * float(mv["slot_h"]))
+
+
+func _ppu() -> Vector2:
+	var mv := _mv()
+	return Vector2((TILE.x + GAP) / float(mv["col_w"]), (TILE.y + GAP) / float(mv["slot_h"]))
+
+
+## 처음 위치 (전투 계산과 같은 식)
+func _start_pos(u: Dictionary) -> Vector2:
+	var mv := _mv()
+	var col: int = (2 - int(u["row"])) if int(u["side"]) == 0 else (3 + int(u["row"]))
+	return Vector2(0.6 + col * float(mv["col_w"]) + (float(mv["side_gap"]) if col >= 3 else 0.0), 0.8 + int(u["slot"]) * float(mv["slot_h"]))
+
+
+## 유닛 index → 전장 안에서 칸의 왼쪽 위 (표시 위치)
+func _screen_pos(i: int) -> Vector2:
+	var p: Vector2 = _disp.get(i, Vector2.ZERO)
+	if _my_side == 1:
+		p.x = _span().x - p.x
+	return Vector2(p.x * _ppu().x, p.y * _ppu().y) - TILE / 2.0
 
 
 func _layout() -> void:
-	var total_w := 6 * TILE.x + 5 * GAP + 60.0
-	var x0 := (size.x - total_w) / 2.0
-	var total_h := 3 * TILE.y + 2 * GAP
-	var y0 := (size.y - total_h) / 2.0 + 20.0
-	_divider.position = Vector2(x0 + 3 * TILE.x + 2.5 * GAP + 30.0 - 1.0, y0 - 10)
-	_divider.size = Vector2(2, total_h + 20)
-	_left_tag.position = Vector2(x0, y0 - 46)
-	_left_tag.size = Vector2(3 * TILE.x + 2 * GAP, 32)
-	_right_tag.position = Vector2(x0 + 3 * TILE.x + 3 * GAP + 60.0, y0 - 46)
-	_right_tag.size = Vector2(3 * TILE.x + 2 * GAP, 32)
+	var px := _span() * _ppu()
+	_sc = minf(1.0, minf((size.x - 30.0) / px.x, (size.y - 130.0) / px.y))
+	_field.scale = Vector2(_sc, _sc)
+	_fx.scale = _field.scale
+	_field_base = Vector2((size.x - px.x * _sc) / 2.0, (size.y - px.y * _sc) / 2.0 + 30.0)
+	_field.position = _field_base
+	_fx.position = _field_base
+	var mid_x := _field_base.x + px.x * _sc / 2.0
+	_divider.position = Vector2(mid_x - 1.0, _field_base.y - 10)
+	_divider.size = Vector2(2, px.y * _sc + 20)
+	var half := px.x * _sc * 0.4
+	_left_tag.position = Vector2(_field_base.x, _field_base.y - 46)
+	_left_tag.size = Vector2(half, 32)
+	_right_tag.position = Vector2(_field_base.x + px.x * _sc - half, _field_base.y - 46)
+	_right_tag.size = Vector2(half, 32)
 	for u in _units:
-		if _tiles.has(u["i"]):
-			_tiles[u["i"]].position = _cell_pos(u)
-			_tiles[u["i"]].size = TILE
-		if _sprites.has(u["i"]):
-			_sprites[u["i"]].position = _cell_pos(u) - Vector2(0, SPRITE_LIFT)
+		var i: int = u["i"]
+		if _tiles.has(i):
+			_tiles[i].position = _screen_pos(i)
+			_tiles[i].size = TILE
+		if _sprites.has(i):
+			_sprites[i].position = _screen_pos(i) - Vector2(0, SPRITE_LIFT)
 
 
 func _update_bars() -> void:
@@ -276,11 +310,11 @@ func _process(delta: float) -> void:
 	if _shake > 0.0:
 		_shake = maxf(0.0, _shake - delta)
 		var amp := 10.0 * _shake / 0.35
-		_field.position = Vector2(randf_range(-amp, amp), randf_range(-amp, amp))
+		_field.position = _field_base + Vector2(randf_range(-amp, amp), randf_range(-amp, amp))
 		_fx.position = _field.position
-	elif _field.position != Vector2.ZERO:
-		_field.position = Vector2.ZERO
-		_fx.position = Vector2.ZERO
+	elif _field.position != _field_base:
+		_field.position = _field_base
+		_fx.position = _field_base
 	if not _playing:
 		return
 	_t += delta * _speed
@@ -330,6 +364,8 @@ func _apply(e: Array) -> void:
 			_fx_at(dst, "ring", Color("bfe3ff"), 0.5, 54.0)
 			_sh[dst] = float(e[7])
 			_float(dst, "보호막", Color("cfe8ff"), 18)
+		"pos":
+			_pos[src] = Vector2(float(e[4][0]), float(e[4][1]))
 		"attack":
 			_lunge(src, dst)
 			_motion(src, "Attack1_1")
@@ -533,10 +569,19 @@ func _animate(delta: float) -> void:
 			continue
 		var t: UnitTile = _tiles[i]
 		var a: Dictionary = _anim[i]
-		var pos := _cell_pos(u)
+		# 목표 좌표로 걸어간다 (전투 계산 속도보다 약간 빠르게 따라감)
+		var walking := false
+		if _pos.has(i) and _disp[i] != _pos[i] and not a["dead"]:
+			_disp[i] = (_disp[i] as Vector2).move_toward(_pos[i], float(_mv()["speed"]) * 1.15 * _speed * delta)
+			walking = true
+		var pos := _screen_pos(i)
 		var sp: MotionSprite = _sprites.get(i)
 		if sp != null:
 			sp.speed = _speed
+			if walking and (sp.current() == "Idle" or sp.current() == ""):
+				sp.play("Move", true)
+			elif not walking and sp.current() == "Move":
+				sp.play("Idle")
 		if a["dead"]:
 			t.position = pos + Vector2(0, 6)
 			t.modulate = t.modulate.lerp(Color(0.5, 0.5, 0.5, 0.25), minf(1.0, delta * 6.0))
