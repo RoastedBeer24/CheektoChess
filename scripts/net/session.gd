@@ -77,6 +77,15 @@ func start_offline(bots: int) -> void:
 	start_game()
 
 
+## 튜토리얼: 봇 3명과 혼자 하는 연습 판 (화면 안내는 Tutorial 이 맡음)
+var tutorial := false
+
+
+func start_tutorial() -> void:
+	start_offline(3)
+	tutorial = true
+
+
 func host_room() -> Error:
 	_reset()
 	var err := App.net.host("%s의 방" % my_name)
@@ -107,6 +116,7 @@ func _leave_with(reason: String) -> void:
 
 
 func _reset() -> void:
+	tutorial = false
 	mode = "none"
 	lobby = []
 	state = {}

@@ -160,6 +160,12 @@ func _show_title() -> void:
 	var codex := UI.button("도감", 24, Vector2(160, 56), Color("4f3586"))
 	codex.pressed.connect(func(): add_child(Codex.new()))
 	vrow.add_child(codex)
+	var tut := UI.button("튜토리얼", 24, Vector2(160, 56), Color("2f6b4a"))
+	tut.pressed.connect(func(): App.session.start_tutorial())
+	vrow.add_child(tut)
+	var setb := UI.button("설정·기록", 24, Vector2(170, 56), Color("3a4058"))
+	setb.pressed.connect(func(): add_child(SettingsPanel.new()))
+	vrow.add_child(setb)
 	var sp := Control.new()
 	sp.custom_minimum_size.y = 20
 	left.add_child(sp)

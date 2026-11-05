@@ -257,6 +257,10 @@ func _build_top() -> Control:
 	_ready_btn.pressed.connect(_on_ready_btn)
 	Tips.set_tip(_ready_btn, "[b]준비 완료[/b]  [color=#8a8fa6]［스페이스］[/color]\n사람 플레이어가 모두 준비하면 시간이 남아도 바로 전투합니다.\n전투 중에는 [b]건너뛰기[/b] — 모두 누르면 바로 다음 라운드.")
 	h.add_child(_ready_btn)
+	var setb := UI.button("설정", 22, Vector2(90, 58), Color("3a4058"))
+	setb.pressed.connect(func(): add_child(SettingsPanel.new()))
+	Tips.set_tip(setb, "[b]설정·기록[/b]\n음량, 전투 속도, 모션·이펙트, 글자 크기, 색약 모드, 게임 기록")
+	h.add_child(setb)
 	var quit := UI.button("나가기", 22, Vector2(110, 58), Color("6b3535"))
 	quit.pressed.connect(_confirm_quit)
 	h.add_child(quit)
@@ -1810,6 +1814,7 @@ func _show_offer(offer: Dictionary) -> void:
 
 func _show_game_over() -> void:
 	var st := App.session.state
+	History.record(st, App.session.my_pid, App.session.mode)
 	var v := _modal("게임 종료", "over")
 	var list: Array = st["players"].values()
 	list.sort_custom(func(a, b): return int(a["place"]) < int(b["place"]))
@@ -1878,21 +1883,32 @@ func _confirm_quit() -> void:
 
 # ─────────────────────────────── 전투 화면 ───────────────────────────────
 
-func _start_battle_view() -> void:
+## 전투 화면: 기본은 내 전투. watch >= 0 이면 그 번호의 다른 전투 관전.
+var _watch := -1
+var _watch_bar: HBoxContainer
+
+
+func _start_battle_view(watch: int = -1) -> void:
 	var st := App.session.state
+	var battles: Array = st.get("battles", [])
 	var mine := {}
 	var side := 0
-	for bt in st.get("battles", []):
+	var my_idx := -1
+	for bi in battles.size():
+		var bt: Dictionary = battles[bi]
 		if bt["a"] == App.session.my_pid:
-			mine = bt
-			side = 0
+			my_idx = bi
 		elif bt["b"] == App.session.my_pid:
-			mine = bt
-			side = 1
-	if mine.is_empty() and not st.get("battles", []).is_empty():
-		mine = st["battles"][0]   # 탈락했으면 첫 번째 전투 관전
-	if mine.is_empty():
+			my_idx = bi
+	var idx := watch if watch >= 0 and watch < battles.size() else my_idx
+	if idx < 0 and not battles.is_empty():
+		idx = 0   # 탈락했으면 첫 번째 전투 관전
+	if idx < 0:
 		return
+	_watch = idx
+	mine = battles[idx]
+	side = 1 if mine["b"] == App.session.my_pid else 0
+	_build_watch_bar(battles, idx, my_idx)
 	var pa: Dictionary = st["players"].get(mine["a"], {})
 	var name_a: String = pa.get("name", "?")
 	var name_b := ""
@@ -1901,3 +1917,30 @@ func _start_battle_view() -> void:
 	else:
 		name_b = st["players"].get(mine["b"], {}).get("name", "?")
 	_battle_view.setup(mine, side, name_a, name_b)
+
+
+## 관전 막대: 전투마다 버튼 (지금 보는 전투는 강조)
+func _build_watch_bar(battles: Array, cur: int, my_idx: int) -> void:
+	if _watch_bar == null or not is_instance_valid(_watch_bar):
+		_watch_bar = HBoxContainer.new()
+		_watch_bar.add_theme_constant_override("separation", 6)
+		_watch_bar.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
+		_watch_bar.offset_left = 10
+		_watch_bar.offset_top = -58
+		_watch_bar.offset_bottom = -8
+		_battle_view.add_child(_watch_bar)
+	UI.clear(_watch_bar)
+	if battles.size() <= 1:
+		return
+	_watch_bar.add_child(UI.label("관전", 20, UI.SUB))
+	var st := App.session.state
+	for bi in battles.size():
+		var bt: Dictionary = battles[bi]
+		var na: String = st["players"].get(bt["a"], {}).get("name", "?")
+		var nb: String = "유령" if bt["b"] == "" else st["players"].get(bt["b"], {}).get("name", "?")
+		var txt := "내 전투" if bi == my_idx else "%s vs %s" % [na, nb]
+		var on: bool = bi == cur
+		var b := UI.button(txt, 18, Vector2(0, 46), UI.ACCENT.darkened(0.55) if on else UI.PANEL_LIGHT)
+		var k := bi
+		b.pressed.connect(func(): _start_battle_view(k))
+		_watch_bar.add_child(b)
