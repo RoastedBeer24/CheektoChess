@@ -10,6 +10,7 @@ signal game_started
 signal left(reason: String)
 signal update_progress(text: String, ratio: float)   # 방장에게서 업데이트 받는 중
 signal update_done
+signal reconnecting(text: String)   # 재접속·방장 넘기기 진행 중 안내 ("" = 끝)
 
 const MAX_PLAYERS := 8
 const MIN_PLAYERS := 4
@@ -30,13 +31,26 @@ var _bot_seq := 0
 var _incoming := {}   # 방장에게서 받는 중인 묶음: 이름 -> {meta, data: PackedByteArray}
 var _host_meta := {}
 const CHUNK := 48 * 1024
+var host_ip := ""           # (참가자) 접속한 방장 주소
+var _recovering := false    # (참가자) 방장과 끊겨 다시 연결하는 중
+var _conn := 0              # 연결 시도 결과: 0 기다림, 1 성공, -1 실패
 
 
 func _ready() -> void:
 	_load_profile()
 	App.net.connected_to_host.connect(_on_connected)
-	App.net.connection_failed.connect(func(): _leave_with("방에 연결하지 못했습니다."))
-	App.net.host_lost.connect(func(): _leave_with("방장과의 연결이 끊어졌습니다."))
+	App.net.connection_failed.connect(func():
+		if _recovering:
+			_conn = -1
+		else:
+			_leave_with("방에 연결하지 못했습니다."))
+	App.net.host_lost.connect(func():
+		if _recovering:
+			_conn = -1
+		elif mode == "client" and in_game():
+			_recover(false)
+		else:
+			_leave_with("방장과의 연결이 끊어졌습니다."))
 	App.net.peer_left.connect(_on_peer_left)
 
 
@@ -112,10 +126,16 @@ func join_room(ip: String) -> Error:
 	_reset()
 	mode = "client"
 	my_pid = token
+	host_ip = ip
 	return App.net.join(ip)
 
 
 func leave() -> void:
+	# 방장이 게임 중에 나가면 참가자에게 알려 바로 새 방장을 정하게 한다
+	if mode == "host" and in_game() and not peer_to_pid.is_empty():
+		_flush()
+		_rpc_host_leaving.rpc()
+		await get_tree().create_timer(0.3).timeout
 	_leave_with("")
 
 
@@ -127,6 +147,7 @@ func _leave_with(reason: String) -> void:
 
 func _reset() -> void:
 	tutorial = false
+	_recovering = false
 	mode = "none"
 	lobby = []
 	state = {}
@@ -222,14 +243,150 @@ func _process(delta: float) -> void:
 
 func _flush() -> void:
 	_dirty = false
+	if mode == "host":
+		# 방장 넘기기에 필요한 값: 난수 상태, 방장 id, 참가자 주소
+		game.pack_host_meta()
+		game.state["_host_pid"] = my_pid
+		game.state["_ips"] = _peer_ips()
 	state = game.state
 	if mode == "host":
 		_rpc_state.rpc(state)
 	state_changed.emit()
 
 
+func _peer_ips() -> Dictionary:
+	var out := {}
+	var mp = multiplayer.multiplayer_peer
+	if not (mp is ENetMultiplayerPeer):
+		return out
+	for peer in peer_to_pid:
+		var pc: ENetPacketPeer = mp.get_peer(peer)
+		if pc != null:
+			out[peer_to_pid[peer]] = pc.get_remote_address()
+	return out
+
+
 func _on_connected() -> void:
+	_conn = 1
 	_rpc_hello.rpc_id(1, token, my_name, App.build)
+
+
+# ─────────────────────────────── 재접속 · 방장 넘기기 ───────────────────────────────
+## (참가자) 방장과 끊기면: 먼저 같은 방장에게 다시 연결해 보고, 안 되면 남은 사람 중
+## 정해진 순서(id 순)의 첫 사람이 마지막 상태로 새 방장이 되고 나머지는 그 사람에게 연결한다.
+
+func _recover(skip_old: bool) -> void:
+	if _recovering:
+		return
+	_recovering = true
+	var old_ip := host_ip
+	var old_host := String(state.get("_host_pid", ""))
+	var ips: Dictionary = state.get("_ips", {})
+	App.net.stop()
+	if not skip_old:
+		reconnecting.emit("방장과 연결이 끊어졌습니다. 다시 연결하는 중...")
+		if await _try_join(old_ip, 8.0):
+			_recover_done("다시 연결되었습니다.")
+			return
+	if not _recovering:
+		return
+	# 내 네트워크가 끊긴 경우: 새 방장이 되지 않고 계속 기다린다
+	if App.net.local_ips().is_empty():
+		reconnecting.emit("와이파이 연결을 확인해 주세요. 다시 연결하는 중...")
+		if await _try_join(old_ip, 30.0):
+			_recover_done("다시 연결되었습니다.")
+		else:
+			_leave_with("방장과 다시 연결하지 못했습니다.")
+		return
+	var cands := []
+	for pid in state.get("players", {}):
+		var p: Dictionary = state["players"][pid]
+		if p["bot"] or not p["connected"] or pid == old_host:
+			continue
+		if pid == my_pid or ips.has(pid):
+			cands.append(pid)
+	cands.sort()
+	if cands.is_empty():
+		_leave_with("방장과의 연결이 끊어졌습니다.")
+		return
+	if cands[0] == my_pid:
+		_become_host(old_host)
+		return
+	var new_name: String = state["players"][cands[0]]["name"]
+	reconnecting.emit("방장이 나갔습니다. 새 방장(%s)에게 연결하는 중..." % new_name)
+	if await _try_join(String(ips[cands[0]]), 25.0):
+		host_ip = String(ips[cands[0]])
+		_recover_done("%s 님이 새 방장이 되었습니다." % new_name)
+	else:
+		_leave_with("새 방장에게 연결하지 못했습니다.")
+
+
+## ip 로 계속 연결을 시도한다 (secs 초 동안). 연결되면 hello 를 보내고 true.
+func _try_join(ip: String, secs: float) -> bool:
+	var until := Time.get_ticks_msec() + int(secs * 1000.0)
+	while Time.get_ticks_msec() < until and _recovering:
+		_conn = 0
+		if App.net.join(ip) == OK:
+			var t0 := Time.get_ticks_msec()
+			while _conn == 0 and Time.get_ticks_msec() - t0 < 3000:
+				await get_tree().process_frame
+			if _conn == 1:
+				# 방장이 받아 주는지(state 가 오는지) 잠깐 기다린다
+				var t1 := Time.get_ticks_msec()
+				var got := [false]   # 람다는 값을 복사해 잡으므로 배열로 넘긴다
+				var on_state := func(): got[0] = true
+				state_changed.connect(on_state)
+				while not got[0] and _conn == 1 and Time.get_ticks_msec() - t1 < 4000:
+					await get_tree().process_frame
+				state_changed.disconnect(on_state)
+				if got[0]:
+					return true
+		App.net.stop()
+		await get_tree().create_timer(1.0).timeout
+	return false
+
+
+func _recover_done(msg: String) -> void:
+	_recovering = false
+	reconnecting.emit("")
+	toast.emit(msg)
+
+
+## 마지막으로 받은 상태로 새 방장이 된다. 다른 사람은 '연결 끊김'(봇이 대신)으로 두고 다시 들어오기를 기다린다.
+func _become_host(old_host: String) -> void:
+	reconnecting.emit("이 기기가 새 방장이 됩니다...")
+	var err := FAILED
+	for i in 12:   # 예전 방장이 포트를 아직 놓지 않았을 수 있다
+		err = App.net.host("%s의 방" % my_name)
+		if err == OK:
+			break
+		await get_tree().create_timer(0.5).timeout
+	if err != OK:
+		_leave_with("새 방장이 되지 못했습니다 (포트 %d)." % NetNode.GAME_PORT)
+		return
+	mode = "host"
+	host_ip = ""
+	game = Match.from_state(state)
+	game.phase_left = maxf(game.phase_left, 8.0)   # 다른 사람이 다시 들어올 시간
+	game.state["phase_end"] = game.phase_left
+	for pid in game.state["players"]:
+		var p: Dictionary = game.state["players"][pid]
+		if not p["bot"] and pid != my_pid and p["connected"]:
+			p["connected"] = false
+			p["dc_round"] = game.state["round"]
+	if old_host != "":
+		game._log("%s(방장) 나감 — %s 님이 새 방장" % [game.player(old_host).get("name", "?"), my_name])
+	game.state_changed.connect(func(): _dirty = true)
+	peer_to_pid.clear()
+	lobby = []
+	for pid in game.state["players"]:
+		var p: Dictionary = game.state["players"][pid]
+		lobby.append({"id": pid, "name": p["name"], "bot": p["bot"], "connected": p["connected"]})
+	App.net.room_info = {"players": lobby.size(), "max": MAX_PLAYERS, "started": true, "group": GameData.group_name(group_id)}
+	_recovering = false
+	reconnecting.emit("")
+	toast.emit("방장이 나가서 이 기기가 새 방장이 되었습니다.")
+	_flush()
 
 
 # ─────────────────────────────── 버전 맞추기 ───────────────────────────────
@@ -281,6 +438,16 @@ func _rpc_hello(their_token: String, their_name: String, their_build: int = 0) -
 		_rpc_offer_update.rpc_id(peer, packs)
 		return
 	if game != null:
+		# 방장이 끊김을 알아채기 전에 다시 들어온 경우: 예전 연결을 정리하고 새 연결로 바꾼다
+		var known: Dictionary = game.player(their_token)
+		if not known.is_empty() and not known["bot"] and known["alive"] and known["connected"]:
+			for old_peer in peer_to_pid.keys():
+				if peer_to_pid[old_peer] == their_token and old_peer != peer:
+					peer_to_pid.erase(old_peer)
+					var mp = multiplayer.multiplayer_peer
+					if mp is ENetMultiplayerPeer:
+						mp.disconnect_peer(old_peer, true)
+			known["connected"] = false
 		if game.can_rejoin(their_token):
 			peer_to_pid[peer] = their_token
 			game.set_connected(their_token, true)
@@ -424,6 +591,32 @@ func _finish_update() -> void:
 	App.save_installed({"build": int(_host_meta["build"]), "version": _host_meta.get("version", ""), "packs": packs})
 	App.net.stop()
 	update_done.emit()
+
+
+## (참가자) 방장이 스스로 나감 → 기다리지 않고 바로 새 방장 정하기
+@rpc("authority", "reliable")
+func _rpc_host_leaving() -> void:
+	if mode == "client" and in_game():
+		_recover(true)
+
+
+## (참가자→방장) 내 기기의 전투 결과가 방장과 다름 (같은 입력이면 같아야 함)
+@rpc("any_peer", "reliable")
+func _rpc_mismatch(info: Dictionary) -> void:
+	if mode != "host":
+		return
+	var peer := multiplayer.get_remote_sender_id()
+	var who: String = state.get("players", {}).get(peer_to_pid.get(peer, ""), {}).get("name", "?")
+	push_warning("전투 결과 불일치 (%s): %s" % [who, info])
+	if game != null:
+		game._log("%s 기기의 전투 계산이 달라 방장 결과로 맞춤" % who)
+
+
+## 전투 화면이 계산한 결과가 방장 결과와 다르면 알린다 (화면은 그대로, 점수는 방장 결과)
+func report_mismatch(info: Dictionary) -> void:
+	if mode == "client":
+		_rpc_mismatch.rpc_id(1, info)
+		toast.emit("이 기기의 전투 계산이 방장과 달라 방장 결과로 맞췄습니다.")
 
 
 @rpc("authority", "reliable")

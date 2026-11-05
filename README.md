@@ -115,6 +115,10 @@ LAN 테스트 (같은 기기에서 두 프로세스):
 ```bash
 godot --headless --path . res://tests/lan_test.tscn -- host &
 godot --headless --path . res://tests/lan_test.tscn -- client
+# 방장 넘기기 (방장 1 + 참가자 2, crash 를 붙이면 방장이 알리지 않고 꺼짐)
+godot --headless --path . res://tests/lan_migrate.tscn -- host crash &
+godot --headless --path . res://tests/lan_migrate.tscn -- c1 &
+godot --headless --path . res://tests/lan_migrate.tscn -- c2
 ```
 
 ## 데이터 출처 / 라이선스

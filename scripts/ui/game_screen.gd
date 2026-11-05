@@ -1956,7 +1956,7 @@ func _show_game_over() -> void:
 
 func _confirm_quit() -> void:
 	var v := _modal("게임에서 나갈까요?", "quit")
-	v.add_child(UI.wrap_label("방장이 나가면 게임이 끝납니다. 참가자는 같은 라운드 안에 다시 들어오면 이어서 할 수 있습니다.", 20, UI.TEXT))
+	v.add_child(UI.wrap_label("나간 동안에는 봇이 대신 플레이하고, 같은 방에 다시 들어오면 이어서 할 수 있습니다. 방장이 나가면 남은 사람 중 한 명이 새 방장이 되어 게임이 계속됩니다.", 20, UI.TEXT))
 	var h := HBoxContainer.new()
 	h.alignment = BoxContainer.ALIGNMENT_CENTER
 	h.add_theme_constant_override("separation", 14)

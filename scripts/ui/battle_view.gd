@@ -118,6 +118,10 @@ func setup(bt: Dictionary, my_side: int, name_a: String, name_b: String) -> void
 	_banner.text = ""
 	var sim := BattleSim.new(bt["army_a"], bt["army_b"], int(bt["seed"]))
 	var res := sim.run()
+	# 결과 검증: 같은 입력이면 방장 계산과 같아야 한다 (다르면 알림 — 점수는 방장 결과)
+	if bt.has("winner") and (int(res["winner"]) != int(bt["winner"]) or int(res["survivors"]) != int(bt["survivors"])):
+		App.session.report_mismatch({"round": App.session.state.get("round", 0), "a": bt.get("a", ""), "b": bt.get("b", ""),
+			"host": [bt["winner"], bt["survivors"]], "mine": [res["winner"], res["survivors"]]})
 	_events = res["events"]
 	_units = sim.unit_snapshots()
 	_ev_i = 0

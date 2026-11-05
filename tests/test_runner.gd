@@ -214,18 +214,23 @@ func _test_match() -> int:
 	if err3 != "" or pa["inv"].size() != 1 or GameData.artifact(pa["inv"][0]["id"])["grade"] != "advanced":
 		print("FAIL art_merge: ", err3, pa["inv"]); return 1
 	print("아티팩트 합성 OK → ", GameData.artifact(pa["inv"][0]["id"])["name"])
-	# 연결 끊김: 같은 라운드면 재접속 가능, 다음 라운드가 시작되면 탈락
+	# 연결 끊김: 탈락하지 않고 봇이 대신 플레이, 라운드가 지나도 재접속 가능
 	t.set_connected("b", false)
 	if not t.can_rejoin("b"):
-		print("FAIL: 같은 라운드 재접속 불가"); return 1
+		print("FAIL: 재접속 불가"); return 1
 	var r0: int = t.state["round"]
 	var g := 0
-	while int(t.state["round"]) == r0 and g < 10000:
+	while int(t.state["round"]) <= r0 + 1 and g < 20000:
 		g += 1
 		t.advance(0.25)
-	if t.player("b")["alive"] or t.can_rejoin("b"):
-		print("FAIL: 라운드가 넘어갔는데 탈락하지 않음"); return 1
-	print("끊김 탈락 OK: ", t.state["log"][-2] if t.state["log"].size() > 1 else "")
+	if not t.player("b")["alive"] or not t.can_rejoin("b"):
+		print("FAIL: 끊긴 사람이 탈락했거나 재접속 불가"); return 1
+	# 방장 넘기기: state 로 Match 를 다시 만들어도 같은 난수 흐름
+	t.pack_host_meta()
+	var t2 := Match.from_state(t.state)
+	if t2.rng.randi() != t.rng.randi() or t2.state["round"] != t.state["round"]:
+		print("FAIL: 방장 넘기기 상태 복원"); return 1
+	print("끊김 → 봇 대신 플레이 OK, 방장 넘기기 복원 OK")
 	return 0 if m.state["phase"] == "over" else 1
 
 

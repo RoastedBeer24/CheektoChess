@@ -33,6 +33,7 @@ func _ready() -> void:
 		_show_title()
 		if reason != "":
 			show_toast(reason, 4.0))
+	App.session.reconnecting.connect(_on_reconnecting)
 	App.session.update_progress.connect(_on_update_progress)
 	App.session.update_done.connect(_on_update_done)
 	App.net.rooms_changed.connect(_on_rooms)
@@ -444,3 +445,31 @@ func _show_game() -> void:
 	var g := GameScreen.new()
 	g.toast_requested.connect(show_toast)
 	_set_screen(g)
+
+
+## 재접속·방장 넘기기 중 안내 (화면 맨 위, 게임 조작은 막지 않음)
+var _reconn: PanelContainer
+
+
+func _on_reconnecting(text: String) -> void:
+	if _reconn == null:
+		_reconn = UI.panel(Color(0.08, 0.06, 0.02, 0.95), 14, UI.ACCENT, 3)
+		_reconn.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_reconn.z_index = 120
+		var h := HBoxContainer.new()
+		h.add_theme_constant_override("separation", 14)
+		_reconn.add_child(h)
+		var spin := UI.outlined("⟳", 30, UI.ACCENT, 4)
+		spin.name = "Spin"
+		h.add_child(spin)
+		var l := UI.label("", 24, UI.TEXT)
+		l.name = "Text"
+		h.add_child(l)
+		add_child(_reconn)
+	_reconn.visible = text != ""
+	if text == "":
+		return
+	(_reconn.get_child(0).get_node("Text") as Label).text = text
+	_reconn.reset_size()
+	_reconn.position = Vector2((get_viewport_rect().size.x - _reconn.size.x) / 2.0, 120.0)
+	move_child(_reconn, get_child_count() - 1)

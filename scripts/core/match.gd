@@ -84,7 +84,7 @@ func advance(dt: float) -> void:
 			if not _bot_second_done and phase_left <= float(B["prep_time"]) * 0.5:
 				_bot_second_done = true
 				for pid in alive_players():
-					if player(pid)["bot"]:
+					if _auto(pid):
 						Bot.play(self, pid, true)
 			if phase_left <= 0.0 or _all_humans_ready():
 				_start_battle()
@@ -102,6 +102,12 @@ func advance(dt: float) -> void:
 				_carousel_pick(who, Bot.carousel_choice(self, who))
 			elif phase_left <= 0.0 and who != "":
 				_carousel_pick(who, -1)
+
+
+## 봇이 대신 행동하는 플레이어 (봇, 또는 연결이 끊긴 사람)
+func _auto(pid: String) -> bool:
+	var p := player(pid)
+	return not p.is_empty() and (p["bot"] or not p["connected"])
 
 
 func _is_human(pid: String) -> bool:
@@ -135,25 +141,7 @@ func _all_humans_ready() -> bool:
 
 
 func _start_prep() -> void:
-	# 연결이 끊긴 채 라운드가 넘어가면 탈락
-	var dc := []
-	for pid in alive_players():
-		if not player(pid)["connected"] and not player(pid)["bot"]:
-			dc.append(pid)
-	if not dc.is_empty():
-		var remaining := alive_players().size()
-		for pid in dc:
-			_log("%s 재접속하지 않아 탈락" % player(pid)["name"])
-			_eliminate(pid, remaining)
-			remaining -= 1
-		var alive := alive_players()
-		if alive.size() <= 1:
-			state["phase"] = "over"
-			if alive.size() == 1:
-				state["winner"] = alive[0]
-				player(alive[0])["place"] = 1
-			state_changed.emit()
-			return
+	# 연결이 끊긴 사람은 탈락시키지 않고 봇이 대신 플레이한다 (언제든 다시 들어오면 이어서)
 	state["round"] += 1
 	var r: int = state["round"]
 	state["phase"] = "prep"
@@ -186,7 +174,7 @@ func _enter_prep() -> void:
 	_log("라운드 %d 준비 시작" % r)
 	_bot_second_done = false
 	for pid in alive_players():
-		if player(pid)["bot"]:
+		if _auto(pid):
 			Bot.play(self, pid)
 	state_changed.emit()
 
@@ -524,16 +512,35 @@ func set_connected(pid: String, on: bool) -> void:
 	p["connected"] = on
 	if not on:
 		p["dc_round"] = state["round"]
-		_log("%s 연결 끊김" % p["name"])
+		_log("%s 연결 끊김 — 다시 들어올 때까지 봇이 대신 플레이" % p["name"])
 	else:
 		_log("%s 재접속" % p["name"])
 	state_changed.emit()
 
 
-## 같은 라운드 안이면 재접속 허용
+## 탈락하지 않았으면 언제든 재접속 허용 (끊긴 동안은 봇이 대신 플레이)
 func can_rejoin(pid: String) -> bool:
 	var p := player(pid)
-	return not p.is_empty() and p["alive"] and not p["connected"] and int(p["dc_round"]) == int(state["round"])
+	return not p.is_empty() and p["alive"] and not p["connected"]
+
+
+# ─────────────────────────────── 방장 넘기기 ───────────────────────────────
+## 상태(state) + 방장만 가진 값(난수 상태 등)을 state 안에 함께 실어 보낸다.
+## 방장이 나가면 참가자 중 한 명이 마지막으로 받은 state 로 Match 를 이어서 만든다.
+
+func pack_host_meta() -> void:
+	state["_host_meta"] = {"rng": rng.state, "seed": rng.seed, "bot2": _bot_second_done, "phase_left": phase_left}
+
+
+static func from_state(s: Dictionary) -> Match:
+	var m := Match.new([], 0)
+	m.state = s.duplicate(true)
+	var meta: Dictionary = m.state.get("_host_meta", {})
+	m.rng.seed = int(meta.get("seed", 1))
+	m.rng.state = int(meta.get("rng", 0))
+	m._bot_second_done = bool(meta.get("bot2", false))
+	m.phase_left = float(m.state.get("phase_end", meta.get("phase_left", 10.0)))
+	return m
 
 
 # ─────────────────────────────── 군대 / 유닛 ───────────────────────────────
