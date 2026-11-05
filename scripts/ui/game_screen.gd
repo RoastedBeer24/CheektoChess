@@ -40,6 +40,9 @@ var _syn_box: VBoxContainer
 var _board_root: Control
 var _board_info: Label
 var _next_btn: Button
+var _pause_btn: Button
+var _pet: PetBuddy
+var _pause_cover: Control
 var _board_tiles := {}
 var _battle_view: BattleView
 var _banner: Label
@@ -141,6 +144,15 @@ func _build() -> void:
 	_board_root = _build_board()
 	_board_root.set_anchors_preset(Control.PRESET_FULL_RECT)
 	cstack.add_child(_board_root)
+	# 내 펫 (보드 왼쪽 아래 구석)
+	if SessionNode.my_pet() != "":
+		_pet = PetBuddy.new(SessionNode.my_pet(), Vector2(118, 118))
+		_pet.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
+		_pet.offset_left = 0
+		_pet.offset_top = -118
+		_pet.offset_right = 118
+		_pet.offset_bottom = 0
+		cstack.add_child(_pet)
 	_battle_view = BattleView.new()
 	_battle_view.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_battle_view.visible = false
@@ -325,6 +337,10 @@ func _build_top() -> Control:
 	_ready_btn.pressed.connect(_on_ready_btn)
 	Tips.set_tip(_ready_btn, "[b]준비 완료[/b]  [color=#8a8fa6]［스페이스］[/color]\n사람 플레이어가 모두 준비하면 시간이 남아도 바로 전투합니다.\n전투 중에는 [b]건너뛰기[/b] — 모두 누르면 바로 다음 라운드.")
 	h.add_child(_ready_btn)
+	_pause_btn = UI.button("일시정지", 22, Vector2(120, 52), Color("3a4058"))
+	_pause_btn.pressed.connect(func(): App.session.set_paused(not App.session.paused))
+	Tips.set_tip(_pause_btn, "[b]일시정지[/b]\n나 말고 모두 봇인 게임에서만 멈출 수 있습니다.")
+	h.add_child(_pause_btn)
 	var setb := UI.button("설정", 22, Vector2(90, 52), Color("3a4058"))
 	setb.pressed.connect(func(): add_child(SettingsPanel.new()))
 	Tips.set_tip(setb, "[b]설정·기록[/b]\n음량, 전투 속도, 모션·이펙트, 글자 크기, 색약 모드, 게임 기록")
@@ -418,12 +434,19 @@ func _build_board() -> Control:
 	_board_info.mouse_filter = Control.MOUSE_FILTER_STOP
 	Tips.set_tip(_board_info, func(): return "[b]보드 인원[/b]\n보드에 올릴 수 있는 사도 수 = 레벨%s" % (" (+1 확장 보드)" if Match.has_aug(me(), "board_plus") else ""))
 	# 다음 상대 미리보기 (누르면 그 사람 보드)
-	_next_btn = UI.button("", 18, Vector2(0, 40), Color("5a2f3a"))
+	_next_btn = UI.button("", 18, Vector2(420, 40), Color("5a2f3a"))
+	_next_btn.clip_text = true
+	_next_btn.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	_next_btn.visible = false
 	_next_btn.pressed.connect(func():
 		var opp: String = _next_btn.get_meta("pid", "")
 		if opp != "":
 			_show_player(opp))
+	Tips.set_tip(_next_btn, func():
+		var pid: String = _next_btn.get_meta("pid", "")
+		if pid == "":
+			return "[b]몬스터 라운드[/b]\n이겨도 져도 체력·연승은 그대로, 처치 골드와 보상"
+		return _opp_summary(App.session.state.get("players", {}).get(pid, {}))["tip"])
 	var heads := HBoxContainer.new()
 	heads.alignment = BoxContainer.ALIGNMENT_CENTER
 	heads.add_theme_constant_override("separation", 14)
@@ -581,9 +604,60 @@ func _process(_delta: float) -> void:
 		if phase == "prep" and not App.session.tutorial and left > 0.0 and left <= 5.0 and ceili(left) != _last_tick:
 			_last_tick = ceili(left)
 			Sfx.play("tick", 0.7, 0.0)
+			_empty_slot_warn(ceili(left))
 
 
 var _last_tick := -1
+
+
+func _refresh_pause() -> void:
+	_pause_btn.visible = App.session.can_pause() and App.session.state.get("phase", "") != "over"
+	_pause_btn.text = "계속하기" if App.session.paused else "일시정지"
+	if App.session.paused and _pause_cover == null:
+		_pause_cover = ColorRect.new()
+		_pause_cover.color = Color(0, 0, 0, 0.55)
+		_pause_cover.set_anchors_preset(Control.PRESET_FULL_RECT)
+		_pause_cover.mouse_filter = Control.MOUSE_FILTER_STOP
+		_pause_cover.z_index = 40
+		var c := CenterContainer.new()
+		c.set_anchors_preset(Control.PRESET_FULL_RECT)
+		_pause_cover.add_child(c)
+		var v := VBoxContainer.new()
+		v.add_theme_constant_override("separation", 18)
+		c.add_child(v)
+		v.add_child(UI.outlined("일시정지", 56, UI.ACCENT, 10))
+		var go := UI.button("계속하기", 28, Vector2(280, 76), Color("2f6b4a"))
+		go.pressed.connect(func(): App.session.set_paused(false))
+		v.add_child(go)
+		add_child(_pause_cover)
+	elif not App.session.paused and _pause_cover != null:
+		_pause_cover.queue_free()
+		_pause_cover = null
+var _warn_round := -1
+
+
+## 준비 마지막 5초: 보드에 빈자리가 있고 대기석에 사도가 있으면 알리고 빈칸을 깜빡인다
+func _empty_slot_warn(sec: int) -> void:
+	var p := me()
+	if p.is_empty() or not _drag.is_empty():
+		return
+	var free: int = Match.board_cap(p) - p.get("board", {}).size()
+	var bench_n := 0
+	for b in p.get("bench", []):
+		if b != null:
+			bench_n += 1
+	if free <= 0 or bench_n == 0:
+		for key in _board_tiles:
+			_board_tiles[key].set_drop("")
+		return
+	var rnd := int(App.session.state.get("round", 0))
+	if _warn_round != rnd:
+		_warn_round = rnd
+		_toast("보드에 빈자리 %d칸! 대기석 사도를 올리세요" % free)
+		_vibrate(40)
+	for key in _board_tiles:
+		if not p.get("board", {}).has(key):
+			_board_tiles[key].set_drop("ok" if sec % 2 == 1 else "")
 
 
 func refresh() -> void:
@@ -595,6 +669,7 @@ func refresh() -> void:
 	if phase != _last_phase or int(st["round"]) != _last_round:
 		_on_phase_changed(phase, int(st["round"]))
 	_round_lbl.text = "라운드 %d" % int(st["round"])
+	_refresh_pause()
 	_phase_pill.add_theme_stylebox_override("panel", UI.box(PHASE_COLOR.get(phase, UI.PANEL_LIGHT), 10))
 	if not p.is_empty():
 		_hp_lbl.text = "♥ %d" % maxi(0, int(p["hp"]))
@@ -633,6 +708,8 @@ func refresh() -> void:
 	_offer_btn.visible = prep and (not p.get("art_offer", {}).is_empty() or has_aug_offer) and _offer_hidden
 	_offer_btn.text = "증강 선택" if has_aug_offer else "아티팩트 선택"
 	_board_root.visible = phase != "battle"
+	if _pet:
+		_pet.visible = _board_root.visible
 	_battle_view.visible = phase == "battle"
 	# 전투 중에는 오른쪽 정보 패널을 접어 전투 화면을 넓게 (전투 중에는 장착·합성 불가)
 	_right_panel.visible = phase != "battle"
@@ -667,6 +744,9 @@ func _on_phase_changed(phase: String, rnd: int) -> void:
 	merge_mode = false
 	_last_phase = phase
 	_last_round = rnd
+	if _drag.is_empty():
+		for key in _board_tiles:
+			_board_tiles[key].set_drop("")
 	_phase_total = maxf(1.0, float(st.get("phase_end", 1.0)))
 	match phase:
 		"prep":
@@ -687,6 +767,11 @@ func _on_phase_changed(phase: String, rnd: int) -> void:
 		"result":
 			_record_round()
 			_show_result_banner()
+
+
+func _pet_react(kind: String) -> void:
+	if _pet and is_instance_valid(_pet):
+		_pet.react(kind)
 
 
 func _show_banner(text: String, color: Color, sub: String = "") -> void:
@@ -731,11 +816,13 @@ func _show_result_banner() -> void:
 				parts.append("아티팩트: " + String(GameData.artifact(rw["art"]).get("name", "")))
 			_show_banner("몬스터 격파!" if w == 0 else "몬스터 라운드 종료", UI.GOOD if w == 0 else UI.SUB, " · ".join(parts) + "  (연승·연패·체력 변화 없음)")
 			Sfx.play("win" if w == 0 else "lose", 0.7)
+			_pet_react("win" if w == 0 else "lose")
 			return
 		var base := int(B()["damage_base"]) + int(st["round"]) / int(B()["damage_per_round_div"])
 		var opp: String = bt["b"] if side == 0 else bt["a"]
 		var opp_name: String = "유령 상대" if opp == "" else String(st["players"].get(opp, {}).get("name", ""))
 		Sfx.play("win" if w == side else "lose", 0.8)
+		_pet_react("win" if w == side else "lose")
 		if w == side:
 			_show_banner("승리!", UI.GOOD, "vs %s · +1 골드 · 살아남은 사도 %d명" % [opp_name, int(bt["survivors"])])
 		elif w == -1:
@@ -812,7 +899,42 @@ func _refresh_players() -> void:
 		_players_box.add_child(row)
 
 
-func _refresh_synergy() -> void:
+## 끌기 중 미리보기: 놓으면 보드가 이렇게 바뀐다 (null 이면 지금 보드)
+func _hyp_board():
+	if _drag.is_empty() or _drag.has("art_id") or not _drag.get("active", false):
+		return null
+	var hover = _drag.get("hover")
+	if hover == null:
+		return null
+	var r := _check_drop(hover)
+	if not r.get("ok", false):
+		return null
+	var p := me()
+	var src: Dictionary = _drag["src"]
+	var specs := {}
+	for k in p.get("board", {}):
+		specs["b" + k] = p["board"][k]
+	var unit = {"aid": _drag["aid"], "star": int(_drag.get("star", 1))} if src.has("shop") else _drag["unit"]
+	var to_board: bool = hover.has("board")
+	var from_board: bool = src.has("board")
+	if from_board and to_board:
+		return null   # 보드 안 자리 바꾸기: 구성 그대로
+	if from_board:
+		specs.erase("b" + String(src["board"]))
+		var occ = _unit_at(hover) if hover.has("bench") else null
+		if occ != null:
+			specs["swap"] = occ
+	elif to_board:
+		var occ2 = _unit_at(hover)
+		if occ2 != null:
+			specs.erase("b" + String(hover["board"]))
+		specs["new"] = unit
+	else:
+		return null
+	return specs.values()
+
+
+func _refresh_synergy(hyp = null) -> void:
 	UI.clear(_syn_box)
 	var p := me()
 	if p.is_empty():
@@ -820,7 +942,14 @@ func _refresh_synergy() -> void:
 	var specs := []
 	for k in p["board"]:
 		specs.append(p["board"][k])
-	var counts := Rules.apply_emblems(Rules.count_traits(specs), p.get("augs", []))
+	var now_counts := Rules.apply_emblems(Rules.count_traits(specs), p.get("augs", []))
+	var now_tiers := Rules.active_tiers(now_counts)
+	var counts := now_counts
+	if hyp != null:
+		counts = Rules.apply_emblems(Rules.count_traits(hyp), p.get("augs", []))
+		for n in now_counts:
+			if not counts.has(n):
+				counts[n] = 0
 	var tiers := Rules.active_tiers(counts)
 	_add_aug_chips(p)
 	var names := counts.keys()
@@ -848,6 +977,21 @@ func _refresh_synergy() -> void:
 		var cnt := UI.label(str(counts[n]), 22, col if active > 0 else UI.SUB, HORIZONTAL_ALIGNMENT_CENTER)
 		cnt.custom_minimum_size.x = 22
 		h.add_child(cnt)
+		# 끌기 미리보기: 바뀌는 시너지만 표시 (+1 / −1, 단계 오르내림)
+		var diff: int = int(counts[n]) - int(now_counts.get(n, 0))
+		if hyp != null and diff != 0:
+			var up: bool = diff > 0
+			var tchg: int = int(tiers.get(n, 0)) - int(now_tiers.get(n, 0))
+			var txt := ("+%d" % diff) if up else ("−%d" % -diff)
+			if tchg > 0:
+				txt += " ▲단계"
+			elif tchg < 0:
+				txt += " ▼단계"
+			var dc := UI.chip(txt, UI.GOOD if up else UI.BAD, 17)
+			dc.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+			h.add_child(dc)
+			h.move_child(dc, 2)
+			row.add_theme_stylebox_override("panel", UI.box(col.darkened(0.7), 10, (UI.GOOD if up else UI.BAD), 3))
 		var nl := UI.label(UI.syn_short(n), 21, UI.TEXT if active > 0 else UI.SUB)
 		nl.add_theme_font_override("font", UI.bold())
 		nl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -880,7 +1024,7 @@ func _refresh_synergy() -> void:
 		_syn_box.add_child(UI.wrap_label("보드에 사도를 올리면 시너지가 표시됩니다.", 18))
 
 
-const AUG_KIND := {"econ": ["경제", Color("ffd25e")], "unit": ["사도", Color("7fb6ff")], "syn": ["시너지", Color("5ee39b")], "battle": ["전투", Color("ff8a7a")], "grow": ["성장", Color("c9a7ff")]}
+const AUG_KIND := {"econ": ["경제", Color("ffd25e")], "unit": ["사도", Color("7fb6ff")], "syn": ["시너지", Color("5ee39b")], "battle": ["전투", Color("ff8a7a")], "grow": ["성장", Color("c9a7ff")], "quest": ["퀘스트", Color("6fe0d0")], "risk": ["모험", Color("ff6fae")]}
 
 
 ## 가진 증강 (시너지 목록 위, 마우스를 올리거나 꾹 누르면 설명)
@@ -1208,10 +1352,54 @@ func _refresh_next_opp() -> void:
 			continue
 		var who: String = opp if opp != "" else ghost
 		var nm: String = String(st["players"].get(who, {}).get("name", "?"))
-		_next_btn.text = "다음: %s%s" % [nm, " (유령)" if opp == "" else ""]
+		var sm := _opp_summary(st["players"].get(who, {}))
+		_next_btn.text = "다음: %s%s%s" % [nm, " (유령)" if opp == "" else "", ("  ·  " + sm["short"]) if sm["short"] != "" else ""]
 		_next_btn.set_meta("pid", who)
 		_next_btn.visible = true
 		return
+
+
+## 상대 요약: 발동 시너지(높은 단계 순), ★3·★2 수, 보드 코스트 합
+func _opp_summary(p: Dictionary) -> Dictionary:
+	if p.is_empty():
+		return {"short": "", "tip": ""}
+	var specs := []
+	var s2 := 0
+	var s3 := 0
+	var cost := 0
+	var stars := []
+	for k in p.get("board", {}):
+		var u: Dictionary = p["board"][k]
+		specs.append(u)
+		cost += GameData.cost_of.get(u["aid"], 1) * int(pow(3, int(u.get("star", 1)) - 1))
+		if int(u.get("star", 1)) >= 3:
+			s3 += 1
+		elif int(u.get("star", 1)) == 2:
+			s2 += 1
+		if int(u.get("star", 1)) >= 2:
+			stars.append("%s %s" % [GameData.apostle(u["aid"]).get("name", u["aid"]), UI.stars(int(u["star"]))])
+	var counts := Rules.apply_emblems(Rules.count_traits(specs), p.get("augs", []))
+	var tiers := Rules.active_tiers(counts)
+	var act := []
+	for n in tiers:
+		if int(tiers[n]) > 0:
+			act.append(n)
+	act.sort_custom(func(a, b): return int(tiers[a]) * 100 + int(counts[a]) > int(tiers[b]) * 100 + int(counts[b]))
+	var short_parts := []
+	for n in act.slice(0, 2):
+		short_parts.append("%s %d" % [UI.syn_short(n), int(counts[n])])
+	if s3 > 0:
+		short_parts.append("★3 %d" % s3)
+	elif s2 > 0:
+		short_parts.append("★2 %d" % s2)
+	var tip := "[b]%s[/b]  Lv %d · ♥ %d · 보드 %d명 (전력 %d)\n" % [p.get("name", "?"), int(p.get("level", 1)), maxi(0, int(p.get("hp", 0))), specs.size(), cost]
+	if act.is_empty():
+		tip += "발동 시너지 없음"
+	else:
+		tip += "시너지: " + ", ".join(act.map(func(n): return "[color=#%s]%s %d[/color]" % [UI.syn_color(n).lightened(0.2).to_html(false), UI.syn_short(n), int(counts[n])]))
+	if not stars.is_empty():
+		tip += "\n강화 사도: " + ", ".join(stars)
+	return {"short": " · ".join(short_parts), "tip": tip + "\n[color=#8a8fa6]눌러서 보드 보기[/color]"}
 
 
 ## 구매 추천: 이 사도를 사서 보드에 올리면 단계가 오르는 시너지 (보드에 없는 사도일 때)
@@ -1485,13 +1673,40 @@ func _check_merge_fx(p: Dictionary) -> void:
 			if now[key] > _star_seen.get(key, 0):
 				var parts: PackedStringArray = key.split(":")
 				var st := int(parts[1])
-				_show_banner("%s  %s 합성!" % [UI.stars(st), GameData.apostle(parts[0])["name"]], Color("ffe066"))
-				_vibrate(60 if st < 3 else 160)
-				Sfx.play("star3" if st >= 3 else "merge")
-				Voice.say(parts[0], "Spawn", "merge")
+				var nm: String = GameData.apostle(parts[0])["name"]
+				if st >= 3:
+					# ★3: 위쪽 띠 + 승리 동작 + 승리 대사 (이 게임에서 더는 등장하지 않음)
+					_show_banner("★★★  %s 완성!" % nm, UI.ACCENT, "최고 단계 달성 — 이 게임에서 %s 은(는) 더 나오지 않습니다" % nm)
+					_vibrate(160)
+					Sfx.play("star3")
+					Voice.say(parts[0], "Victory", "merge")
+					_pet_react("star3")
+					for t in _tiles_of(p, parts[0], st):
+						t.celebrate()
+				else:
+					_show_banner("%s  %s 합성!" % [UI.stars(st), nm], Color("ffe066"))
+					_vibrate(60)
+					Sfx.play("merge")
+					Voice.say(parts[0], "Spawn", "merge")
+					for t in _tiles_of(p, parts[0], st):
+						t.celebrate()
 				break
 	_star_seen = now
 	_star_init = true
+
+
+## 그 사도(같은 별)가 있는 보드·대기석 칸
+func _tiles_of(p: Dictionary, aid: String, star: int) -> Array:
+	var out := []
+	for k in p.get("board", {}):
+		var u: Dictionary = p["board"][k]
+		if u["aid"] == aid and int(u["star"]) == star and _board_tiles.has(k):
+			out.append(_board_tiles[k])
+	var bench: Array = p.get("bench", [])
+	for i in bench.size():
+		if bench[i] != null and bench[i]["aid"] == aid and int(bench[i]["star"]) == star and i < _bench_tiles.size():
+			out.append(_bench_tiles[i])
+	return out
 
 
 ## 합성된 사도 칸 위에 빛 연출
@@ -1544,6 +1759,7 @@ func _sound_diff(p: Dictionary, phase: String) -> void:
 		return
 	if cur["level"] > old["level"]:
 		Sfx.play("levelup")
+		_pet_react("levelup")
 	if cur["n"] > old["n"] and cur["gold"] < old["gold"]:
 		Sfx.play("buy")
 		for aid in units:
@@ -1597,9 +1813,14 @@ func _show_player(pid: String) -> void:
 		specs.append(p["board"][k])
 	var counts := Rules.count_traits(specs)
 	var tiers := Rules.active_tiers(counts)
-	for n in counts:
-		if tiers.get(n, 0) > 0:
-			syn.add_child(UI.label("%s %d" % [n, counts[n]], 20, UI.GOOD))
+	var act_names := counts.keys().filter(func(n): return tiers.get(n, 0) > 0)
+	act_names.sort_custom(func(a, b): return int(tiers[a]) * 100 + int(counts[a]) > int(tiers[b]) * 100 + int(counts[b]))
+	for n in act_names:
+		var sh := HBoxContainer.new()
+		sh.add_theme_constant_override("separation", 6)
+		sh.add_child(UI.syn_badge(n, 26, false))
+		sh.add_child(UI.label("%s %d" % [UI.syn_short(n), counts[n]], 20, UI.syn_color(n).lightened(0.25)))
+		syn.add_child(sh)
 	if syn.get_child_count() == 1:
 		syn.add_child(UI.label("발동 없음", 18, UI.SUB))
 	var bench := HBoxContainer.new()
@@ -2084,6 +2305,7 @@ func _paint_drag() -> void:
 		_sell_btn.add_theme_color_override("font_color", Color("fff3b0"))
 		if not on_sell:
 			_sell_btn.add_theme_stylebox_override("normal", UI.box(Color("6a2f2f"), 14, UI.ACCENT, 4))
+	_refresh_synergy(_hyp_board())
 
 
 func _clear_drag_paint() -> void:
@@ -2096,6 +2318,7 @@ func _clear_drag_paint() -> void:
 	_sell_btn.add_theme_stylebox_override("normal", UI.box(Color("5a2b2b"), 14, Color("b55a5a"), 2))
 	_sell_btn.add_theme_font_size_override("font_size", 22)
 	_sell_btn.remove_theme_color_override("font_color")
+	_refresh_synergy()
 
 
 func _finish_drag() -> void:
@@ -2239,7 +2462,17 @@ func _show_carousel(car: Dictionary) -> void:
 		var nm: String = st["players"].get(order[i], {}).get("name", "?")
 		names.append(("[%s]" % nm) if i == turn else nm)
 	v.add_child(UI.label("체력이 낮은 사람부터 고릅니다:  " + " → ".join(names), 20, UI.SUB, HORIZONTAL_ALIGNMENT_CENTER))
-	v.add_child(UI.label("내 차례! 하나를 고르세요" if my_turn else "%s 님이 고르는 중..." % st["players"].get(who, {}).get("name", "?"), 26, UI.ACCENT if my_turn else UI.TEXT, HORIZONTAL_ALIGNMENT_CENTER))
+	# 고르는 사람의 펫이 함께 (차례를 한눈에)
+	var turn_row := HBoxContainer.new()
+	turn_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	turn_row.add_theme_constant_override("separation", 12)
+	v.add_child(turn_row)
+	var who_pet := String(st["players"].get(who, {}).get("pet", ""))
+	if who_pet != "":
+		var pb := PetBuddy.new(who_pet, Vector2(72, 72))
+		turn_row.add_child(pb)
+		pb.react.call_deferred("tap")
+	turn_row.add_child(UI.label("내 차례! 하나를 고르세요" if my_turn else "%s 님이 고르는 중..." % st["players"].get(who, {}).get("name", "?"), 26, UI.ACCENT if my_turn else UI.TEXT, HORIZONTAL_ALIGNMENT_CENTER))
 	var grid := GridContainer.new()
 	grid.columns = mini(5, car["options"].size())
 	grid.add_theme_constant_override("h_separation", 12)
@@ -2408,6 +2641,8 @@ func _show_game_over() -> void:
 		h.add_child(UI.label("%d위" % place, 24, UI.ACCENT if place == 1 else UI.TEXT))
 		if String(p.get("avatar", "")) != "":
 			h.add_child(UI.tex_rect(UI.portrait(p["avatar"]), Vector2(34, 34), true))
+		if String(p.get("pet", "")) != "" and UI.portrait(p["pet"]) != null:
+			h.add_child(UI.tex_rect(UI.portrait(p["pet"]), Vector2(30, 30), true))
 		var n := UI.label(p["name"], 22, UI.TEXT)
 		n.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		n.clip_text = true

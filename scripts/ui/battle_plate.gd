@@ -1,21 +1,26 @@
 class_name BattlePlate
 extends Control
-## 전투 중 사도 발밑 이름표: [★ 이름] + 체력(보호막) 막대 + 상태 표시. 모든 사도가 같은 모양·같은 위치.
+## 전투 중 사도 발밑 이름표: [★ 이름] + 체력(보호막) 막대 + SP 막대 + 상태 표시. 모든 사도가 같은 모양·같은 위치.
 ## 사도 그림 위 레이어에 그려서 다른 사도에 가려지지 않는다.
 
 const W := 128.0
-const H := 36.0
+const H := 42.0
 
 var uname := ""
 var star := 1
 var mine := true
 var hp := 1.0
 var shield := 0.0
+var sp := 0.0            # 0~1 (저학년 스킬 게이지)
+var show_sp := true
 var status := ""          # 짧은 상태 이름 (기절·빙결 등), "" 이면 없음
 var dead := false
 var _name: Label
 var _status: Label
 var _status_bg: PanelContainer
+var _skill_bg: PanelContainer
+var _skill_lbl: Label
+var _skill_tw: Tween
 
 
 func _init() -> void:
@@ -43,6 +48,12 @@ func _ready() -> void:
 	add_child(_status_bg)
 	_status = UI.outlined("", 14, Color.WHITE, 4)
 	_status_bg.add_child(_status)
+	_skill_bg = PanelContainer.new()
+	_skill_bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_skill_bg.visible = false
+	add_child(_skill_bg)
+	_skill_lbl = UI.outlined("", 15, Color.WHITE, 4)
+	_skill_bg.add_child(_skill_lbl)
 
 
 func set_hp(ratio: float, shield_ratio: float) -> void:
@@ -53,11 +64,21 @@ func set_hp(ratio: float, shield_ratio: float) -> void:
 	queue_redraw()
 
 
+func set_sp(ratio: float) -> void:
+	ratio = clampf(ratio, 0.0, 1.0)
+	if absf(ratio - sp) < 0.001:
+		return
+	sp = ratio
+	queue_redraw()
+
+
 func set_dead(on: bool) -> void:
 	dead = on
 	modulate.a = 0.4 if on else 1.0
 	if on:
 		set_status("")
+		if _skill_bg:
+			_skill_bg.visible = false
 	queue_redraw()
 
 
@@ -76,6 +97,38 @@ func set_status(text: String, color: Color = Color.WHITE) -> void:
 		_status_bg.add_theme_stylebox_override("panel", sb)
 		_status_bg.reset_size()
 		_status_bg.position = Vector2(W / 2.0 - _status_bg.size.x / 2.0, -_status_bg.size.y - 2.0)
+
+
+## 스킬 이름 표시: 이름표 바로 위에 작은 띠로 잠깐 (머리 위 말풍선 대신 — 사도 그림을 가리지 않게)
+func flash_skill(text: String, color: Color, dur: float) -> void:
+	if _skill_bg == null or dead:
+		return
+	_skill_lbl.text = text
+	_skill_lbl.add_theme_color_override("font_color", color.lightened(0.35))
+	var sb := UI.box(Color(0.05, 0.06, 0.1, 0.9), 6, color, 1)
+	sb.content_margin_left = 6
+	sb.content_margin_right = 6
+	sb.content_margin_top = 0
+	sb.content_margin_bottom = 0
+	_skill_bg.add_theme_stylebox_override("panel", sb)
+	_skill_bg.visible = true
+	_skill_bg.reset_size()
+	var y := -_skill_bg.size.y - 2.0
+	if _status_bg.visible:
+		y -= _status_bg.size.y + 2.0
+	_skill_bg.position = Vector2(W / 2.0 - _skill_bg.size.x / 2.0, y)
+	if _skill_tw:
+		_skill_tw.kill()
+	_skill_bg.modulate.a = 1.0
+	_skill_tw = create_tween()
+	_skill_tw.tween_interval(dur)
+	_skill_tw.tween_property(_skill_bg, "modulate:a", 0.0, 0.25)
+	_skill_tw.tween_callback(func(): _skill_bg.visible = false)
+
+
+func _process(_d: float) -> void:
+	if sp >= 0.999 and not dead:
+		queue_redraw()
 
 
 func _draw() -> void:

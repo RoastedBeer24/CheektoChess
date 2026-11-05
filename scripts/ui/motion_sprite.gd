@@ -147,7 +147,7 @@ func _process(delta: float) -> void:
 		return
 	var info: Dictionary = _meta["anims"][_anim]
 	var n := int(info["n"])
-	var fps := float(_meta.get("fps", 8.0)) * speed
+	var fps := float(info.get("fps", _meta.get("fps", 8.0))) * speed   # 동작마다 다를 수 있음 (긴 동작은 프레임을 솎음)
 	_t += delta
 	if _loop_until > 0.0:
 		_loop_until -= delta * speed

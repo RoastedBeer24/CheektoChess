@@ -19,13 +19,13 @@ import sys
 from PIL import Image
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-OUT = os.path.join(ROOT, "assets", "motions")
+OUT = os.environ.get("MOTION_OUT") or os.path.join(ROOT, "assets", "motions")
 ANIMS = ["Idle", "Move", "Attack1_1", "Skill1_1", "Ultimate1_1", "Die", "Groggy", "Victory"]
 SIZE = 192          # 512 칸 → 192 칸 (기준점 유지)
-TARGET_FPS = 8.0
+TARGET_FPS = 15.0
 QUALITY = 78
 MAX_COLS = 12
-MAX_FRAMES = 48      # 동작 하나 최대 프레임 (약 6초) — 너무 긴 궁극기는 뒤를 자름
+MAX_FRAMES = 72      # 동작 하나 최대 프레임 — 더 길면 프레임을 솎아 끝까지 재생 (동작별 fps)
 FEET = 461 / 512
 STD_FEET = 461        # 512 원본에서 발 위치
 STD_CX = 256          # 512 원본에서 가운데
@@ -69,6 +69,7 @@ def transform(im, norm):
 
 
 def pack_one(src_dir: str, aid: str) -> int:
+    """src_dir 의 프레임 → assets/motions/<aid>/ (MOTION_OUT 환경 변수로 다른 곳에)"""
     info_path = os.path.join(src_dir, "info.json")
     info = json.load(open(info_path, encoding="utf-8")) if os.path.exists(info_path) else {}
     fps = float(info.get("fps", 15))
@@ -79,13 +80,19 @@ def pack_one(src_dir: str, aid: str) -> int:
     meta = {"size": SIZE, "fps": round(fps / step, 3), "facing": "left", "feet": round(FEET, 4), "anims": {},
             "norm": [round(norm[0], 3), round(norm[1], 1), round(norm[2], 1)]}
     total = 0
-    for anim in ANIMS:
+    extra = sorted(x for x in os.listdir(src_dir) if os.path.isdir(os.path.join(src_dir, x)) and x not in ANIMS)
+    for anim in ANIMS + extra:   # 몬스터·펫은 Play·Eat 같은 다른 동작도
         d = os.path.join(src_dir, anim)
         if not os.path.isdir(d):
             continue
-        frames = sorted(f for f in os.listdir(d) if f.endswith(".png"))[::step][:MAX_FRAMES]
+        frames = sorted(f for f in os.listdir(d) if f.endswith(".png"))[::step]
         if not frames:
             continue
+        afps = fps / step
+        if len(frames) > MAX_FRAMES:
+            k = len(frames) / MAX_FRAMES          # 고르게 솎아 길이(초)는 그대로
+            frames = [frames[int(i * k)] for i in range(MAX_FRAMES)]
+            afps = afps / k
         cols = min(len(frames), MAX_COLS)
         rows = (len(frames) + cols - 1) // cols
         sheet = Image.new("RGBA", (cols * SIZE, rows * SIZE), (0, 0, 0, 0))
@@ -99,6 +106,8 @@ def pack_one(src_dir: str, aid: str) -> int:
         path = os.path.join(out_dir, anim + ".webp")
         sheet.save(path, "WEBP", quality=QUALITY, method=6)
         meta["anims"][anim] = {"n": len(frames), "cols": cols}
+        if abs(afps - fps / step) > 0.01:
+            meta["anims"][anim]["fps"] = round(afps, 3)
         total += os.path.getsize(path)
     with open(os.path.join(out_dir, "meta.json"), "w", encoding="utf-8") as f:
         json.dump(meta, f, ensure_ascii=False)

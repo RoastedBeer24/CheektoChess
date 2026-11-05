@@ -13,11 +13,14 @@ const DEFAULTS := {
 	"battle_motion": true,  # 전투 모션 (끄면 초상화 카드)
 	"effects": true,        # 전투 이펙트 (탄환·타격·화면 흔들림)
 	"screen_shake": false,
+	"dmg_numbers": 0,       # 전투 숫자: 0 전부, 1 치명타·스킬만, 2 끔
+	"sp_bar": true,         # 이름표 아래 SP 막대
 	"text_scale": 1.0,      # 1.0 / 1.15 / 1.3
 	"colorblind": false,    # 색약 모드: 좋음/위험 색을 파랑/주황으로
 	"tutorial_done": false,
 	"rules": {},
 	"avatar": "",
+	"pet": "",              # 내 펫 (펫 id, "" = 없음)
 	"shop_hint": true,
 	"ui_scale": 0.0,
 	"battle_full": 0,       # 전투 크게 보기: 0 자동(휴대폰은 켬), 1 켬, 2 끔        # 화면 크기 배율: 0 = 자동(휴대폰은 크게), 그 외 그 값      # 상점 구매 추천 표시

@@ -52,6 +52,9 @@ static func _stream(path: String) -> AudioStream:
 static func say(aid: String, cat: String, unit_key = null) -> void:
 	if inst == null:
 		return
+	if unit_key == null:
+		unit_key = aid
+	aid = GameData.base(aid)   # 의상 유닛은 원래 사도 목소리
 	var vol := Settings.num("vol_master") * Settings.num("vol_voice")
 	if vol <= 0.01:
 		return

@@ -16,7 +16,7 @@ const PACK_DIR := "user://packs/"
 const INSTALLED := "user://packs/installed.json"
 const EMBEDDED := "res://packs/index.json"
 const REQUIRED := ["core", "art"]   # 게임에 꼭 필요한 묶음. 나머지(모션·보이스)는 못 받아도 게임은 시작
-const PACK_LABEL := {"core": "게임 코드", "art": "그림", "motion": "전투 모션", "voice": "보이스"}
+const PACK_LABEL := {"core": "게임 코드", "art": "그림", "motion": "전투 모션", "motion2": "의상 모션", "mobs": "몬스터·펫 모션", "voice": "보이스"}
 const CHUNK := 4 * 1048576           # 큰 묶음은 4MB 조각으로 받는다 (이어받기)
 const STALL := 20.0                  # 이 시간(초) 동안 받은 양이 늘지 않으면 실패
 

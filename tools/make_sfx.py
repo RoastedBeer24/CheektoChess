@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""효과음 만들기 (직접 합성 — 외부 음원 없음) → assets/sfx/<이름>.ogg
+"""효과음 만들기 (직접 합성 — 외부 음원 없음, 트릭컬 느낌의 귀여운 소리) → assets/sfx/<이름>.ogg
 
   python3 tools/make_sfx.py      (numpy, ffmpeg 필요)
 
@@ -98,38 +98,91 @@ def save(name, x, gain=0.8):
     os.remove(tmp)
 
 
+def lowpass(x, a=0.15):
+    """한 극 저역 통과 (부드럽게)"""
+    y = np.zeros_like(x)
+    acc = 0.0
+    for i in range(len(x)):
+        acc += a * (x[i] - acc)
+        y[i] = acc
+    return y
+
+
+def marimba(f, d=0.35, bright=1.0):
+    """나무 건반: 짧은 '톡' 소리 (배음 1 · 3.93 · 9.2)"""
+    out = np.zeros(int(SR * d))
+    for m, amp, c in ((1, 1.0, 6), (3.93, 0.35 * bright, 18), (9.2, 0.08 * bright, 40)):
+        out += amp * tone(f * m, d) * env(d, a=0.002, curve=c)
+
+    return out
+
+
+def kalimba(f, d=0.5):
+    out = np.zeros(int(SR * d))
+    for m, amp, c in ((1, 1.0, 5), (5.4, 0.12, 30), (2.0, 0.15, 12)):
+        out += amp * tone(f * m, d) * env(d, a=0.002, curve=c)
+    return out
+
+
+def pop(f=700, d=0.09):
+    """물방울 '뽁'"""
+    return tone(lambda x: f * (1 + 2.5 * np.exp(-x * 60)), d) * env(d, a=0.001, curve=7)
+
+
+def boing(f0, f1, d, vib=3.0):
+    x = t(d)
+    fr = f0 + (f1 - f0) * (x / d) ** 0.6
+    return tone(lambda xx: f0 + (f1 - f0) * (xx / d) ** 0.6, d, "sine", vib) * env(d, a=0.004, curve=4)
+
+
+def bonk(f0=320, f1=110, d=0.13):
+    """만화 '통!' (높은 데서 뚝 떨어지는 짧은 소리)"""
+    return tone(lambda x: f1 + (f0 - f1) * np.exp(-x * 40), d) * env(d, a=0.001, curve=8)
+
+
+def slide(f0, f1, d, wave_="tri", vib=0.0):
+    return tone(lambda x: f0 + (f1 - f0) * x / d, d, wave_, vib)
+
+
+def sparkle(n=6, base=2093, span=0.4, seed=3):
+    r = np.random.default_rng(seed)
+    notes = [base * 2 ** (k / 12) for k in (0, 4, 7, 12, 16, 19, 24)]
+    return seq(*[(span * i / n, 0.35 * kalimba(notes[r.integers(0, len(notes))], 0.3)) for i in range(n)])
+
+
+C5, D5, E5, G5, A5, C6, D6, E6, G6, C7 = 523, 587, 659, 784, 880, 1047, 1175, 1319, 1568, 2093
+
+
 def main():
+    """트릭컬 느낌: 나무 건반·칼림바·뽁·통!·띠용 — 통통 튀고 귀여운 소리 (임시, 직접 합성)"""
     os.makedirs(OUT, exist_ok=True)
     open(os.path.join(OUT, ".gdignore"), "w").close()
     # UI
-    save("click", tone(1400, 0.05, "tri") * env(0.05, curve=8), 0.5)
-    save("buy", seq((0, bell(1320, 0.18)), (0.07, bell(1760, 0.25))), 0.6)                     # 동전
-    save("sell", seq((0, bell(1760, 0.15)), (0.07, bell(1175, 0.25))), 0.55)
-    sw = noise(0.28, lp=6) * env(0.28, a=0.08, curve=3)
-    save("reroll", mix(sw, 0.3 * tone(lambda x: 600 + 1400 * x / 0.28, 0.28, "tri") * env(0.28, a=0.05, curve=3)), 0.55)
-    save("levelup", seq(*[(i * 0.08, bell(f, 0.35)) for i, f in enumerate([523, 659, 784, 1047])]), 0.6)
-    save("merge", seq((0, bell(784, 0.3)), (0.06, bell(1175, 0.3)), (0.12, bell(1568, 0.5)),
-                      (0.0, 0.25 * noise(0.5, lp=2) * env(0.5, a=0.02, curve=6))), 0.65)
-    save("star3", seq(*[(i * 0.09, bell(f, 0.6)) for i, f in enumerate([523, 659, 784, 1047, 1319, 1568])],
-                      (0.5, bell(2093, 0.9))), 0.7)
-    save("equip", mix(bell(2400, 0.2, ((1, 1), (2.7, 0.6), (5.1, 0.3))), 0.4 * noise(0.04) * env(0.04, curve=10)), 0.5)
-    save("ready", seq((0, bell(880, 0.2)), (0.1, bell(1320, 0.35))), 0.5)
-    save("tick", tone(2000, 0.03, "sine") * env(0.03, curve=10), 0.35)
-    save("round", seq((0, bell(660, 0.9, ((1, 1), (2.0, 0.6), (3.0, 0.3), (4.1, 0.2)))),
-                      (0.18, bell(990, 0.9, ((1, 1), (2.0, 0.6), (3.0, 0.3))))), 0.6)
-    # 전투
-    save("hit", mix(noise(0.09, lp=3) * env(0.09, curve=9), 0.8 * tone(lambda x: 180 - 80 * x / 0.09, 0.09) * env(0.09, curve=7)), 0.55)
-    save("hit_magic", mix(tone(lambda x: 1400 - 900 * x / 0.14, 0.14, "tri") * env(0.14, curve=6),
-                          0.3 * noise(0.14, lp=1) * env(0.14, curve=8)), 0.45)
-    save("crit", mix(noise(0.16, lp=2) * env(0.16, curve=7), tone(lambda x: 300 - 150 * x / 0.16, 0.16, "square") * env(0.16, curve=6),
-                     0.5 * bell(2600, 0.16)), 0.65)
-    save("skill", mix(tone(lambda x: 400 + 900 * x / 0.4, 0.4, "tri") * env(0.4, a=0.05, curve=3),
-                      0.4 * noise(0.4, lp=8) * env(0.4, a=0.1, curve=3), 0.4 * bell(1568, 0.4)), 0.5)
-    boom = mix(tone(lambda x: 90 - 50 * x, 0.9) * env(0.9, curve=3), 0.6 * noise(0.9, lp=20) * env(0.9, curve=4))
-    save("ultimate", mix(boom, seq((0.05, 0.5 * bell(1047, 0.8)), (0.15, 0.5 * bell(1568, 0.8)))), 0.75)
-    save("death", mix(tone(lambda x: 400 - 300 * x / 0.45, 0.45, "tri") * env(0.45, curve=4), 0.3 * noise(0.45, lp=12) * env(0.45, curve=5)), 0.45)
-    save("win", seq(*[(i * 0.12, bell(f, 0.6)) for i, f in enumerate([523, 659, 784])], (0.36, bell(1047, 1.1))), 0.65)
-    save("lose", seq((0, bell(440, 0.5)), (0.18, bell(392, 0.5)), (0.36, bell(311, 0.9))), 0.55)
+    save("click", marimba(1760, 0.07), 0.45)
+    save("tick", marimba(2349, 0.05, 0.5), 0.3)
+    save("buy", seq((0, marimba(C6, 0.25)), (0.06, marimba(G6, 0.3)), (0.0, 0.5 * pop(900))), 0.6)
+    save("sell", seq((0, marimba(E6, 0.22)), (0.07, marimba(A5, 0.3)), (0.05, 0.4 * pop(500))), 0.5)
+    save("reroll", seq(*[(0.035 * i, 0.7 * marimba(f, 0.18)) for i, f in enumerate([C6, E6, D6, G6, E6, C7])],
+                       (0, 0.25 * noise(0.25, lp=10) * env(0.25, a=0.05, curve=4))), 0.5)
+    save("levelup", seq(*[(0.07 * i, kalimba(f, 0.45)) for i, f in enumerate([C5, E5, G5, C6, E6])], (0.3, 0.6 * sparkle(5, C7, 0.3))), 0.6)
+    save("merge", seq((0, 0.8 * boing(400, 1200, 0.22, 2.0)), (0.16, marimba(G6, 0.35)), (0.2, marimba(C7, 0.45)), (0.18, 0.5 * pop(1200))), 0.6)
+    save("star3", seq(*[(0.08 * i, marimba(f, 0.45)) for i, f in enumerate([C5, E5, G5, C6, E6, G6])],
+                      (0.5, kalimba(C7, 0.9)), (0.5, 0.7 * kalimba(E6 * 2, 0.9)), (0.55, 0.8 * sparkle(9, C7, 0.7, 5))), 0.7)
+    save("equip", seq((0, kalimba(2637, 0.25)), (0.05, kalimba(3136, 0.3)), (0, 0.5 * pop(1500, 0.05))), 0.45)
+    save("ready", seq((0, marimba(G5, 0.25)), (0.1, marimba(C6, 0.4))), 0.5)
+    save("round", seq((0, marimba(C6, 0.3)), (0.12, marimba(E6, 0.3)), (0.24, marimba(G6, 0.3)), (0.36, kalimba(C7, 0.7))), 0.55)
+    # 전투 (자주 나므로 작고 짧게)
+    save("hit", mix(bonk(300, 120, 0.11), 0.25 * noise(0.05, lp=4) * env(0.05, curve=10)), 0.5)
+    save("hit_magic", mix(0.7 * slide(1800, 900, 0.12, "tri") * env(0.12, curve=6), 0.4 * kalimba(2637, 0.15)), 0.4)
+    save("crit", mix(bonk(500, 140, 0.16), 0.6 * pop(1100, 0.1), 0.3 * noise(0.07, lp=3) * env(0.07, curve=9)), 0.6)
+    save("skill", mix(0.8 * boing(500, 1500, 0.3, 4.0), seq((0.15, 0.6 * kalimba(G6, 0.4)))), 0.5)
+    save("ultimate", mix(0.8 * bonk(220, 60, 0.5), seq((0.06, 0.8 * boing(300, 1400, 0.35, 3.0)), (0.3, sparkle(8, C6 * 2, 0.5, 9)))), 0.7)
+    save("death", mix(slide(950, 260, 0.5, "tri", 2.5) * env(0.5, a=0.01, curve=3)), 0.4)
+    save("win", seq(*[(0.1 * i, marimba(f, 0.4)) for i, f in enumerate([C6, E6, G6])], (0.3, kalimba(C7, 1.0)), (0.3, 0.6 * kalimba(G6, 1.0)),
+                    (0.35, 0.6 * sparkle(7, C7, 0.6, 2))), 0.65)
+    # 패배: '빠밤빠~' 처지는 트롬본 느낌 (네모파를 부드럽게)
+    wah = lambda f0, f1, d: lowpass(slide(f0, f1, d, "square", 1.5), 0.08) * env(d, a=0.03, curve=2.5)
+    save("lose", seq((0, wah(392, 380, 0.3)), (0.3, wah(370, 360, 0.3)), (0.6, wah(349, 330, 0.3)), (0.9, wah(330, 300, 0.9))), 0.5)
     print("효과음 %d개" % len([f for f in os.listdir(OUT) if f.endswith(".ogg")]))
 
 

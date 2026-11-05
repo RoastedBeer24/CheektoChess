@@ -6,6 +6,7 @@ extends SceneTree
 ##   art : 초상화·아티팩트 아이콘
 ##   voice: 전투 보이스 (assets/voices, 원본 파일 그대로 — 있을 때만)
 ##   motion: 전투 모션 시트 (assets/motions, 가져오기 없이 원본 파일 그대로 — 있을 때만)
+##   motion2: 의상 그룹 유닛 모션 (id 에 "__"), mobs: 몬스터·펫 모션 (m_ / pet_)
 ## 먼저 `godot --headless --path . --import` 로 가져오기를 끝내 두어야 한다.
 
 
@@ -47,9 +48,21 @@ func _initialize() -> void:
 	if DirAccess.dir_exists_absolute("res://assets/sfx"):
 		_collect("res://assets/sfx", ["ogg"], art)
 
+	# 모션: 사도(motion) · 의상 그룹 유닛(motion2, id 에 "__") · 몬스터·펫(mobs, m_/pet_) 로 나눠 각각 받게
 	var motion := []
+	var motion2 := []
+	var mobs := []
 	if DirAccess.dir_exists_absolute("res://assets/motions"):
-		_collect("res://assets/motions", ["json", "webp"], motion)
+		for f in DirAccess.get_files_at("res://assets/motions"):
+			if f.ends_with(".json"):
+				motion.append("res://assets/motions/" + f)
+		for d in DirAccess.get_directories_at("res://assets/motions"):
+			var dst := motion
+			if d.begins_with("m_") or d.begins_with("pet_"):
+				dst = mobs
+			elif d.contains("__"):
+				dst = motion2
+			_collect("res://assets/motions/" + d, ["json", "webp"], dst)
 	var voice := []
 	if DirAccess.dir_exists_absolute("res://assets/voices"):
 		_collect("res://assets/voices", ["json", "ogg"], voice)
@@ -58,6 +71,10 @@ func _initialize() -> void:
 	var packs := [["core", core], ["art", art]]
 	if not motion.is_empty():
 		packs.append(["motion", motion])
+	if not motion2.is_empty():
+		packs.append(["motion2", motion2])
+	if not mobs.is_empty():
+		packs.append(["mobs", mobs])
 	if not voice.is_empty():
 		packs.append(["voice", voice])
 	for pack in packs:

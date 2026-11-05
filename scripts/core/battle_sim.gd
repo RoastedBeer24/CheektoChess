@@ -64,11 +64,13 @@ func _build_side(army: Array, side: int) -> void:
 			rkey = GameData.ROWS[u["row"]]
 		u["range"] = float(mv["range"].get(rkey, 3.4))
 		if u["monster"]:
-			# 그림자 몬스터: 라운드에 따라 약하게/강하게, 시너지 없음
+			# 몬스터: 라운드에 따라 약하게/강하게(mpow), 몬스터마다 배율(mhp·matk), 시너지 없음
 			var mp := float(spec.get("mpow", 1.0))
-			u["base"]["hp"] *= mp
-			u["base"]["atk"] *= mp
-			u["name"] = "그림자 " + String(u["name"])
+			u["base"]["hp"] *= mp * float(spec.get("mhp", 1.0))
+			u["base"]["atk"] *= mp * float(spec.get("matk", 1.0))
+			u["scale"] = float(spec.get("scale", 1.0))
+			if spec.get("shadow", false):
+				u["name"] = "그림자 " + String(u["name"])
 		# 어사이드 1성 (기본 적용)
 		Rules.add_mods(u["mods"], Rules.aside1_mods(aid))
 		# 사도별 스킬 데이터 (원작 스킬·패시브·어사이드 2/3성·애착)
@@ -444,6 +446,8 @@ func run() -> Dictionary:
 		if not _spawn_q.is_empty():
 			units.append_array(_spawn_q)
 			_spawn_q.clear()
+		if _tick_count % 3 == 0:
+			_emit_sp()
 		var a := _alive_count(0)
 		var b := _alive_count(1)
 		if a == 0 or b == 0:
@@ -667,6 +671,18 @@ func _move_toward(u: Dictionary, target: Dictionary) -> void:
 	u["moving"] = true
 	if _tick_count % 2 == 0:
 		_emit_pos(u)
+
+
+## SP 막대 표시용: 10칸 단위로 바뀔 때만 기록 (연출 전용, 계산에는 영향 없음)
+func _emit_sp() -> void:
+	var mx := float(B["sp_max"])
+	for u in units:
+		if not u["alive"] or u.get("summon", false):
+			continue
+		var b := clampi(int(float(u["sp"]) / mx * 10.0), 0, 10)
+		if b != int(u.get("spb", -1)):
+			u["spb"] = b
+			_emit("sp", u["i"], -1, b)
 
 
 func _emit_pos(u: Dictionary) -> void:

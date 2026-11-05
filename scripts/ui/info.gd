@@ -69,6 +69,8 @@ static func apostle(box: Control, u: Dictionary, on_art: Callable = Callable(), 
 	nh.add_theme_constant_override("separation", 12)
 	hv.add_child(nh)
 	nh.add_child(UI.label(a["name"], 28, UI.TEXT))
+	if String(a.get("costume", "")) != "":
+		nh.add_child(UI.chip("의상 · " + String(a["costume"]), Color("ff9ecf"), 16))
 	nh.add_child(UI.label(UI.stars(star) + "  %d골드" % GameData.cost_of.get(aid, 1), 21, UI.ACCENT))
 	var chips := HFlowContainer.new()
 	chips.add_theme_constant_override("h_separation", 6)

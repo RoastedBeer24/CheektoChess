@@ -110,6 +110,8 @@ static func _pick_augment(m: Match, pid: String) -> void:
 		var v: float = float(pref.get(kind, 1.0)) + m.rng.randf() * 1.2
 		if a["id"] == "emblem":
 			v += 4.0 if a.get("trait", "") == p.get("focus", "") else 0.0
+		if kind == "risk" and int(p["hp"]) < 35:
+			v -= 2.0   # 체력이 낮으면 위험한 증강은 피한다
 		if v > best_v:
 			best_v = v
 			best = i

@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
 """그룹 구성 페이지(claude.ai 아티팩트)의 저장 데이터 → data/groups.json
 
-  python3 tools/import_group.py <그룹 문서 JSON> [그룹 id]
+  python3 tools/import_group.py <그룹 문서 JSON> [그룹 id] [--costume]
 
 - 그룹 문서 JSON: 아티팩트 DB 의 groups/<id> 문서 (ArtifactData get 결과 파일) 또는 페이지의 '내보내기' JSON.
 - 시너지 효과의 '게임 동작'(levels)은 아래 LEVELS 에 시너지 이름별로 적는다. 페이지의 효과 글은 표시용.
 - 이미 groups.json 에 같은 id 의 그룹이 있으면 교체, 없으면 추가.
+- --costume: 칸마다 메모가 의상 이름인 그룹 (예: 볼스패닉). 유닛 id = <사도 id>__<의상 이름 해시 4자리>,
+  base(원래 사도)·costume(의상 이름)을 함께 적는다. 모션은 그 의상으로 받은 것을 이 id 로 쓴다.
 
 levels 형식 (단계마다 하나, 높은 단계만 적용 — 필요한 효과는 각 단계에 모두 적는다):
   mods        시너지 사도 능력치 (%)            team_mods / enemy_mods  아군 전체 / 적 전체
@@ -162,9 +164,16 @@ EFFECT = {
 }
 
 
+def costume_id(aid, costume):
+    import hashlib
+    return aid + "__" + hashlib.md5(costume.encode("utf-8")).hexdigest()[:4]
+
+
 def main():
-    src = sys.argv[1]
-    gid = sys.argv[2] if len(sys.argv) > 2 else "g1"
+    costume = "--costume" in sys.argv
+    args = [a for a in sys.argv[1:] if not a.startswith("--")]
+    src = args[0]
+    gid = args[1] if len(args) > 1 else "g1"
     raw = json.load(open(src, encoding="utf-8"))
     d = raw.get("data", raw)
     if "groups" in d:   # 내보내기 JSON
@@ -186,7 +195,10 @@ def main():
             if not s.get("a"):
                 continue
             names = [by_id[x]["name"].strip() for x in s.get("t", []) if x and x in by_id and by_id[x]["name"].strip()]
-            units.append({"id": s["a"], "cost": c, "traits": names})
+            if costume and s.get("m", "").strip():
+                units.append({"id": costume_id(s["a"], s["m"].strip()), "base": s["a"], "costume": s["m"].strip(), "cost": c, "traits": names})
+            else:
+                units.append({"id": s["a"], "cost": c, "traits": names})
             used.update(names)
     syns = []
     for t in traits:
@@ -204,6 +216,8 @@ def main():
                      "color": COLORS.get(nm, UNIQUE_COLOR if t["kind"] == "unique" else "c0c4d6"),
                      "effect": EFFECT.get(nm, t.get("effect", "")), "levels": lv})
     group = {"id": gid, "name": name, "pool_size": pool, "shop_odds": odds, "units": units, "synergies": syns}
+    if costume:
+        group["costume"] = True
     path = os.path.join(ROOT, "data", "groups.json")
     data = {"_note": "그룹: 판에 쓰는 사도·코스트·시너지. tools/import_group.py 로 그룹 구성 페이지에서 가져온다.", "groups": []}
     if os.path.exists(path):

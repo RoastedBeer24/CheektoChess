@@ -87,7 +87,7 @@ func start_offline(bots: int, use_rules: bool = true) -> void:
 	rules = Dictionary(Settings.get_value("rules")).duplicate() if use_rules else {}
 	mode = "offline"
 	my_pid = token
-	lobby = [{"id": my_pid, "name": my_name, "bot": false, "connected": true, "avatar": my_avatar()}]
+	lobby = [{"id": my_pid, "name": my_name, "bot": false, "connected": true, "avatar": my_avatar(), "pet": my_pet()}]
 	for i in bots:
 		add_bot()
 	start_game()
@@ -120,7 +120,7 @@ func host_room() -> Error:
 		return err
 	mode = "host"
 	my_pid = token
-	lobby = [{"id": my_pid, "name": my_name, "bot": false, "connected": true, "avatar": my_avatar()}]
+	lobby = [{"id": my_pid, "name": my_name, "bot": false, "connected": true, "avatar": my_avatar(), "pet": my_pet()}]
 	_lobby_updated()
 	return OK
 
@@ -168,7 +168,10 @@ func add_bot() -> void:
 	var style: String = Bot.STYLES[(_bot_seq - 1) % Bot.STYLES.size()]
 	var roster: Array = GameData.roster
 	var av: String = roster[(_bot_seq * 7) % roster.size()] if not roster.is_empty() else ""
-	lobby.append({"id": "bot%d" % _bot_seq, "name": "봇 %d" % _bot_seq, "bot": true, "connected": true, "style": style, "avatar": av})
+	var pet := ""
+	if not GameData.pets.is_empty():
+		pet = GameData.pets[(_bot_seq * 13) % GameData.pets.size()]["id"]
+	lobby.append({"id": "bot%d" % _bot_seq, "name": "봇 %d" % _bot_seq, "bot": true, "connected": true, "style": style, "avatar": av, "pet": pet})
 	_lobby_updated()
 
 
@@ -248,6 +251,11 @@ func submit(cmd: Dictionary) -> void:
 func _process(delta: float) -> void:
 	if not is_host() or game == null:
 		return
+	if paused:
+		if not can_pause():
+			paused = false   # 다른 사람이 들어오면 자동으로 풀림
+		else:
+			return
 	game.advance(delta)
 	if _dirty:
 		_flush()
@@ -285,10 +293,16 @@ func _peer_ips() -> Dictionary:
 
 func _on_connected() -> void:
 	_conn = 1
-	_rpc_hello.rpc_id(1, token, my_name, App.build, my_avatar())
+	_rpc_hello.rpc_id(1, token, my_name, App.build, my_avatar(), my_pet())
 
 
 ## 프로필 대표 사도 (고르지 않았으면 그룹 첫 사도)
+## 내 펫 ("" = 없음, 펫 데이터에 없으면 없음)
+static func my_pet() -> String:
+	var pe := String(Settings.get_value("pet"))
+	return pe if not GameData.pet(pe).is_empty() else ""
+
+
 static func my_avatar() -> String:
 	var a := String(Settings.get_value("avatar"))
 	if a == "" or GameData.apostle(a).is_empty():
@@ -371,6 +385,32 @@ func _try_join(ip: String, secs: float) -> bool:
 	return false
 
 
+## 모두에게 알림 (방장 화면 + 참가자)
+func _tell_all(msg: String) -> void:
+	toast.emit(msg)
+	if mode == "host":
+		_rpc_toast.rpc(msg)
+
+
+# ─────────────────────────────── 일시정지 (나 말고 모두 봇일 때만) ───────────────────────────────
+var paused := false
+
+
+func can_pause() -> bool:
+	if not is_host() or game == null or tutorial:
+		return false
+	for pid in state.get("players", {}):
+		var p: Dictionary = state["players"][pid]
+		if pid != my_pid and not p.get("bot", false) and p.get("connected", false):
+			return false
+	return true
+
+
+func set_paused(on: bool) -> void:
+	paused = on and can_pause()
+	state_changed.emit()
+
+
 func _recover_done(msg: String) -> void:
 	_recovering = false
 	reconnecting.emit("")
@@ -436,6 +476,8 @@ func _on_peer_left(peer_id: int) -> void:
 	peer_to_pid.erase(peer_id)
 	if game != null:
 		game.set_connected(pid, false)
+		var nm := String(game.player(pid).get("name", "?"))
+		_tell_all("%s 님의 연결이 끊어졌습니다 — 돌아올 때까지 봇이 대신 진행합니다." % nm)
 	else:
 		for i in lobby.size():
 			if lobby[i]["id"] == pid:
@@ -447,7 +489,7 @@ func _on_peer_left(peer_id: int) -> void:
 # ─────────────────────────────── RPC ───────────────────────────────
 
 @rpc("any_peer", "reliable")
-func _rpc_hello(their_token: String, their_name: String, their_build: int = 0, their_avatar: String = "") -> void:
+func _rpc_hello(their_token: String, their_name: String, their_build: int = 0, their_avatar: String = "", their_pet: String = "") -> void:
 	if mode != "host":
 		return
 	var peer := multiplayer.get_remote_sender_id()
@@ -476,6 +518,8 @@ func _rpc_hello(their_token: String, their_name: String, their_build: int = 0, t
 		if game.can_rejoin(their_token):
 			peer_to_pid[peer] = their_token
 			game.set_connected(their_token, true)
+			_tell_all("%s 님이 돌아왔습니다." % String(game.player(their_token).get("name", their_name)))
+			_rpc_toast.rpc_id(peer, "다시 들어왔습니다 — 봇이 대신하던 내 자리에서 그대로 이어서 합니다.")
 			_rpc_welcome.rpc_id(peer, their_token)
 			_rpc_game_started.rpc_id(peer)
 			_rpc_state.rpc_id(peer, game.state)
@@ -490,7 +534,7 @@ func _rpc_hello(their_token: String, their_name: String, their_build: int = 0, t
 			_rpc_reject.rpc_id(peer, "같은 기기가 이미 참가 중입니다.")
 			return
 	peer_to_pid[peer] = their_token
-	lobby.append({"id": their_token, "name": their_name, "bot": false, "connected": true, "avatar": their_avatar})
+	lobby.append({"id": their_token, "name": their_name, "bot": false, "connected": true, "avatar": their_avatar, "pet": their_pet})
 	_rpc_welcome.rpc_id(peer, their_token)
 	_lobby_updated()
 

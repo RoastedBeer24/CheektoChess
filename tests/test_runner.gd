@@ -222,6 +222,36 @@ func _test_rules_augments() -> int:
 	var sim := BattleSim.new(army, [{"aid": "bana", "star": 1, "row": 0, "slot": 1, "arts": [], "pers": ""}], 3)
 	if float(sim.units[0].get("start_shield", 0.0)) < 18.0:
 		print("FAIL: 보호막 전개 적용 안 됨"); return 1
+	# 2차 증강: 사도 변형·모험·퀘스트
+	var hp0 := int(pa["hp"])
+	m2._apply_aug_now(pa, {"id": "r_glass"})
+	if int(pa["hp"]) != hp0 - 15:
+		print("FAIL: 유리 대포 체력"); return 1
+	m2._apply_aug_now(pa, {"id": "u_upgrade"})
+	if int(pa["board"]["0,1"]["star"]) != 2:
+		print("FAIL: 승급 시험"); return 1
+	pa["gold"] = 20
+	m2._apply_aug_now(pa, {"id": "r_allin"})
+	pa["augs"].append({"id": "r_allin"})
+	m2._aug_after_battle(pa, {"winner": 0, "deaths": [0, 3]}, 0)
+	if int(pa["gold"]) != 40:
+		print("FAIL: 올인 정산 %d" % pa["gold"]); return 1
+	pa["augs"].append({"id": "u_twin"})
+	m2._apply_aug_now(pa, {"id": "u_twin"})
+	var twins := 0
+	for u in pa["bench"]:
+		if u != null and u["aid"] == "rohne":
+			twins += 1
+	if twins != 1:
+		print("FAIL: 쌍둥이"); return 1
+	pa["augs"].append({"id": "r_hunger"})
+	pa["gold"] = 50
+	if Match.board_cap(pa) != int(pa["level"]) + 2 or m2.income(pa) > int(m2.B["base_income"]) + 4:
+		print("FAIL: 욕심쟁이 군단"); return 1
+	# 방 코드
+	for ip in ["192.168.0.10", "192.168.255.254", "172.20.3.4", "10.1.2.3"]:
+		if NetNode.code_to_ip(NetNode.pretty_code(NetNode.room_code(ip))) != ip:
+			print("FAIL: 방 코드 %s" % ip); return 1
 	print("증강 단위 확인 OK")
 	return 0
 

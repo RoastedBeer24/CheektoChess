@@ -26,6 +26,9 @@ static var _aug_by_id: Dictionary = {}
 
 
 static var loaded := false
+static var pets: Array = []               # 펫 (data/pets.json): [{id, name, anims}]
+static var monsters: Dictionary = {}       # 몬스터 라운드 (data/monsters.json): {list, squads, rounds}
+static var base_of: Dictionary = {}       # 의상 유닛 id -> 원래 사도 id (볼스패닉 같은 의상 그룹)
 
 
 static func load_all() -> void:
@@ -47,6 +50,12 @@ static func load_all() -> void:
 	_aug_by_id.clear()
 	for ag in augments.get("list", []):
 		_aug_by_id[ag["id"]] = ag
+	pets = (_load("res://data/pets.json") if FileAccess.file_exists("res://data/pets.json") else {}).get("list", [])
+	monsters = _load("res://data/monsters.json") if FileAccess.file_exists("res://data/monsters.json") else {}
+	for mo in monsters.get("list", []):
+		# 몬스터도 사도 정의처럼 찾을 수 있게 (상점·도감에는 나오지 않음 — roster 에 없음)
+		apostles[mo["id"]] = {"id": mo["id"], "name": mo["name"], "role": mo.get("role", "dealer"), "row": mo.get("row", "front"),
+			"damage": mo.get("damage", "physical"), "personality": "", "race": "몬스터", "monster": true}
 	_base_balance = balance.duplicate(true)
 	groups = _load("res://data/groups.json").get("groups", [])
 	set_group(groups[0]["id"] if not groups.is_empty() else "")
@@ -79,6 +88,8 @@ static func set_group(id: String) -> void:
 	if g.has("shop_odds"):
 		balance["shop_odds"] = g["shop_odds"]
 	for u in g.get("units", []):
+		if u.has("base") and not apostles.has(u["id"]) and apostles.has(u["base"]):
+			_add_costume(u)
 		if not apostles.has(u["id"]):
 			push_warning("그룹 %s: 알 수 없는 사도 id %s" % [group_id, u["id"]])
 			continue
@@ -87,6 +98,46 @@ static func set_group(id: String) -> void:
 		group_traits[u["id"]] = u.get("traits", [])
 	for syn in g.get("synergies", []):
 		synergies[syn["name"]] = syn
+
+
+## 의상 유닛: 원래 사도의 정의·스킬·보정을 그대로 쓰고 이름 옆에 의상을 붙인다 (모션·초상화는 의상 것)
+static func _add_costume(u: Dictionary) -> void:
+	var uid: String = u["id"]
+	var b: String = u["base"]
+	var d: Dictionary = apostles[b].duplicate(true)
+	d["id"] = uid
+	d["base"] = b
+	d["costume"] = u.get("costume", "")
+	apostles[uid] = d
+	base_of[uid] = b
+	if skill_specs.has(b):
+		skill_specs[uid] = skill_specs[b]
+	if unit_tuning.has(b):
+		unit_tuning[uid] = unit_tuning[b]
+
+
+## 원래 사도 id (의상 유닛이면 원래 사도, 아니면 그대로) — 보이스·초상화 대체용
+static func base(aid: String) -> String:
+	return base_of.get(aid, aid)
+
+
+## 의상 이름 ("" 이면 기본)
+static func costume(aid: String) -> String:
+	return String(apostles.get(aid, {}).get("costume", ""))
+
+
+static func pet(id: String) -> Dictionary:
+	for pe in pets:
+		if pe["id"] == id:
+			return pe
+	return {}
+
+
+static func monster(id: String) -> Dictionary:
+	for mo in monsters.get("list", []):
+		if mo["id"] == id:
+			return mo
+	return {}
 
 
 static func _load(path: String) -> Dictionary:

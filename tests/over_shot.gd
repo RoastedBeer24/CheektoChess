@@ -25,7 +25,19 @@ func _ready() -> void:
 		if not shot_stats and g.state["round"] >= 3 and g.state["phase"] == "battle":
 			var bvs = main.find_children("*", "BattleView", true, false)
 			if not bvs.is_empty() and bvs[0].visible:
-				bvs[0].skip_to_end()
+				var keep = App.session.game
+				App.session.game = null   # 캡처하는 동안 게임 진행 멈춤 (전투 화면은 계속 재생)
+				await _wait(150)
+				var bv = bvs[0]
+				for i in bv._udata:
+					if bv._target.has(i):
+						bv._focus = i
+						bv._focus_until = INF
+						break
+				await _wait(2)
+				await _shot(out, "o0_mid")
+				App.session.game = keep
+				bv.skip_to_end()
 				await _wait(20)
 				await _shot(out, "o1_stats")
 				shot_stats = true

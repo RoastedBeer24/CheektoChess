@@ -188,6 +188,16 @@ func _show_title() -> void:
 	av.tooltip_text = "대표 사도 바꾸기"
 	av.pressed.connect(_show_avatar_picker)
 	nh.add_child(av)
+	if not GameData.pets.is_empty():
+		var pb := Button.new()
+		pb.custom_minimum_size = Vector2(64, 64)
+		var pid := SessionNode.my_pet()
+		pb.icon = UI.portrait(pid) if pid != "" else null
+		pb.text = "" if pid != "" else "펫"
+		pb.expand_icon = true
+		pb.tooltip_text = "내 펫 고르기"
+		pb.pressed.connect(_show_pet_picker)
+		nh.add_child(pb)
 	var name_edit := LineEdit.new()
 	name_edit.text = App.session.my_name
 	name_edit.max_length = 12
@@ -255,12 +265,12 @@ func _show_title() -> void:
 	scroll.add_child(_rooms_box)
 	_on_rooms(App.net.rooms.values())
 	rv.add_child(UI.hsep())
-	rv.add_child(UI.label("방이 안 보이면 방장 화면의 IP로 직접 참가", 18, UI.SUB))
+	rv.add_child(UI.label("방이 안 보이면 방장 화면의 방 코드(또는 IP)로 직접 참가", 18, UI.SUB))
 	var ipbox := HBoxContainer.new()
 	ipbox.add_theme_constant_override("separation", 10)
 	rv.add_child(ipbox)
 	var ip_edit := LineEdit.new()
-	ip_edit.placeholder_text = "예: 192.168.0.10"
+	ip_edit.placeholder_text = "방 코드 (예: 1-00010) 또는 IP"
 	ip_edit.custom_minimum_size = Vector2(0, 64)
 	ip_edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	ipbox.add_child(ip_edit)
@@ -289,8 +299,13 @@ func _on_rooms(rooms: Array) -> void:
 
 func _join(ip: String) -> void:
 	if ip == "":
-		show_toast("IP를 입력하세요")
+		show_toast("방 코드나 IP를 입력하세요")
 		return
+	var conv := NetNode.code_to_ip(ip)
+	if conv == "":
+		show_toast("방 코드를 다시 확인해 주세요")
+		return
+	ip = conv
 	var err := App.session.join_room(ip)
 	if err != OK:
 		show_toast("참가할 수 없습니다 (오류 %d)" % err)
@@ -321,7 +336,16 @@ func _show_lobby() -> void:
 	v.add_child(info)
 	if App.session.mode == "host":
 		var ips := App.net.local_ips()
-		info.add_child(UI.label("내 IP  %s     같은 와이파이에서 이 IP로 참가할 수 있습니다" % (", ".join(ips) if not ips.is_empty() else "확인 불가"), 26, UI.TEXT))
+		var codes := []
+		for ip in ips:
+			var c := NetNode.room_code(ip)
+			if c != "":
+				codes.append(NetNode.pretty_code(c))
+		var ih := VBoxContainer.new()
+		info.add_child(ih)
+		if not codes.is_empty():
+			ih.add_child(UI.outlined("방 코드  %s" % "  /  ".join(codes), 34, UI.ACCENT, 6, HORIZONTAL_ALIGNMENT_LEFT))
+		ih.add_child(UI.label("IP  %s     같은 와이파이에서 방 코드나 IP로 참가할 수 있습니다" % (", ".join(ips) if not ips.is_empty() else "확인 불가"), 22, UI.SUB))
 	else:
 		info.add_child(UI.label("방장이 게임을 시작할 때까지 기다리는 중...", 26, UI.TEXT))
 	# 그룹 (판에 쓰는 사도·시너지 묶음)
@@ -414,6 +438,8 @@ func _on_lobby_changed() -> void:
 			card.add_child(ch)
 			if String(p.get("avatar", "")) != "":
 				ch.add_child(UI.tex_rect(UI.portrait(p["avatar"]), Vector2(84, 84), true))
+			if String(p.get("pet", "")) != "" and UI.portrait(p["pet"]) != null:
+				ch.add_child(UI.tex_rect(UI.portrait(p["pet"]), Vector2(56, 56), true))
 			var cv := VBoxContainer.new()
 			cv.add_child(UI.label(p["name"], 30, UI.ACCENT if me else UI.TEXT))
 			cv.add_child(UI.label(tag + (("  · " + Bot.STYLE_NAME.get(p.get("style", ""), "")) if p["bot"] else ""), 20, UI.SUB))
@@ -586,6 +612,59 @@ func _show_rules_with(r: Dictionary) -> void:
 		App.session.rules = keep
 	else:
 		Settings._data["rules"] = keep_set
+
+
+## 펫 고르기: 게임 중 보드 옆에서 함께하고, 대기실·순위에 작게 보인다
+func _show_pet_picker() -> void:
+	var v := _modal_box("내 펫")
+	v.add_child(UI.label("게임 중 보드 옆에 서서 승리·패배·★3 에 반응합니다. 눌러서 고르세요.", 20, UI.SUB, HORIZONTAL_ALIGNMENT_CENTER))
+	var top := HBoxContainer.new()
+	top.alignment = BoxContainer.ALIGNMENT_CENTER
+	top.add_theme_constant_override("separation", 20)
+	v.add_child(top)
+	var cur := SessionNode.my_pet()
+	var preview := Control.new()
+	preview.custom_minimum_size = Vector2(160, 160)
+	top.add_child(preview)
+	var pname := UI.label(GameData.pet(cur).get("name", "펫 없음"), 26, UI.ACCENT)
+	top.add_child(pname)
+	var show_preview := func(id: String):
+		UI.clear(preview)
+		if id != "":
+			var pb := PetBuddy.new(id, Vector2(160, 160))
+			preview.add_child(pb)
+		pname.text = GameData.pet(id).get("name", "펫 없음")
+	show_preview.call(cur)
+	var sc := ScrollContainer.new()
+	sc.custom_minimum_size = Vector2(900, 420)
+	sc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	v.add_child(sc)
+	var grid := GridContainer.new()
+	grid.columns = 8
+	grid.add_theme_constant_override("h_separation", 8)
+	grid.add_theme_constant_override("v_separation", 8)
+	sc.add_child(grid)
+	var ids: Array = [""] + GameData.pets.map(func(x): return x["id"])
+	for id in ids:
+		var b := Button.new()
+		b.custom_minimum_size = Vector2(100, 100)
+		if id == "":
+			b.text = "없음"
+		else:
+			b.icon = UI.portrait(id)
+			b.expand_icon = true
+			b.tooltip_text = GameData.pet(id).get("name", id)
+		b.add_theme_stylebox_override("normal", UI.box(UI.BG2, 10, UI.ACCENT if id == cur else UI.LINE, 4 if id == cur else 2))
+		var pick: String = id
+		b.pressed.connect(func():
+			Settings.set_value("pet", pick)
+			show_preview.call(pick))
+		grid.add_child(b)
+	var close := UI.button("완료", 22, Vector2(0, 60))
+	close.pressed.connect(func():
+		_close_modal()
+		_show_title())
+	v.add_child(close)
 
 
 ## 대표 사도 고르기 (지금 그룹의 사도, ★3 을 해 본 사도는 금색 테두리)

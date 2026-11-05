@@ -136,3 +136,44 @@ func _process(delta: float) -> void:
 				changed = true
 		if changed:
 			rooms_changed.emit(rooms.values())
+
+
+# ─────────────────────────────── 방 코드 (IP 를 숫자로) ───────────────────────────────
+## 사설 IP 를 짧은 숫자로: 192.168.a.b → 1xxxxx (6자리), 172.16~31.a.b → 2xxxxxxx, 10.a.b.c → 3xxxxxxxx
+static func room_code(ip: String) -> String:
+	var o := ip.split(".")
+	if o.size() != 4:
+		return ""
+	var n := [int(o[0]), int(o[1]), int(o[2]), int(o[3])]
+	if n[0] == 192 and n[1] == 168:
+		return "1%05d" % (n[2] * 256 + n[3])
+	if n[0] == 172 and n[1] >= 16 and n[1] <= 31:
+		return "2%07d" % ((n[1] - 16) * 65536 + n[2] * 256 + n[3])
+	if n[0] == 10:
+		return "3%08d" % (n[1] * 65536 + n[2] * 256 + n[3])
+	return ""
+
+
+## 방 코드 또는 IP → IP ("" 이면 알 수 없음). 띄어쓰기·하이픈은 무시
+static func code_to_ip(text: String) -> String:
+	var t := text.strip_edges().replace(" ", "").replace("-", "")
+	if t.count(".") == 3:
+		return t
+	if not t.is_valid_int() or t.length() < 6:
+		return ""
+	var kind := t.substr(0, 1)
+	var v := int(t.substr(1))
+	if kind == "1" and t.length() == 6 and v < 65536:
+		return "192.168.%d.%d" % [v / 256, v % 256]
+	if kind == "2" and t.length() == 8 and v < 16 * 65536:
+		return "172.%d.%d.%d" % [16 + v / 65536, (v / 256) % 256, v % 256]
+	if kind == "3" and t.length() == 9 and v < 16777216:
+		return "10.%d.%d.%d" % [v / 65536, (v / 256) % 256, v % 256]
+	return ""
+
+
+## 보기 좋게: 1-23456 / 2-1234-567 ...
+static func pretty_code(c: String) -> String:
+	if c.length() <= 6:
+		return c.substr(0, 1) + "-" + c.substr(1)
+	return c.substr(0, 1) + "-" + c.substr(1, 4) + "-" + c.substr(5)

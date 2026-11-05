@@ -330,7 +330,10 @@ static func _find_tex(dir: String, id: String) -> Texture2D:
 
 ## 사도 초상화 (assets/portraits/<id>.webp|png)
 static func portrait(aid: String) -> Texture2D:
-	return _find_tex("portraits", aid)
+	var t := _find_tex("portraits", aid)
+	if t == null and GameData.base(aid) != aid:
+		t = _find_tex("portraits", GameData.base(aid))   # 의상 초상화가 없으면 원래 사도
+	return t
 
 
 const TRAIT_ICON := {
@@ -479,6 +482,8 @@ static func unit_tip(u: Dictionary, extra: String = "") -> String:
 	var cost: int = GameData.cost_of.get(aid, 1)
 	var pers: String = u.get("pers", "") if u.get("pers", "") != "" else a.get("personality", "")
 	var out := "[b]%s[/b] [color=#ffc857]%s[/color]  [color=#%s]%d코스트[/color]" % [a.get("name", aid), stars(int(u.get("star", 1))), cost_color(aid).lightened(0.25).to_html(false), cost]
+	if String(a.get("costume", "")) != "":
+		out += "\n[color=#ff9ecf]의상 · %s[/color]" % a["costume"]
 	var tr := ["[color=#%s]%s[/color]" % [PERS_COLOR.get(pers, Color.GRAY).to_html(false), pers], a.get("race", "")]
 	if a.get("eldyne", false):
 		tr.append("[color=#e0b84f]엘다인[/color]")

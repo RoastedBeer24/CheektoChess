@@ -30,7 +30,7 @@ func _init(players: Array, seed: int, rules: Dictionary = {}) -> void:
 			"streak": 0, "alive": true, "place": 0,
 			"shop": [], "locks": [], "bench": _empty_bench(), "board": {}, "inv": [],
 			"art_offer": {}, "connected": true, "dc_round": 0, "last_opp": "", "ready": false,
-			"augs": [], "aug_offer": {}, "aug_st": {}, "style": p.get("style", ""), "avatar": p.get("avatar", ""),
+			"augs": [], "aug_offer": {}, "aug_st": {}, "style": p.get("style", ""), "avatar": p.get("avatar", ""), "pet": p.get("pet", ""),
 		}
 	state = {
 		"round": 0, "phase": "lobby", "phase_end": 0.0, "players": ps, "pool": pool,
@@ -221,6 +221,8 @@ func _start_prep() -> void:
 			p["aug_st"]["free_rr"] = 2
 		if int(p["aug_st"].get("debt_left", 0)) > 0:
 			p["aug_st"]["debt_left"] = int(p["aug_st"]["debt_left"]) - 1
+		if has_aug(p, "u_mentor") and r > 1:
+			_mentor(p)
 		_refresh_shop(p)
 		if state["rules"].get("augments", false) and _in(GameData.augments.get("rounds", []), r):
 			p["aug_offer"] = {"options": _roll_augments(p, 3), "rerolled": false}
@@ -330,7 +332,8 @@ func is_artifact_round(r: int) -> bool:
 func income(p: Dictionary) -> int:
 	var g := int(B["base_income"])
 	var imax := int(B["interest_max"]) + (3 if has_aug(p, "interest_cap") else 0)
-	g += mini(int(p["gold"]) / int(B["interest_per"]), imax)
+	if not has_aug(p, "r_hunger"):
+		g += mini(int(p["gold"]) / int(B["interest_per"]), imax)
 	var s: int = abs(int(p["streak"]))
 	var bonus := 0
 	for pair in B["streak_bonus"]:
@@ -394,13 +397,56 @@ func _start_battle() -> void:
 
 func monster_army(r: int, seed_rng: RandomNumberGenerator) -> Array:
 	var M: Dictionary = B["monster"]
+	var power := float(M["power_base"]) + float(M["power_per_round"]) * r
+	var MD: Dictionary = GameData.monsters
+	var rule: Dictionary = MD.get("rounds", {}).get(str(r), {})
+	if MD.get("list", []).is_empty():
+		return _shadow_army(r, seed_rng, power)
+	if rule.is_empty():
+		# 정해지지 않은 라운드: 라운드에 맞는 종류로
+		rule = {"kind": "small", "n": 2} if r <= 1 else ({"kind": "squad"} if r < 6 else ({"kind": "mid", "minions": 3} if r < 13 else {"kind": "boss", "minions": 4}))
+	var by_tier := {}
+	for mo in MD["list"]:
+		by_tier[mo["tier"]] = by_tier.get(mo["tier"], []) + [mo["id"]]
+	var pick := func(arr: Array) -> String: return arr[seed_rng.randi_range(0, arr.size() - 1)]
+	var ids := []
+	match String(rule["kind"]):
+		"small":
+			for i in int(rule.get("n", 2)):
+				ids.append(pick.call(by_tier.get("small", [])))
+		"squad":
+			var sq: Array = MD.get("squads", [])
+			ids = (sq[seed_rng.randi_range(0, sq.size() - 1)] as Array).duplicate()
+		"mid", "boss":
+			ids.append(pick.call(by_tier.get(String(rule["kind"]), [])))
+			var pool: Array = by_tier.get(String(rule.get("minion_tier", "squad" if rule["kind"] == "boss" else "small")), [])
+			for i in int(rule.get("minions", 3)):
+				ids.append(pick.call(pool))
+	var out := []
+	var used := {}
+	for aid in ids:
+		var mo := GameData.monster(aid)
+		var row: int = {"front": 0, "mid": 1, "back": 2}.get(mo.get("row", "front"), 0)
+		for k in 3:
+			if int(used.get(row, 0)) < 3:
+				break
+			row = (row + 1) % 3
+		var slot: int = used.get(row, 0)
+		used[row] = slot + 1
+		out.append({"aid": aid, "star": 2 if r >= 14 else 1, "row": row, "slot": slot, "arts": [], "pers": "", "monster": true,
+			"mpow": power, "mhp": float(mo.get("hp", 1.0)), "matk": float(mo.get("atk", 1.0)), "scale": float(mo.get("size", 1.0))})
+	return out
+
+
+## (몬스터 데이터가 없을 때) 그룹 사도를 어둡게 칠한 그림자 몬스터
+func _shadow_army(r: int, seed_rng: RandomNumberGenerator, power: float) -> Array:
+	var M: Dictionary = B["monster"]
 	var n := clampi(int(M["count_base"]) + int(r * float(M["count_per_round"])), 1, int(M["count_max"]))
 	var max_cost := clampi(1 + r / 5, 1, 5)
 	var cands := []
 	for aid in GameData.roster:
 		if GameData.cost_of[aid] <= max_cost:
 			cands.append(aid)
-	var power := float(M["power_base"]) + float(M["power_per_round"]) * r
 	var out := []
 	var used := {}
 	for i in n:
@@ -412,7 +458,7 @@ func monster_army(r: int, seed_rng: RandomNumberGenerator) -> Array:
 			row = (row + 1) % 3
 		var slot: int = used.get(row, 0)
 		used[row] = slot + 1
-		out.append({"aid": aid, "star": 2 if r >= 14 else 1, "row": row, "slot": slot, "arts": [], "pers": "", "monster": true, "mpow": power})
+		out.append({"aid": aid, "star": 2 if r >= 14 else 1, "row": row, "slot": slot, "arts": [], "pers": "", "monster": true, "mpow": power, "shadow": true})
 	return out
 
 
@@ -542,6 +588,9 @@ func _end_battle() -> void:
 				_lose(a, base_dmg)
 				if not b.is_empty():
 					_lose(b, base_dmg)
+		_aug_after_battle(a, bt, 0)
+		if not b.is_empty():
+			_aug_after_battle(b, bt, 1)
 	# 탈락 처리 (체력 0, 또는 접속이 끊긴 채 라운드가 넘어간 플레이어)
 	var dead_now := []
 	for pid in alive_players():
@@ -1347,7 +1396,7 @@ static func has_aug(p: Dictionary, id: String) -> bool:
 
 ## 보드 인원 = 레벨 (+ 확장 보드)
 static func board_cap(p: Dictionary) -> int:
-	return int(p["level"]) + (1 if has_aug(p, "board_plus") else 0)
+	return int(p["level"]) + (1 if has_aug(p, "board_plus") else 0) + (1 if has_aug(p, "r_hunger") else 0)
 
 
 ## 열 제한 (자유 배치 증강이면 아무 열)
@@ -1431,6 +1480,151 @@ func _apply_aug_now(p: Dictionary, a: Dictionary) -> void:
 			p["aug_st"]["gamble"] = {"won": 0}
 		"insurance":
 			p["aug_st"]["insurance"] = true
+		"r_glass":
+			p["hp"] = maxi(1, int(p["hp"]) - 15)
+		"r_cursed":
+			p["hp"] = maxi(1, int(p["hp"]) - 12)
+			p["inv"].append({"uid": _uid(), "id": _random_of_grade("legend")})
+		"r_allin":
+			p["aug_st"]["allin"] = int(p["gold"])
+			p["gold"] = 0
+		"u_upgrade":
+			_upgrade_best(p)
+		"u_reshape":
+			for k in 2:
+				_reshape_one(p)
+		"u_twin":
+			_twin(p)
+
+
+# ─────────────────────────────── 증강 2차: 퀘스트 · 모험 · 사도 변형 ───────────────────────────────
+
+## 플레이어 전투가 끝난 뒤 (승패 처리 후): 퀘스트 확인, 올인 정산
+func _aug_after_battle(p: Dictionary, bt: Dictionary, side: int) -> void:
+	if p.is_empty() or p.get("augs", []).is_empty():
+		return
+	var won := int(bt["winner"]) == side
+	var dth: Array = bt.get("deaths", [0, 0])
+	var st: Dictionary = p["aug_st"]
+	if has_aug(p, "q_flawless") and won and int(dth[side]) == 0:
+		p["gold"] += 2
+		_log("%s 무결점 승리 +2골드" % p["name"])
+	if has_aug(p, "q_streak") and not st.get("q_streak", false) and int(p["streak"]) >= 3:
+		st["q_streak"] = true
+		p["gold"] += 8
+		for k in 2:
+			p["inv"].append({"uid": _uid(), "id": _random_of_grade("advanced")})
+		_log("%s 연승 행진 달성! 고급 아티팩트 2개 + 8골드" % p["name"])
+	if has_aug(p, "q_maxsyn") and not st.get("q_maxsyn", false) and won and _has_max_synergy(p):
+		st["q_maxsyn"] = true
+		p["gold"] += 10
+		for k in 2:
+			p["inv"].append({"uid": _uid(), "id": _random_of_grade("rare")})
+		_log("%s 시너지 완성 달성! 희귀 아티팩트 2개 + 10골드" % p["name"])
+	if has_aug(p, "q_star2") and not st.get("q_star2", false):
+		var n := 0
+		for k in p["board"]:
+			if int(p["board"][k]["star"]) >= 2:
+				n += 1
+		if n >= 5:
+			st["q_star2"] = true
+			_give_unit(p, 4, 2)
+			_log("%s 합성 장인 달성! 4코스트 ★2 사도" % p["name"])
+	if st.has("allin"):
+		var bet := int(st["allin"])
+		st.erase("allin")
+		if won:
+			p["gold"] += bet * 2
+			_log("%s 올인 성공! +%d골드" % [p["name"], bet * 2])
+		else:
+			_log("%s 올인 실패" % p["name"])
+
+
+## 보드에 최고 단계로 발동한 일반 시너지가 있는지
+func _has_max_synergy(p: Dictionary) -> bool:
+	var specs := []
+	for k in p["board"]:
+		specs.append(p["board"][k])
+	var tiers := Rules.active_tiers(Rules.apply_emblems(Rules.count_traits(specs), p.get("augs", [])))
+	for n in tiers:
+		var syn: Dictionary = GameData.synergies.get(n, {})
+		if syn.get("kind", "") != "unique" and int(tiers[n]) > 0 and int(tiers[n]) >= syn.get("tiers", []).size():
+			return true
+	return false
+
+
+## 가장 비싼 ★1 사도 (보드 우선) 를 ★2 로
+func _upgrade_best(p: Dictionary) -> void:
+	var best = null
+	for u in _all_units(p):
+		if int(u["star"]) == 1 and (best == null or GameData.cost_of.get(u["aid"], 1) > GameData.cost_of.get(best["aid"], 1)):
+			best = u
+	if best == null:
+		p["gold"] += 6
+		return
+	best["star"] = 2
+	_try_merge(p, best["aid"], 2)
+
+
+## 무작위 사도 하나를 코스트 +1 사도로 (같은 별, 아티팩트 유지)
+func _reshape_one(p: Dictionary) -> void:
+	var cands := _all_units(p).filter(func(u): return GameData.cost_of.get(u["aid"], 1) < 5 and int(u["star"]) <= 2)
+	if cands.is_empty():
+		return
+	var u: Dictionary = cands[rng.randi_range(0, cands.size() - 1)]
+	var need := int(pow(3, int(u["star"]) - 1))
+	var to_cost: int = GameData.cost_of.get(u["aid"], 1) + 1
+	var row := -1
+	for k in p["board"]:
+		if p["board"][k] == u:
+			row = _parse_key(k)[0]
+	var opts := []
+	for aid in state["pool"]:
+		if GameData.cost_of.get(aid, 0) == to_cost and int(state["pool"][aid]) >= need and not is_banned(aid) and (row < 0 or can_place_p(p, aid, row)):
+			opts.append(aid)
+	opts.sort()
+	if opts.is_empty():
+		return
+	var nid: String = opts[rng.randi_range(0, opts.size() - 1)]
+	_return_to_pool(u)
+	state["pool"][nid] -= need
+	u["aid"] = nid
+	u["pers"] = ""
+	_try_merge(p, nid, int(u["star"]))
+
+
+## 가장 비싼 사도(★2 이하)의 같은 별 복제를 대기석에
+func _twin(p: Dictionary) -> void:
+	var best = null
+	for u in _all_units(p):
+		if int(u["star"]) <= 2 and (best == null or GameData.cost_of.get(u["aid"], 1) * int(u["star"]) > GameData.cost_of.get(best["aid"], 1) * int(best["star"])):
+			best = u
+	var free: int = p["bench"].find(null)
+	if best == null or free < 0:
+		p["gold"] += 6
+		return
+	var need := int(pow(3, int(best["star"]) - 1))
+	if int(state["pool"].get(best["aid"], 0)) < need or is_banned(best["aid"]):
+		p["gold"] += 6
+		return
+	state["pool"][best["aid"]] -= need
+	p["bench"][free] = {"uid": _uid(), "aid": best["aid"], "star": int(best["star"]), "arts": [], "pers": ""}
+	_try_merge(p, best["aid"], int(best["star"]))
+
+
+## 멘토링: 라운드마다 보드에서 가장 싼 ★1 사도의 같은 사도 1장을 대기석에
+func _mentor(p: Dictionary) -> void:
+	var best = null
+	for k in p["board"]:
+		var u: Dictionary = p["board"][k]
+		if int(u["star"]) == 1 and (best == null or GameData.cost_of.get(u["aid"], 1) < GameData.cost_of.get(best["aid"], 1)):
+			best = u
+	var free: int = p["bench"].find(null)
+	if best == null or free < 0 or int(state["pool"].get(best["aid"], 0)) < 1 or is_banned(best["aid"]):
+		return
+	state["pool"][best["aid"]] -= 1
+	p["bench"][free] = {"uid": _uid(), "aid": best["aid"], "star": 1, "arts": [], "pers": ""}
+	_try_merge(p, best["aid"], 1)
 
 
 ## 무작위 cost 코스트 사도 ★star 를 대기석에 (자리가 없으면 그 값만큼 골드)

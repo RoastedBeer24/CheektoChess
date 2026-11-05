@@ -45,6 +45,11 @@ var _full_btn: Button
 signal full_toggled
 var _pos := {}            # 유닛 index -> 전투 계산 좌표 (목표)
 var _disp := {}           # 유닛 index -> 화면에 보이는 좌표 (목표로 부드럽게 이동)
+var _target := {}         # 유닛 index -> 마지막으로 공격한 대상 (대상 표시용)
+var _focus := -1          # 꾹 누르고 있는 유닛 (대상 선 표시)
+var _focus_until := 0.0
+var _line_layer: Control
+var _sub_banner: Label
 
 
 func _ready() -> void:
@@ -77,11 +82,24 @@ func _ready() -> void:
 	_skill_banner.modulate.a = 0.0
 	_skill_banner.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_skill_banner)
-	_banner = UI.label("", 64, UI.ACCENT, HORIZONTAL_ALIGNMENT_CENTER)
-	_banner.set_anchors_preset(Control.PRESET_CENTER)
-	_banner.add_theme_color_override("font_outline_color", Color.BLACK)
-	_banner.add_theme_constant_override("outline_size", 12)
+	_line_layer = Control.new()
+	_line_layer.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_line_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_line_layer.draw.connect(_draw_focus)
+	add_child(_line_layer)
+	# 결과: 위쪽 띠 (제목 아래) — 통계 창과 겹치지 않게
+	_banner = UI.outlined("", 46, UI.ACCENT, 10)
+	_banner.set_anchors_preset(Control.PRESET_TOP_WIDE)
+	_banner.offset_top = 40
+	_banner.offset_bottom = 100
+	_banner.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_banner)
+	_sub_banner = UI.outlined("", 20, UI.TEXT, 6)
+	_sub_banner.set_anchors_preset(Control.PRESET_TOP_WIDE)
+	_sub_banner.offset_top = 98
+	_sub_banner.offset_bottom = 126
+	_sub_banner.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_sub_banner)
 	_speed_btn = UI.button("속도 x1", 20, Vector2(120, 48))
 	_speed_btn.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
 	_speed_btn.offset_left = -130
@@ -140,6 +158,10 @@ func setup(bt: Dictionary, my_side: int, name_a: String, name_b: String) -> void
 	_speed = Settings.num("battle_speed")
 	_speed_btn.text = speed_text(_speed)
 	_banner.text = ""
+	_sub_banner.text = ""
+	_target.clear()
+	_focus = -1
+	_line_layer.queue_redraw()
 	var sim := BattleSim.new(bt["army_a"], bt["army_b"], int(bt["seed"]))
 	var res := sim.run()
 	# 결과 검증: 같은 입력이면 방장 계산과 같아야 한다 (다르면 알림 — 점수는 방장 결과)
@@ -176,8 +198,8 @@ func _add_unit(u: Dictionary) -> void:
 		var sp := MotionSprite.new(u["aid"])
 		sp.face_right = u["side"] == my_side   # 왼쪽(우리 편)은 오른쪽을 봄
 		sp.shadow = true
-		if u.get("monster", false):
-			sp.modulate = Color(0.45, 0.32, 0.62)   # 그림자 몬스터
+		if u.get("monster", false) and not GameData.apostle(u["aid"]).get("monster", false):
+			sp.modulate = Color(0.45, 0.32, 0.62)   # 그림자 몬스터 (몬스터 데이터가 없을 때)
 		if u.get("summon", false):
 			sp.modulate = Color(0.8, 0.9, 1.0, 0.85)
 		_field.add_child(sp)
@@ -192,6 +214,7 @@ func _add_unit(u: Dictionary) -> void:
 	pl.uname = u["name"]
 	pl.star = int(u["star"]) if not u.get("summon", false) else 1
 	pl.mine = int(u["side"]) == my_side
+	pl.show_sp = Settings.flag("sp_bar") and not u.get("summon", false)
 	_plate_layer.add_child(pl)
 	_plates[i] = pl
 	_dtype[i] = GameData.apostle(u["aid"]).get("damage", "physical")
@@ -402,10 +425,11 @@ func _show_stats(side: int = -1) -> void:
 			bars.add_child(bh)
 	add_child(panel)
 	var list_min := v.get_combined_minimum_size()
-	var room := maxf(120.0, size.y - 90.0 - 70.0 - outer.get_combined_minimum_size().y + sc.get_combined_minimum_size().y)
+	var room := maxf(120.0, size.y - (160.0 if _banner.text != "" else 90.0) - 70.0 - outer.get_combined_minimum_size().y + sc.get_combined_minimum_size().y)
 	sc.custom_minimum_size = Vector2(list_min.x, minf(list_min.y, room))
 	panel.reset_size()
-	panel.position = Vector2((size.x - panel.size.x) / 2.0, clampf((size.y - panel.size.y) / 2.0, 60.0, maxf(60.0, size.y - panel.size.y - 64.0)))
+	var top_y := 130.0 if _banner.text != "" else 60.0
+	panel.position = Vector2((size.x - panel.size.x) / 2.0, clampf((size.y - panel.size.y) / 2.0, top_y, maxf(top_y, size.y - panel.size.y - 64.0)))
 	panel.modulate.a = 0.0
 	create_tween().tween_property(panel, "modulate:a", 1.0, 0.2)
 	_stats_panel = panel
@@ -430,6 +454,91 @@ func summary() -> Dictionary:
 	return {"dealt": int(dealt), "mvp": best}
 
 
+## 전투 후 한 줄 요약: 우리 편 최고 활약 사도와 비율, 남은 인원
+func one_line() -> String:
+	var tot := 0.0
+	var best := {}
+	var best_v := -1.0
+	var alive := 0
+	for u in _units:
+		if int(u["side"]) != _my_side or u.get("summon", false):
+			continue
+		var st: Dictionary = _stats.get(u["i"], {})
+		tot += float(st.get("dealt", 0.0))
+		var v: float = st.get("dealt", 0.0) + st.get("heal", 0.0) + st.get("blocked", 0.0) * 0.8
+		if v > best_v:
+			best_v = v
+			best = u
+		if not _anim.get(u["i"], {}).get("dead", false):
+			alive += 1
+	if best.is_empty():
+		return ""
+	var st: Dictionary = _stats.get(best["i"], {})
+	var parts := []
+	if tot > 0.0 and st.get("dealt", 0.0) > 0.0:
+		parts.append("준 피해 %d%%" % int(round(100.0 * st.get("dealt", 0.0) / tot)))
+	if st.get("heal", 0.0) > 0.0:
+		parts.append("회복 %d" % int(st.get("heal", 0.0)))
+	if st.get("blocked", 0.0) > 0.0:
+		parts.append("막은 피해 %d" % int(st.get("blocked", 0.0)))
+	return "최고 활약: %s (%s)   ·   살아남은 사도 %d명" % [best.get("name", ""), " · ".join(parts), alive]
+
+
+# ─────────────────────────────── 대상 표시 (꾹 누르기) ───────────────────────────────
+
+func _gui_input(ev: InputEvent) -> void:
+	var pressed := false
+	var released := false
+	var pos := Vector2.ZERO
+	if ev is InputEventMouseButton and ev.button_index == MOUSE_BUTTON_LEFT:
+		pressed = ev.pressed
+		released = not ev.pressed
+		pos = ev.position
+	elif ev is InputEventScreenTouch:
+		pressed = ev.pressed
+		released = not ev.pressed
+		pos = ev.position
+	if pressed:
+		var best := -1
+		var bd := 1e9
+		for i in _udata:
+			if _anim.get(i, {}).get("dead", true):
+				continue
+			var c := _center(i)
+			var r := maxf(50.0, _char_h(i) * 0.6)
+			var d := c.distance_to(pos)
+			if d < r and d < bd:
+				bd = d
+				best = i
+		if best >= 0:
+			_focus = best
+			_focus_until = INF
+			_line_layer.queue_redraw()
+	elif released and _focus >= 0:
+		_focus_until = _clock + 1.2   # 손을 떼도 잠깐 남김
+
+
+func _draw_focus() -> void:
+	if _focus < 0 or not _udata.has(_focus):
+		return
+	var a := _center(_focus)
+	var u: Dictionary = _udata[_focus]
+	var col := UI.GOOD if int(u.get("side", 0)) == _my_side else UI.BAD
+	_line_layer.draw_arc(_foot(_focus) - Vector2(0, 4), 34.0, 0, TAU, 32, Color(col, 0.9), 3.0)
+	if not _target.has(_focus) or not _udata.has(_target[_focus]) or _anim.get(_target[_focus], {}).get("dead", true):
+		return
+	var b := _center(_target[_focus])
+	var dir := (b - a).normalized()
+	var n := int(a.distance_to(b) / 18.0)
+	for k in n:
+		if k % 2 == 0:
+			_line_layer.draw_line(a + dir * k * 18.0, a + dir * minf((k + 1) * 18.0, a.distance_to(b)), Color(col, 0.85), 4.0)
+	var tip := b - dir * 20.0
+	var nrm := Vector2(-dir.y, dir.x)
+	_line_layer.draw_colored_polygon(PackedVector2Array([b - dir * 4.0, tip + nrm * 11.0, tip - nrm * 11.0]), Color(col, 0.95))
+	_line_layer.draw_arc(_foot(_target[_focus]) - Vector2(0, 4), 30.0, 0, TAU, 32, Color(1, 1, 1, 0.8), 2.0)
+
+
 func elapsed() -> float:
 	return _t
 
@@ -443,6 +552,10 @@ func _process(delta: float) -> void:
 		return
 	_clock += delta
 	_animate(delta)
+	if _focus >= 0:
+		if _clock > _focus_until or not _udata.has(_focus) or _anim.get(_focus, {}).get("dead", true):
+			_focus = -1
+		_line_layer.queue_redraw()
 	_fx.speed = _speed
 	if _shake > 0.0:
 		_shake = maxf(0.0, _shake - delta)
@@ -454,7 +567,7 @@ func _process(delta: float) -> void:
 		_field.position = Vector2.ZERO
 		_fx.position = Vector2.ZERO
 		_plate_layer.position = Vector2.ZERO
-	if not _playing:
+	if not _playing or App.session.paused:
 		return
 	_t += delta * _speed
 	var changed := false
@@ -494,21 +607,28 @@ func _apply(e: Array) -> void:
 			if dkind != "status":
 				_fx_at(dst, "ring", col, 0.25, 30.0 if not crit else 44.0)
 				_sfx("crit" if crit else ("hit_magic" if _dtype.get(src, "physical") == "magic" else "hit"), 0.55)
+			var nmode := int(Settings.num("dmg_numbers"))
+			var skill_hit := dkind == "fresh" or dkind == "senior"
 			if crit:
 				_fx_at(dst, "spark", UI.ACCENT, 0.35, 60.0)
 				_shake_cam(0.12)
-				_float(dst, "치명 " + str(int(e[4])) + "!", col, 36, 0.0, true)
-			else:
-				_float(dst, str(int(e[4])), col, 30 if dkind == "fresh" or dkind == "senior" else 25)
+				if nmode < 2:
+					_float(dst, "치명 " + str(int(e[4])) + "!", col, 36, 0.0, true)
+			elif nmode == 0 or (nmode == 1 and skill_hit):
+				_float(dst, str(int(e[4])), col, 30 if skill_hit else 25)
 		"heal":
 			_fx_at(dst, "ring", UI.GOOD, 0.45, 46.0)
 			_stat(src, "heal", float(e[4]))
 			_hp[dst] = float(e[6])
-			_float(dst, "+" + str(int(e[4])), UI.GOOD, 22)
+			if int(Settings.num("dmg_numbers")) == 0:
+				_float(dst, "+" + str(int(e[4])), UI.GOOD, 22)
 		"shield":
 			_fx_at(dst, "ring", Color("bfe3ff"), 0.5, 54.0)
 			_sh[dst] = float(e[7])
 			_float(dst, "보호막", Color("cfe8ff"), 18)
+		"sp":
+			if _plates.has(src):
+				_plates[src].set_sp(float(e[4]) / 10.0)
 		"pos":
 			_pos[src] = Vector2(float(e[4][0]), float(e[4][1]))
 			if not _disp.has(src):
@@ -524,6 +644,7 @@ func _apply(e: Array) -> void:
 		"resist":
 			_float(dst, "면역", Color("dddddd"), 18)
 		"attack":
+			_target[src] = dst
 			_lunge(src, dst)
 			_motion(src, "Attack1_1")
 			_fx_attack(src, dst)
@@ -533,7 +654,10 @@ func _apply(e: Array) -> void:
 			_say(src, "Ultimate" if int(e[4]) == 1 else "SPSkill")
 			_sfx("ultimate" if int(e[4]) == 1 else "skill", 0.8)
 			_motion(src, "Ultimate1_1" if int(e[4]) == 1 else "Skill1_1")
-			_bubble(src, String(e[5]), UI.ACCENT if int(e[4]) == 1 else Color("c9a7ff"))
+			if _plates.has(src) and String(e[5]) != "":
+				_plates[src].flash_skill(("✦ " if int(e[4]) == 1 else "") + String(e[5]), UI.ACCENT if int(e[4]) == 1 else Color("c9a7ff"), 1.0 / maxf(0.5, _speed))
+			if int(e[4]) != 1 and _plates.has(src):
+				_plates[src].set_sp(0.0)
 		"death":
 			_fx_at(dst, "spark", Color(0.8, 0.8, 0.85), 0.5, 70.0)
 			_say(dst, "Die")
@@ -587,8 +711,8 @@ func _apply(e: Array) -> void:
 				_banner.text = "승리!"
 			else:
 				_banner.text = "패배"
-			_banner.size.x = size.x
-			_banner.position = Vector2(0, 40)
+			_banner.add_theme_color_override("font_color", UI.SUB if w == -1 else (UI.ACCENT if w == _my_side else UI.BAD))
+			_sub_banner.text = one_line()
 			_show_stats()
 
 
@@ -607,6 +731,9 @@ func _float(i: int, text: String, color: Color, fsize: int, dy: float = 0.0, pop
 	var head := _foot(i) - Vector2(0, _char_h(i) + 8.0)
 	var off := Vector2(((n % 3) - 1) * 26.0, -(n % 2) * 20.0 + dy * 0.5)
 	l.position = head + off - Vector2(100, l.size.y)
+	# 전투 화면 밖(위쪽 막대)으로 나가지 않게: 떠오를 거리(34)까지 감안
+	l.position.y = maxf(l.position.y, 44.0 + 34.0)
+	l.position.x = clampf(l.position.x, -60.0, size.x - 140.0)
 	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	l.z_index = 5
 	_plate_layer.add_child(l)

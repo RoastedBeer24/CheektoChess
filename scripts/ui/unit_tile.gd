@@ -204,6 +204,16 @@ func _press_fx(down: bool) -> void:
 	_press_tw.tween_property(self, "scale", Vector2(0.95, 0.95) if down else Vector2.ONE, 0.07)
 
 
+## 축하 동작 (★3 달성 등): 모션이 있으면 승리 동작 한 번, 없으면 칸이 통통 튄다
+func celebrate() -> void:
+	if _motion != null and _motion.has_anim("Victory"):
+		_motion.play("Victory", false, "Idle")
+	pivot_offset = size / 2.0
+	var tw := create_tween()
+	tw.tween_property(self, "scale", Vector2(1.12, 1.12), 0.12).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tw.tween_property(self, "scale", Vector2.ONE, 0.25)
+
+
 ## 보드 칸 모션: 같은 사도면 그대로 두고, 바뀌면 새로 만든다
 func _set_motion(id: String) -> void:
 	var want := show_motion and id != "" and MotionSprite.available(id)
