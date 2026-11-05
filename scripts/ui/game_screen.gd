@@ -10,8 +10,8 @@ const STAT_NAME := {
 	"pdef": "물리 방어력", "mdef": "마법 방어력", "aspd": "공격 속도", "crit": "치명타", "critdmg": "치명 피해",
 	"critres": "치명타 저항", "critdmgres": "치명 피해 저항", "heal_out": "치유량", "heal_in": "HP 회복량",
 }
-const PHASE_NAME := {"prep": "준비", "battle": "전투", "result": "결과", "over": "게임 종료"}
-const PHASE_COLOR := {"prep": Color("2f6b4a"), "battle": Color("8a3a3a"), "result": Color("4a4f6b"), "over": Color("4a4f6b")}
+const PHASE_NAME := {"prep": "준비", "battle": "전투", "result": "결과", "over": "게임 종료", "carousel": "공유 선택"}
+const PHASE_COLOR := {"prep": Color("2f6b4a"), "battle": Color("8a3a3a"), "result": Color("4a4f6b"), "over": Color("4a4f6b"), "carousel": Color("7a5a1f")}
 
 var sel := {}                 # {"unit": loc} 또는 {"art": uid}
 var merge_mode := false
@@ -516,6 +516,8 @@ func _on_phase_changed(phase: String, rnd: int) -> void:
 	match phase:
 		"prep":
 			var subs := []
+			if st.get("round_kind", "") == "monster":
+				subs.append("몬스터 라운드 (연승·연패 영향 없음)")
 			if not me().get("art_offer", {}).is_empty():
 				subs.append("아티팩트 선택")
 			var stk := int(me().get("streak", 0))
@@ -563,6 +565,13 @@ func _show_result_banner() -> void:
 		if side < 0:
 			continue
 		var w := int(bt["winner"])
+		if bt.get("monster", false):
+			var rw: Dictionary = bt.get("reward", {})
+			var parts := ["처치 %d" % int(bt.get("kills", 0)), "+%d 골드" % int(rw.get("gold", 0))]
+			if String(rw.get("art", "")) != "":
+				parts.append("아티팩트: " + String(GameData.artifact(rw["art"]).get("name", "")))
+			_show_banner("몬스터 격파!" if w == 0 else "몬스터 라운드 종료", UI.GOOD if w == 0 else UI.SUB, " · ".join(parts) + "  (연승·연패·체력 변화 없음)")
+			return
 		var base := int(B()["damage_base"]) + int(st["round"]) / int(B()["damage_per_round_div"])
 		var opp: String = bt["b"] if side == 0 else bt["a"]
 		var opp_name: String = "유령 상대" if opp == "" else String(st["players"].get(opp, {}).get("name", ""))
@@ -1692,7 +1701,7 @@ func _modal(title: String, kind: String = "") -> VBoxContainer:
 	dim.color = Color(0, 0, 0, 0.65)
 	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
 	# 바깥(어두운 곳)을 누르면 닫기 — 게임 종료 화면은 제외
-	if kind != "over":
+	if kind != "over" and kind != "carousel":
 		dim.gui_input.connect(func(ev):
 			if ev is InputEventMouseButton and ev.button_index == MOUSE_BUTTON_LEFT and not ev.pressed \
 					and Rect2(Vector2.ZERO, dim.size).has_point(ev.position):
@@ -1748,12 +1757,71 @@ func _refresh_overlay() -> void:
 		if _overlay_kind != "over":
 			_show_game_over()
 		return
+	if st["phase"] == "carousel":
+		_show_carousel(st["carousel"])
+		return
+	if _overlay_kind == "carousel":
+		_close_modal()
 	var offer: Dictionary = p.get("art_offer", {})
 	if st["phase"] == "prep" and not offer.is_empty() and not _offer_hidden:
 		_show_offer(offer)
 		return
 	if _overlay_kind == "offer" or (_overlay_kind == "pers" and st["phase"] != "prep"):
 		_close_modal()
+
+
+## 공유 선택: 체력이 낮은 사람부터 차례로 사도+아티팩트 묶음 하나씩
+func _show_carousel(car: Dictionary) -> void:
+	var st := App.session.state
+	var order: Array = car["order"]
+	var turn := int(car["turn"])
+	var who: String = order[turn] if turn < order.size() else ""
+	var my_turn := who == App.session.my_pid
+	var v := _modal("공유 선택", "carousel")
+	var names := []
+	for i in order.size():
+		var nm: String = st["players"].get(order[i], {}).get("name", "?")
+		names.append(("[%s]" % nm) if i == turn else nm)
+	v.add_child(UI.label("체력이 낮은 사람부터 고릅니다:  " + " → ".join(names), 20, UI.SUB, HORIZONTAL_ALIGNMENT_CENTER))
+	v.add_child(UI.label("내 차례! 하나를 고르세요" if my_turn else "%s 님이 고르는 중..." % st["players"].get(who, {}).get("name", "?"), 26, UI.ACCENT if my_turn else UI.TEXT, HORIZONTAL_ALIGNMENT_CENTER))
+	var grid := GridContainer.new()
+	grid.columns = mini(5, car["options"].size())
+	grid.add_theme_constant_override("h_separation", 12)
+	grid.add_theme_constant_override("v_separation", 12)
+	v.add_child(grid)
+	for i in car["options"].size():
+		var o: Dictionary = car["options"][i]
+		var taken: bool = o["by"] != ""
+		var col := UI.cost_color(o["aid"])
+		var card := UI.panel(col.darkened(0.7), 14, col if not taken else UI.LINE, 3)
+		card.custom_minimum_size = Vector2(250, 0)
+		if taken:
+			card.modulate = Color(1, 1, 1, 0.45)
+		var cv := VBoxContainer.new()
+		cv.add_theme_constant_override("separation", 4)
+		card.add_child(cv)
+		if MotionSprite.available(o["aid"]) and Settings.flag("board_motion"):
+			var sp := MotionSprite.new(o["aid"])
+			sp.face_right = true
+			sp.shadow = true
+			sp.custom_minimum_size = Vector2(220, 150)
+			sp.box = 150 / 0.82
+			cv.add_child(sp)
+		else:
+			cv.add_child(UI.tex_rect(UI.portrait(o["aid"]), Vector2(220, 150), true))
+		var a := GameData.apostle(o["aid"])
+		cv.add_child(UI.label("%s  %d코스트" % [a.get("name", ""), GameData.cost_of.get(o["aid"], 1)], 22, col.lightened(0.4), HORIZONTAL_ALIGNMENT_CENTER))
+		var ab := UI.artifact_button(o["art"], Vector2(226, 56), 18)
+		ab.disabled = true
+		cv.add_child(ab)
+		if taken:
+			cv.add_child(UI.label("가져감: %s" % st["players"].get(o["by"], {}).get("name", "?"), 18, UI.SUB, HORIZONTAL_ALIGNMENT_CENTER))
+		elif my_turn:
+			var b := UI.button("고르기", 22, Vector2(0, 52), Color("2f6b4a"))
+			var k: int = i
+			b.pressed.connect(func(): App.session.submit({"t": "carousel_pick", "i": k}))
+			cv.add_child(b)
+		grid.add_child(card)
 
 
 func _show_offer(offer: Dictionary) -> void:
@@ -1912,7 +1980,9 @@ func _start_battle_view(watch: int = -1) -> void:
 	var pa: Dictionary = st["players"].get(mine["a"], {})
 	var name_a: String = pa.get("name", "?")
 	var name_b := ""
-	if mine["ghost"] != "":
+	if mine.get("monster", false):
+		name_b = "그림자 몬스터"
+	elif mine["ghost"] != "":
 		name_b = "유령 (%s)" % st["players"].get(mine["ghost"], {}).get("name", "?")
 	else:
 		name_b = st["players"].get(mine["b"], {}).get("name", "?")
@@ -1937,7 +2007,7 @@ func _build_watch_bar(battles: Array, cur: int, my_idx: int) -> void:
 	for bi in battles.size():
 		var bt: Dictionary = battles[bi]
 		var na: String = st["players"].get(bt["a"], {}).get("name", "?")
-		var nb: String = "유령" if bt["b"] == "" else st["players"].get(bt["b"], {}).get("name", "?")
+		var nb: String = ("몬스터" if bt.get("monster", false) else "유령") if bt["b"] == "" else st["players"].get(bt["b"], {}).get("name", "?")
 		var txt := "내 전투" if bi == my_idx else "%s vs %s" % [na, nb]
 		var on: bool = bi == cur
 		var b := UI.button(txt, 18, Vector2(0, 46), UI.ACCENT.darkened(0.55) if on else UI.PANEL_LIGHT)

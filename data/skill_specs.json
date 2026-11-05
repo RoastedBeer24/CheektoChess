@@ -1,0 +1,6141 @@
+{
+ "mayo": {
+  "fresh": {
+   "do": [
+    {
+     "a": "dmg",
+     "to": "high_atk",
+     "pct": 270,
+     "hits": 3,
+     "status": {
+      "s": "burn",
+      "dur": 4
+     }
+    },
+    {
+     "a": "debuff",
+     "to": "high_atk",
+     "mods": {
+      "dmg": -10
+     },
+     "dur": 4,
+     "key": "mayo_poison"
+    }
+   ],
+   "note": "공격력 최고 적에게 독침 3회 + 중독(화상으로 대체)과 주는 피해 감소 10%"
+  },
+  "senior": {
+   "do": [
+    {
+     "a": "dmg",
+     "to": "random:8",
+     "pct": 45,
+     "status": {
+      "s": "burn",
+      "dur": 4
+     }
+    }
+   ],
+   "cd": 11,
+   "note": "무작위 적 8회 독침(총 360%) + 중독(화상)"
+  },
+  "passive": {
+   "mods": {
+    "enh_dmg": 20
+   },
+   "fx": [
+    {
+     "t": "skill_hit",
+     "which": "fresh",
+     "do": [
+      {
+       "a": "extra",
+       "pct": 15
+      }
+     ]
+    }
+   ],
+   "note": "강화 공격 피해 증가. 중독 종료 시 추가 피해는 스킬 적중 시 소량 추가 피해로 근사"
+  },
+  "enh": {
+   "do": [
+    {
+     "a": "status",
+     "to": "random:1",
+     "s": "burn",
+     "dur": 2
+    }
+   ],
+   "note": "강화 공격 때 무작위 적 1명에게 중독(화상) 2초"
+  }
+ },
+ "bana": {
+  "fresh": {
+   "do": [
+    {
+     "a": "shield",
+     "to": "back_ally",
+     "pct_hp": 18,
+     "dur": 5
+    }
+   ],
+   "note": "자신 포함 후열 아군에게 최대 HP 18% 보호막 5초"
+  },
+  "senior": {
+   "do": [
+    {
+     "a": "buff",
+     "to": "allies",
+     "mods": {
+      "dmg_taken": -12
+     },
+     "dur": 8,
+     "key": "bana_anvil"
+    }
+   ],
+   "cd": 20,
+   "note": "모루: 모든 아군 받는 피해 12% 감소 8초 (원작 35초 → 20초)"
+  },
+  "passive": {
+   "fx": [
+    {
+     "t": "normal_hit",
+     "chance": 30,
+     "do": [
+      {
+       "a": "debuff",
+       "to": "target",
+       "mods": {
+        "def": -15
+       },
+       "dur": 3,
+       "key": "bana_hammer"
+      }
+     ]
+    }
+   ],
+   "note": "일반 공격의 방어력 감소(300)를 일정 확률 방어력 15% 감소로 옮김"
+  }
+ },
+ "rohne": {
+  "fresh": {
+   "do": [
+    {
+     "a": "buff",
+     "to": "back_ally",
+     "mods": {
+      "atk": 15
+     },
+     "dur": 8,
+     "key": "rohne_atk"
+    },
+    {
+     "a": "buff",
+     "to": "allies",
+     "mods": {
+      "def": 15
+     },
+     "dur": 6,
+     "key": "rohne_def"
+    }
+   ],
+   "note": "공격력 높은 아군(후열 딜러로 근사) 공격력 15%, 아군 방어력 15%"
+  },
+  "senior": {
+   "do": [
+    {
+     "a": "taunt",
+     "dur": 5
+    },
+    {
+     "a": "debuff",
+     "to": "high_atk",
+     "mods": {
+      "atk": -15
+     },
+     "dur": 6,
+     "key": "rohne_surrender"
+    },
+    {
+     "a": "debuff",
+     "to": "row_front",
+     "mods": {
+      "atk": -10
+     },
+     "dur": 6,
+     "key": "rohne_surrender2"
+    }
+   ],
+   "cd": 18,
+   "note": "항복 도발 5초 + 공격력 최고 적 공격력 15%·앞열 적 10% 감소"
+  },
+  "passive": {
+   "mods": {
+    "def": 20,
+    "regen": 0.3
+   },
+   "note": "방어력 20% 증가, 초당 최대 HP 0.3% 회복"
+  },
+  "enh": {
+   "do": [
+    {
+     "a": "status",
+     "to": "front",
+     "s": "stun",
+     "dur": 1.5,
+     "chance": 35
+    }
+   ],
+   "note": "혼신의 공격: 35% 확률 기절 1.5초"
+  }
+ },
+ "festa": {
+  "fresh": {
+   "do": [
+    {
+     "a": "debuff",
+     "to": "all",
+     "mods": {
+      "dmg": -15
+     },
+     "dur": 4,
+     "key": "festa_noise"
+    }
+   ],
+   "note": "락 연주: 적 전체 소음(주는 피해 15% 감소) 4초. 버프 해제는 엔진에 없음"
+  },
+  "senior": {
+   "do": [
+    {
+     "a": "buff",
+     "to": "self",
+     "mods": {
+      "def": 25,
+      "atk": 30,
+      "aspd": 25
+     },
+     "dur": 8,
+     "key": "festa_light"
+    }
+   ],
+   "cd": 20,
+   "note": "3색 조명: 방어력 25%·공격력 30%·공격 속도 25% 8초 (원작 50%·10초 축소)"
+  },
+  "passive": {
+   "mods": {
+    "normal_dmg": 20
+   },
+   "note": "기본 공격 피해 20% 증가"
+  }
+ },
+ "bigwood": {
+  "fresh": {
+   "do": [
+    {
+     "a": "shield",
+     "to": "self",
+     "pct_hp": 25,
+     "dur": 4
+    }
+   ],
+   "note": "자신에게 최대 HP 25% 보호막 (3초 → 4초)"
+  },
+  "senior": {
+   "do": [
+    {
+     "a": "taunt",
+     "dur": 4
+    },
+    {
+     "a": "heal",
+     "to": "self",
+     "pct_hp": 15
+    }
+   ],
+   "cd": 20,
+   "note": "주변 도발 4초 + HP 회복(공격력 375%×3 → 최대 HP 15%)"
+  },
+  "passive": {
+   "mods": {
+    "mdef": 25
+   },
+   "note": "받는 마법 피해 24% 감소 → 마법 방어력 25%로 근사"
+  },
+  "enh": {
+   "do": [
+    {
+     "a": "status",
+     "to": "front",
+     "s": "stun",
+     "dur": 1.5,
+     "chance": 35
+    }
+   ],
+   "note": "힘껏 내려치기: 35% 확률 기절 1.5초"
+  }
+ },
+ "speaki": {
+  "fresh": {
+   "do": [
+    {
+     "a": "dmg",
+     "to": "around:front",
+     "pct": 150,
+     "hits": 3
+    }
+   ],
+   "note": "호박 주문: 앞 적과 위아래 칸 3명에게 3회 마법 피해"
+  },
+  "senior": {
+   "do": [
+    {
+     "a": "buff",
+     "to": "self",
+     "mods": {
+      "critdmg": 25
+     },
+     "dur": 8,
+     "key": "speaki_cd"
+    },
+    {
+     "a": "buff",
+     "to": "back_ally",
+     "mods": {
+      "critdmg": 15
+     },
+     "dur": 8,
+     "key": "speaki_cd2"
+    }
+   ],
+   "cd": 20,
+   "note": "자신 치명 피해 25%, 공격력 높은 아군(후열로 근사) 치명 피해 15%"
+  },
+  "passive": {
+   "mods": {
+    "crit": 20
+   },
+   "note": "치명타 확률 20% 증가 (원작 30%)"
+  }
+ },
+ "opal": {
+  "fresh": {
+   "do": [
+    {
+     "a": "buff",
+     "to": "back_ally",
+     "mods": {
+      "dmg": 20
+     },
+     "dur": 8,
+     "key": "opal_parasol"
+    },
+    {
+     "a": "buff",
+     "to": "self",
+     "mods": {
+      "dmg": 20
+     },
+     "dur": 8,
+     "key": "opal_parasol_s"
+    },
+    {
+     "a": "heal",
+     "to": "back_ally",
+     "pct_atk": 110
+    }
+   ],
+   "note": "양산: 공격력 높은 아군 주변(후열로 근사)과 자신 피해량 20% + 지속 회복을 즉시 회복으로"
+  },
+  "senior": {
+   "do": [
+    {
+     "a": "shield",
+     "to": "allies",
+     "pct_hp": 18,
+     "dur": 6
+    },
+    {
+     "a": "debuff",
+     "to": "all",
+     "mods": {
+      "sp_regen": -40
+     },
+     "dur": 6,
+     "key": "opal_dust"
+    }
+   ],
+   "cd": 20,
+   "note": "보석 가루: 아군 보호막 18% + 적 SP 회복 40% 감소(침묵·SP 중단 근사) (30초 → 20초)"
+  },
+  "enh": {
+   "do": [
+    {
+     "a": "dmg",
+     "to": "around:front",
+     "pct": 100
+    }
+   ],
+   "note": "깨진 보석 파편: 주변 적 범위 피해 100%"
+  },
+  "aside2": {
+   "fx": [
+    {
+     "t": "skill",
+     "which": "fresh",
+     "do": [
+      {
+       "a": "buff",
+       "to": "allies",
+       "mods": {
+        "dmg_taken": -10
+       },
+       "dur": 6,
+       "key": "opal_a2"
+      }
+     ]
+    }
+   ],
+   "note": "저학년 스킬에 아군 받는 피해 감소 추가 (기절 시간 감소는 엔진 없음)"
+  },
+  "aside3": {
+   "mods": {
+    "critres": 8
+   },
+   "scope": "team",
+   "note": "모든 아군 치명타 저항 증가"
+  }
+ },
+ "levi": {
+  "fresh": {
+   "do": [
+    {
+     "a": "dmg",
+     "to": "front",
+     "pct": 170,
+     "hits": 2
+    },
+    {
+     "a": "dmg",
+     "to": "front",
+     "pct": 110
+    }
+   ],
+   "note": "단검 3회: 2회 + 강한 마지막 타격"
+  },
+  "senior": {
+   "do": [
+    {
+     "a": "dmg",
+     "to": "around:front",
+     "pct": 200
+    }
+   ],
+   "cd": 18,
+   "note": "숨긴 칼날 돌진: 범위 물리 피해"
+  },
+  "passive": {
+   "mods": {
+    "crit": 15
+   },
+   "fx": [
+    {
+     "t": "skill",
+     "which": "senior",
+     "do": [
+      {
+       "a": "buff",
+       "to": "self",
+       "mods": {
+        "aspd": 30
+       },
+       "dur": 6,
+       "key": "levi_aspd"
+      }
+     ]
+    }
+   ],
+   "note": "치명타 15% + 고학년 사용 후 공격 속도 30% 6초"
+  }
+ },
+ "marie": {
+  "fresh": {
+   "do": [
+    {
+     "a": "dmg",
+     "to": "row_front",
+     "pct": 150,
+     "status": {
+      "s": "burn",
+      "dur": 4
+     }
+    }
+   ],
+   "note": "특제 폭탄: 앞열 적 범위 피해 + 화상 4초"
+  },
+  "senior": {
+   "do": [
+    {
+     "a": "dmg",
+     "to": "all",
+     "pct": 175
+    }
+   ],
+   "cd": 20,
+   "note": "고폭탄: 적 전체 범위 피해 (40초 → 20초)"
+  },
+  "passive": {
+   "mods": {
+    "enh_dmg": 20
+   },
+   "note": "강화 공격 피해 20% 증가 (확률 증가는 엔진에 없음)"
+  },
+  "enh": {
+   "do": [
+    {
+     "a": "dmg",
+     "to": "around:front",
+     "pct": 50,
+     "status": {
+      "s": "burn",
+      "dur": 2
+     }
+    }
+   ],
+   "note": "강화 폭탄: 주변 적 소량 피해 + 화상 2초"
+  }
+ },
+ "delia": {
+  "fresh": {
+   "do": [
+    {
+     "a": "dmg",
+     "to": "around:front",
+     "pct": 100,
+     "status": {
+      "s": "burn",
+      "dur": 3
+     }
+    },
+    {
+     "a": "dmg",
+     "to": "front",
+     "pct": 120
+    },
+    {
+     "a": "debuff",
+     "to": "front",
+     "mods": {
+      "dmg_taken": 12,
+      "sp_regen": -40
+     },
+     "dur": 4,
+     "key": "delia_kick"
+    }
+   ],
+   "note": "점프 범위 피해 + 수족열증(화상) / 날아차기 + 받는 피해 증가·침묵(SP 회복 감소)"
+  },
+  "senior": {
+   "do": [
+    {
+     "a": "dmg",
+     "to": "row_front",
+     "pct": 180,
+     "status": {
+      "s": "stun",
+      "dur": 1
+     }
+    },
+    {
+     "a": "buff",
+     "to": "self",
+     "mods": {
+      "normal_dmg": 25
+     },
+     "dur": 8,
+     "key": "delia_wave"
+    }
+   ],
+   "cd": 16,
+   "note": "여정의 파동: 앞열 범위 피해 + 기절 1초, 일반 공격 피해 25% 증가"
+  },
+  "enh": {
+   "do": [
+    {
+     "a": "heal",
+     "to": "self",
+     "pct_hp": 6
+    },
+    {
+     "a": "dmg",
+     "to": "front",
+     "pct": 80,
+     "hits": 4
+    }
+   ],
+   "note": "민트초코 먹고 회복 + 연타 4회"
+  },
+  "aside2": {
+   "fx": [
+    {
+     "t": "normal_n",
+     "n": 10,
+     "do": [
+      {
+       "a": "extra",
+       "pct": 100
+      }
+     ]
+    },
+    {
+     "t": "hp_below",
+     "pct": 50,
+     "do": [
+      {
+       "a": "invuln",
+       "dur": 2
+      },
+      {
+       "a": "untarget",
+       "dur": 3
+      },
+      {
+       "a": "heal",
+       "to": "self",
+       "pct": 25
+      },
+      {
+       "a": "buff",
+       "to": "row",
+       "mods": {
+        "dmg_taken": -15
+       },
+       "dur": 5,
+       "key": "delia_igloo"
+      }
+     ]
+    }
+   ],
+   "note": "일반 공격 10회마다 펭귄 추가 피해 / HP 50% 미만 시 1회 이글루(무적·타겟 불가·회복·주변 받는 피해 감소)"
+  },
+  "aside3": {
+   "mods": {
+    "dmg": 6,
+    "dmg_taken": -6
+   },
+   "scope": "row",
+   "note": "전열 아군 피해 증가·받는 피해 감소 (자신 열에 적용)"
+  }
+ },
+ "mago": {
+  "fresh": {
+   "do": [
+    {
+     "a": "buff",
+     "to": "allies",
+     "mods": {
+      "regen": 2
+     },
+     "dur": 8,
+     "key": "mago_regen"
+    }
+   ],
+   "note": "모든 아군 매초 회복 → 초당 최대 HP 2% 재생 8초"
+  },
+  "senior": {
+   "do": [
+    {
+     "a": "dmg",
+     "to": "front",
+     "pct": 300
+    }
+   ],
+   "cd": 18,
+   "note": "양 친구 돌진: 단일 마법 피해 (원작 846% 축소, 서포터라 낮게)"
+  }
+ },
+ "allet": {
+  "fresh": {
+   "do": [
+    {
+     "a": "dmg",
+     "to": "front",
+     "pct": 200,
+     "status": {
+      "s": "stun",
+      "dur": 2
+     }
+    }
+   ],
+   "note": "삽: 물리 200% + 기절 2초 (원작 4초)"
+  },
+  "senior": {
+   "do": [
+    {
+     "a": "shield",
+     "to": "self",
+     "pct_hp": 25,
+     "dur": 7
+    },
+    {
+     "a": "dmg",
+     "to": "row_front",
+     "pct": 100
+    }
+   ],
+   "cd": 16,
+   "note": "보호막 25% + 파괴 시 폭발은 즉시 앞열 범위 피해로 근사"
+  },
+  "passive": {
+   "mods": {
+    "def": 20
+   },
+   "note": "모든 방어력 20% 증가"
+  }
+ },
+ "jubee": {
+  "fresh": {
+   "do": [
+    {
+     "a": "dmg",
+     "to": "low",
+     "pct": 260,
+     "hits": 4
+    }
+   ],
+   "note": "친구 꿀벌 소환 → HP 비율 낮은 적 벌침 4회로 대체"
+  },
+  "senior": {
+   "do": [
+    {
+     "a": "buff",
+     "to": "self",
+     "mods": {
+      "atk": 20,
+      "aspd": 20
+     },
+     "dur": 8,
+     "key": "jubee_buff"
+    },
+    {
+     "a": "dmg",
+     "to": "low",
+     "pct": 260,
+     "hits": 4
+    }
+   ],
+   "cd": 18,
+   "note": "공격력·공속 20% + 꿀벌 집중 공격(소환 대체)"
+  }
+ },
+ "heidi": {
+  "fresh": {
+   "do": [
+    {
+     "a": "untarget",
+     "dur": 4
+    },
+    {
+     "a": "buff",
+     "to": "self",
+     "mods": {
+      "normal_dmg": 35
+     },
+     "dur": 6,
+     "key": "heidi_hide"
+    },
+    {
+     "a": "dmg",
+     "to": "front",
+     "pct": 150,
+     "hits": 3,
+     "status": {
+      "s": "blind",
+      "dur": 2
+     }
+    }
+   ],
+   "note": "잠입 취재: 타겟 불가 4초 + 일반 공격 강화, 플래시 3회 + 눈가림"
+  },
+  "senior": {
+   "do": [
+    {
+     "a": "invuln",
+     "dur": 1
+    },
+    {
+     "a": "debuff",
+     "to": "low",
+     "mods": {
+      "dmg_taken": 20
+     },
+     "dur": 8,
+     "key": "heidi_scoop"
+    },
+    {
+     "a": "dmg",
+     "to": "low",
+     "pct": 320,
+     "hits": 3
+    }
+   ],
+   "cd": 16,
+   "note": "특종감: HP 낮은 적 받는 피해 20% 증가 + 집중 공격, 진입 중 무적"
+  },
+  "aside2": {
+   "mods": {
+    "aspd": 10
+   },
+   "fx": [
+    {
+     "t": "kill",
+     "do": [
+      {
+       "a": "buff",
+       "to": "self",
+       "mods": {
+        "aspd": 25
+       },
+       "dur": 5,
+       "key": "heidi_a2"
+      }
+     ]
+    }
+   ],
+   "note": "잠입 취재 공속 + 처치 시 고학년 쿨 감소 → 처치 시 공속 버프로 근사"
+  },
+  "aside3": {
+   "mods": {
+    "dmg_taken": -8
+   },
+   "scope": "row",
+   "note": "후열 아군 받는 피해 감소 (자신 열)"
+  }
+ },
+ "kommy": {
+  "fresh": {
+   "do": [
+    {
+     "a": "cleanse",
+     "to": "self"
+    },
+    {
+     "a": "buff",
+     "to": "self",
+     "mods": {
+      "regen": 4,
+      "dmg_taken": -15
+     },
+     "dur": 4,
+     "key": "kommy_sleep"
+    }
+   ],
+   "note": "잠자기: 상태 해제 + 4초 동안 초당 HP 4% 회복, 받는 피해 감소(디버프 면역 근사)"
+  },
+  "senior": {
+   "do": [
+    {
+     "a": "buff",
+     "to": "self",
+     "mods": {
+      "dmg": 20,
+      "aspd": 35
+     },
+     "dur": 8,
+     "key": "kommy_giant"
+    },
+    {
+     "a": "dmg",
+     "to": "row_front",
+     "pct": 180
+    },
+    {
+     "a": "heal",
+     "to": "self",
+     "pct_hp": 10
+    }
+   ],
+   "cd": 20,
+   "note": "거대화: 피해 20%·공속 35% 8초, 착지 충격파 + 회복"
+  },
+  "passive": {
+   "mods": {
+    "hp": 15
+   },
+   "note": "최대 HP 15% 증가"
+  },
+  "enh": {
+   "do": [
+    {
+     "a": "status",
+     "to": "front",
+     "s": "stun",
+     "dur": 1.5,
+     "chance": 35
+    }
+   ],
+   "note": "베개 내리치기: 35% 확률 기절 1.5초"
+  }
+ },
+ "asia": {
+  "fresh": {
+   "do": [
+    {
+     "a": "dmg",
+     "to": "around:front",
+     "pct": 170,
+     "hits": 4
+    }
+   ],
+   "note": "냉장고 낙하: 앞 적 주변 4회 범위 마법 피해"
+  },
+  "senior": {
+   "do": [
+    {
+     "a": "dmg",
+     "to": "front",
+     "pct": 100,
+     "status": {
+      "s": "stun",
+      "dur": 1.5
+     }
+    },
+    {
+     "a": "dmg",
+     "to": "all",
+     "pct": 120
+    },
+    {
+     "a": "debuff",
+     "to": "all",
+     "mods": {
+      "dmg_taken": 12
+     },
+     "dur": 6,
+     "key": "asia_missile"
+    }
+   ],
+   "cd": 20,
+   "note": "냉각 미사일: 초탄 기절 + 전체 난사 + 받는 피해 12% 증가(마법 한정 → 전체로 근사) (40초 → 20초)"
+  },
+  "enh": {
+   "do": [
+    {
+     "a": "dmg",
+     "to": "front",
+     "pct": 60,
+     "hits": 3
+    }
+   ],
+   "note": "액체 질소 연사 3회 추가"
+  },
+  "aside2": {
+   "fx": [
+    {
+     "t": "skill_hit",
+     "which": "fresh",
+     "do": [
+      {
+       "a": "extra",
+       "pct": 60
+      }
+     ]
+    },
+    {
+     "t": "skill",
+     "which": "senior",
+     "do": [
+      {
+       "a": "shield",
+       "to": "self",
+       "pct": 25,
+       "dur": 6
+      }
+     ]
+    }
+   ],
+   "note": "저학년 후 아이스박스 폭발(추가 피해·기절), 고학년 사용 시 자신 보호막"
+  },
+  "aside3": {
+   "mods": {
+    "dmg": 10,
+    "dmg_taken": -6
+   },
+   "scope": "row",
+   "note": "후열 아군 피해 증가·받는 피해 감소 (자신 열)"
+  }
+ },
+ "meluna": {
+  "fresh": {
+   "do": [
+    {
+     "a": "dmg",
+     "to": "all",
+     "pct": 40,
+     "hits": 5
+    },
+    {
+     "a": "heal",
+     "to": "allies",
+     "pct_atk": 110
+    }
+   ],
+   "note": "멜론비 5회: 적 전체 약한 피해 + 모든 아군 회복"
+  },
+  "senior": {
+   "do": [
+    {
+     "a": "dmg",
+     "to": "random:1",
+     "pct": 200
+    },
+    {
+     "a": "heal",
+     "to": "lowest",
+     "pct_atk": 200
+    }
+   ],
+   "cd": 14,
+   "note": "거대 멜론: 무작위 적 피해 + HP 낮은 아군 회복"
+  },
+  "enh": {
+   "do": [
+    {
+     "a": "status",
+     "to": "front",
+     "s": "blind",
+     "dur": 3
+    }
+   ],
+   "note": "최상품 멜론: 눈가림 3초"
+  }
+ },
+ "sist": {
+  "fresh": {
+   "do": [
+    {
+     "a": "buff",
+     "to": "self",
+     "mods": {
+      "atk": 25,
+      "aspd": 25
+     },
+     "dur": 8,
+     "key": "sist_flex"
+    }
+   ],
+   "note": "플렉스 건: 공격력·공속 25% 8초 (피해 없음, 원작 그대로)"
+  },
+  "senior": {
+   "do": [
+    {
+     "a": "dmg",
+     "to": "low",
+     "pct": 420
+    },
+    {
+     "a": "execute",
+     "to": "low",
+     "below": 10
+    }
+   ],
+   "cd": 16,
+   "note": "HP 낮은 적 저격 + 처치 시 재사용 → HP 10% 이하 처형으로 근사"
+  },
+  "passive": {
+   "mods": {
+    "aspd": 10
+   },
+   "note": "일반 공격마다 고학년 쿨 1초 감소 → 엔진 미지원, 쿨 16초로 반영 + 공속 10%"
+  },
+  "aside2": {
+   "fx": [
+    {
+     "t": "skill",
+     "which": "fresh",
+     "do": [
+      {
+       "a": "buff",
+       "to": "row",
+       "mods": {
+        "atk": 20,
+        "aspd": 20
+       },
+       "dur": 8,
+       "key": "sist_a2"
+      }
+     ]
+    }
+   ],
+   "power": 20,
+   "note": "저학년 버프 시 아군 딜러 공격력·공속 증가(같은 열로 근사), 고학년 항상 최대 피해(power)"
+  },
+  "aside3": {
+   "mods": {
+    "crit": 5,
+    "critdmg": 5
+   },
+   "scope": "team",
+   "note": "모든 아군 치명타·치명 피해 증가"
+  }
+ },
+ "asana": {
+  "fresh": {
+   "do": [
+    {
+     "a": "shield",
+     "to": "self",
+     "pct_hp": 20,
+     "dur": 5
+    },
+    {
+     "a": "dmg",
+     "to": "front",
+     "pct": 150,
+     "status": {
+      "s": "stun",
+      "dur": 1,
+      "chance": 33
+     }
+    }
+   ],
+   "note": "보호막 + 마력 발사, 세 번째마다 기절 → 33% 확률 기절"
+  },
+  "senior": {
+   "do": [
+    {
+     "a": "buff",
+     "to": "self",
+     "mods": {
+      "dmg_taken": -25
+     },
+     "dur": 4,
+     "key": "asana_med"
+    },
+    {
+     "a": "dmg",
+     "to": "row_front",
+     "pct": 140,
+     "hits": 6
+    },
+    {
+     "a": "heal",
+     "to": "row",
+     "pct_atk": 100
+    },
+    {
+     "a": "debuff",
+     "to": "front",
+     "mods": {
+      "sp_regen": -30
+     },
+     "dur": 4,
+     "key": "asana_last"
+    }
+   ],
+   "cd": 18,
+   "note": "명상: 받는 피해 감소, 앞열 6회 피해, 주변 아군 회복, 마지막 타격 SP 감소"
+  },
+  "enh": {
+   "do": [
+    {
+     "a": "heal",
+     "to": "self",
+     "pct_hp": 6
+    },
+    {
+     "a": "dmg",
+     "to": "front",
+     "pct": 80
+    }
+   ],
+   "note": "8회 피격마다 에너지파/회복 → 강화 공격 때 둘 다 소량"
+  },
+  "aside2": {
+   "fx": [
+    {
+     "t": "skill",
+     "which": "fresh",
+     "do": [
+      {
+       "a": "sp_pct",
+       "pct": 15
+      },
+      {
+       "a": "buff",
+       "to": "row",
+       "mods": {
+        "skill_dmg": 10,
+        "hp": 5
+       },
+       "dur": 6,
+       "key": "asana_a2"
+      }
+     ]
+    }
+   ],
+   "note": "저학년 적중 시 SP 회복 + 마력 주변 아군 스킬 피해·최대 HP 증가"
+  },
+  "aside3": {
+   "mods": {
+    "dmg": 6,
+    "dmg_taken": -6
+   },
+   "scope": "row",
+   "note": "전열 아군 피해 증가·받는 피해 감소 (자신 열)"
+  }
+ },
+ "kishya": {
+  "fresh": {
+   "do": [
+    {
+     "a": "buff",
+     "to": "allies",
+     "mods": {
+      "dmg": 12
+     },
+     "dur": 6,
+     "key": "kishya_song"
+    },
+    {
+     "a": "heal",
+     "to": "allies",
+     "pct_atk": 100
+    }
+   ],
+   "note": "노래: 아군 피해 12% + 회복 4회를 합산"
+  },
+  "senior": {
+   "do": [
+    {
+     "a": "dmg",
+     "to": "low",
+     "pct": 160,
+     "hits": 4
+    },
+    {
+     "a": "dmg",
+     "to": "all",
+     "pct": 80
+    },
+    {
+     "a": "debuff",
+     "to": "all",
+     "mods": {
+      "atk": -12
+     },
+     "dur": 6,
+     "key": "kishya_stage"
+    }
+   ],
+   "cd": 18,
+   "note": "공연 파동 4회 + 무대 폭발 전체 피해·공격력 감소 (저장 피해 비례 추가는 생략)"
+  },
+  "enh": {
+   "do": [
+    {
+     "a": "buff",
+     "to": "allies",
+     "mods": {
+      "skill_dmg": 15
+     },
+     "dur": 6,
+     "key": "kishya_fan"
+    },
+    {
+     "a": "sp",
+     "to": "allies",
+     "pct": 8
+    },
+    {
+     "a": "untarget",
+     "dur": 1
+    }
+   ],
+   "note": "팬 서비스: 아군 스킬 피해 증가 + SP 회복"
+  },
+  "aside2": {
+   "mods": {
+    "hp": 10
+   },
+   "fx": [
+    {
+     "t": "skill",
+     "which": "senior",
+     "do": [
+      {
+       "a": "heal",
+       "to": "lowest",
+       "pct": 12
+      }
+     ]
+    }
+   ],
+   "note": "최대 HP 증가 + 고학년 후 HP 낮은 아군 회복"
+  },
+  "aside3": {
+   "mods": {
+    "dmg": 6,
+    "dmg_taken": -6
+   },
+   "scope": "row",
+   "note": "중열 아군 피해 증가·받는 피해 감소 (자신 열)"
+  }
+ },
+ "shoupan": {
+  "fresh": {
+   "do": [
+    {
+     "a": "heal",
+     "to": "allies",
+     "pct_hp": 10
+    }
+   ],
+   "note": "우편 배송 회복 4회 → 모든 아군 최대 HP 10% 회복"
+  },
+  "senior": {
+   "do": [
+    {
+     "a": "buff",
+     "to": "allies",
+     "mods": {
+      "def": 20
+     },
+     "dur": 8,
+     "key": "shoupan_def"
+    },
+    {
+     "a": "dmg",
+     "to": "all",
+     "pct": 150
+    },
+    {
+     "a": "debuff",
+     "to": "all",
+     "mods": {
+      "dmg": -15
+     },
+     "dur": 6,
+     "key": "shoupan_noise"
+    }
+   ],
+   "cd": 20,
+   "note": "질주 배송: 아군 방어력 20%, 적 전체 피해 + 소음 (36초 → 20초)"
+  },
+  "passive": {
+   "mods": {
+    "dmg_taken": -10
+   },
+   "note": "적 스킬 피해 24% 감소 → 받는 피해 10% 감소로 근사"
+  },
+  "enh": {
+   "do": [
+    {
+     "a": "heal",
+     "to": "lowest",
+     "pct_hp": 10
+    }
+   ],
+   "note": "HP 낮은 아군에게 다녀와 최대 HP 10% 회복"
+  }
+ },
+ "rufo": {
+  "fresh": {
+   "do": [
+    {
+     "a": "dmg",
+     "to": "back",
+     "pct": 320,
+     "hits": 4
+    }
+   ],
+   "note": "순간 이동해 가장 먼 적에게 4회 물리 피해"
+  },
+  "senior": {
+   "do": [
+    {
+     "a": "buff",
+     "to": "self",
+     "mods": {
+      "def": 40
+     },
+     "dur": 3,
+     "key": "rufo_spin"
+    },
+    {
+     "a": "dmg",
+     "to": "row_back",
+     "pct": 200,
+     "hits": 8,
+     "status": {
+      "s": "stun",
+      "dur": 1
+     }
+    }
+   ],
+   "cd": 20,
+   "note": "회전: 뒷열 범위 8회 + 넉백(기절 1초), 방어력 증가"
+  },
+  "passive": {
+   "mods": {
+    "enh_dmg": 20
+   },
+   "note": "강화 공격 피해 20% 증가"
+  },
+  "enh": {
+   "do": [
+    {
+     "a": "untarget",
+     "dur": 3
+    }
+   ],
+   "note": "눈속임: 타겟 불가 3초"
+  },
+  "aside2": {
+   "mods": {
+    "normal_dmg": 10,
+    "aspd": 10
+   },
+   "note": "일반 공격 피해 + 눈속임 시 공속 (상시 소량으로 근사)"
+  },
+  "aside3": {
+   "mods": {
+    "aspd": 5
+   },
+   "scope": "team",
+   "note": "모든 아군 공격 속도 증가"
+  }
+ },
+ "blanchet": {
+  "fresh": {
+   "do": [
+    {
+     "a": "dmg",
+     "to": "random:2",
+     "pct": 90
+    },
+    {
+     "a": "dmg",
+     "to": "low",
+     "pct": 130
+    }
+   ],
+   "note": "튕기는 싱크로즈: 무작위 2회 + 강한 마지막 타격"
+  },
+  "senior": {
+   "do": [
+    {
+     "a": "dmg",
+     "to": "front",
+     "pct": 200,
+     "hits": 3
+    },
+    {
+     "a": "dmg",
+     "to": "around:front",
+     "pct": 120
+    },
+    {
+     "a": "debuff",
+     "to": "front",
+     "mods": {
+      "sp_regen": -40
+     },
+     "dur": 6,
+     "key": "blanchet_silence"
+    }
+   ],
+   "cd": 18,
+   "note": "싱크로즈 3번 + 마지막 범위 타격, 침묵(SP 회복 감소)"
+  },
+  "passive": {
+   "mods": {
+    "skill_dmg": 15
+   },
+   "note": "스킬 피해 15% 증가 (침묵 면역은 엔진에 없음)"
+  },
+  "enh": {
+   "do": [
+    {
+     "a": "status",
+     "to": "front",
+     "s": "bitter",
+     "dur": 4
+    }
+   ],
+   "note": "푸른 장미: 쓰라림 4초"
+  },
+  "aside2": {
+   "mods": {
+    "enh_dmg": 15
+   },
+   "fx": [
+    {
+     "t": "normal_n",
+     "n": 4,
+     "do": [
+      {
+       "a": "strike",
+       "mode": "back",
+       "pct": 60
+      }
+     ]
+    }
+   ],
+   "power": 20,
+   "note": "강화 공격 피해 증가 + 무작위 적 추가 공격, 고학년 표식 폭발(power)"
+  },
+  "aside3": {
+   "mods": {
+    "crit": 5,
+    "critdmg": 5
+   },
+   "scope": "team",
+   "note": "모든 아군 치명타·치명 피해 증가"
+  }
+ },
+ "barong": {
+  "fresh": {
+   "do": [
+    {
+     "a": "dmg",
+     "to": "back",
+     "pct": 280
+    },
+    {
+     "a": "debuff",
+     "to": "back",
+     "mods": {
+      "dmg_taken": 12
+     },
+     "dur": 8,
+     "key": "barong_curse"
+    },
+    {
+     "a": "debuff",
+     "to": "all",
+     "mods": {
+      "sp_regen": -30
+     },
+     "dur": 6,
+     "key": "barong_silence"
+    }
+   ],
+   "note": "가장 먼 적 돌진 + 저주(받는 피해 증가로 근사), 적 전체 침묵(SP 회복 감소)"
+  },
+  "senior": {
+   "do": [
+    {
+     "a": "dmg",
+     "to": "all",
+     "pct": 160
+    },
+    {
+     "a": "debuff",
+     "to": "all",
+     "mods": {
+      "dmg_taken": 8
+     },
+     "dur": 6,
+     "key": "barong_curse2"
+    },
+    {
+     "a": "buff",
+     "to": "self",
+     "mods": {
+      "dmg_taken": -25
+     },
+     "dur": 6,
+     "key": "barong_guard"
+    }
+   ],
+   "cd": 20,
+   "note": "자신 중심 전체 범위 피해 + 저주, 받는 피해 25% 감소 (40초 → 20초)"
+  },
+  "passive": {
+   "fx": [
+    {
+     "t": "start",
+     "do": [
+      {
+       "a": "shield",
+       "to": "self",
+       "pct": 25,
+       "dur": 8
+      }
+     ]
+    },
+    {
+     "t": "skill",
+     "which": "fresh",
+     "do": [
+      {
+       "a": "buff",
+       "to": "self",
+       "mods": {
+        "aspd": 25
+       },
+       "dur": 8,
+       "key": "barong_aspd"
+      }
+     ]
+    }
+   ],
+   "note": "전투 시작 보호막 + 저학년 후 공속 증가"
+  },
+  "enh": {
+   "do": [
+    {
+     "a": "dmg",
+     "to": "front",
+     "pct": 100,
+     "hits": 2
+    },
+    {
+     "a": "untarget",
+     "dur": 3
+    }
+   ],
+   "note": "못 날리기 2회 + 눈속임 3초"
+  },
+  "aside2": {
+   "fx": [
+    {
+     "t": "skill_hit",
+     "which": "fresh",
+     "do": [
+      {
+       "a": "status",
+       "to": "target",
+       "s": "burn",
+       "dur": 3
+      },
+      {
+       "a": "heal",
+       "to": "self",
+       "pct": 4
+      }
+     ]
+    },
+    {
+     "t": "start",
+     "do": [
+      {
+       "a": "next_normal",
+       "stun": 1.5
+      }
+     ]
+    }
+   ],
+   "note": "저학년 적중 시 중독(화상)·자신 회복, 첫 적중 기절"
+  },
+  "aside3": {
+   "mods": {
+    "dmg": 6,
+    "dmg_taken": -6
+   },
+   "scope": "row",
+   "note": "전열 아군 피해 증가·받는 피해 감소 (자신 열)"
+  }
+ },
+ "jade": {
+  "fresh": {
+   "do": [
+    {
+     "a": "dmg",
+     "to": "row_front",
+     "pct": 160
+    }
+   ],
+   "note": "비취옥 범위 마법 피해 (중첩 배율 평균 반영)"
+  },
+  "senior": {
+   "do": [
+    {
+     "a": "dmg",
+     "to": "row_front",
+     "pct": 220,
+     "hits": 4
+    },
+    {
+     "a": "sp",
+     "to": "self",
+     "pct": 15
+    }
+   ],
+   "cd": 18,
+   "note": "광물 분출 4회 범위 + SP 15% 회복"
+  },
+  "passive": {
+   "mods": {
+    "matk": 10
+   },
+   "note": "비취옥 3중첩 소모 시 마법 공격력 증가 → 상시 10%로 근사"
+  },
+  "enh": {
+   "do": [
+    {
+     "a": "shield",
+     "to": "self",
+     "pct_hp": 15,
+     "dur": 6
+    }
+   ],
+   "note": "옥 소모로 비취옥 획득 시 자신 보호막"
+  },
+  "aside2": {
+   "mods": {
+    "skill_dmg": 8,
+    "aspd": 8,
+    "dmg_taken": -5
+   },
+   "note": "비취옥 효과 강화: 스킬 피해·공속 증가, 받는 피해 감소 (상시 소량)"
+  },
+  "aside3": {
+   "mods": {
+    "aspd": 5
+   },
+   "scope": "team",
+   "note": "모든 아군 공격 속도 증가"
+  }
+ },
+ "picora": {
+  "fresh": {
+   "do": [
+    {
+     "a": "heal",
+     "to": "lowest",
+     "pct_atk": 200
+    },
+    {
+     "a": "heal",
+     "to": "random_ally:2",
+     "pct_atk": 100
+    },
+    {
+     "a": "buff",
+     "to": "allies",
+     "mods": {
+      "pdef": 11,
+      "critres": 11
+     },
+     "dur": 8,
+     "key": "picora_sticker"
+    }
+   ],
+   "note": "스티커: HP 낮은 아군 3명 회복(가장 낮은 1명 + 무작위 2명) + 물리 방어·치명 저항"
+  },
+  "senior": {
+   "do": [
+    {
+     "a": "cleanse",
+     "to": "front_ally"
+    },
+    {
+     "a": "buff",
+     "to": "front_ally",
+     "mods": {
+      "hp": 20
+     },
+     "dur": 8,
+     "key": "picora_dress"
+    },
+    {
+     "a": "heal",
+     "to": "front_ally",
+     "pct_hp": 15
+    }
+   ],
+   "cd": 20,
+   "note": "치장: 최대 HP 높은 아군(전열로 근사) 상태 해제·최대 HP 20%·회복 (도발은 자신 전용이라 생략) (32초 → 20초)"
+  },
+  "passive": {
+   "fx": [
+    {
+     "t": "start",
+     "do": [
+      {
+       "a": "buff",
+       "to": "allies",
+       "mods": {
+        "critres": 10
+       },
+       "dur": 60,
+       "key": "picora_passive"
+      }
+     ]
+    }
+   ],
+   "note": "모든 아군 치명타 저항 10%"
+  },
+  "aside2": {
+   "mods": {
+    "hp": 10
+   },
+   "fx": [
+    {
+     "t": "normal_n",
+     "n": 4,
+     "do": [
+      {
+       "a": "heal",
+       "to": "lowest",
+       "pct": 6
+      },
+      {
+       "a": "buff",
+       "to": "lowest",
+       "mods": {
+        "dmg": 10
+       },
+       "dur": 5,
+       "key": "picora_a2"
+      }
+     ]
+    }
+   ],
+   "note": "최대 HP 증가 + 강화 공격 후 HP 낮은 아군 스티커(회복·피해 증가)"
+  },
+  "aside3": {
+   "mods": {
+    "dmg_taken": -5
+   },
+   "scope": "team",
+   "note": "모든 아군 받는 피해 감소"
+  }
+ },
+ "orr": {
+  "fresh": {
+   "do": [
+    {
+     "a": "dmg",
+     "to": "high_atk",
+     "pct": 150
+    },
+    {
+     "a": "debuff",
+     "to": "high_atk",
+     "mods": {
+      "dmg": -20,
+      "sp_regen": -30
+     },
+     "dur": 6,
+     "key": "orr_drone"
+    }
+   ],
+   "note": "드론 기상군: 공격력 최고 적 소음(주는 피해 20%↓) + 집중 방해(SP 회복 감소), 종료 피해"
+  },
+  "senior": {
+   "do": [
+    {
+     "a": "dmg",
+     "to": "random:8",
+     "pct": 30
+    },
+    {
+     "a": "heal",
+     "to": "allies",
+     "pct_atk": 80
+    },
+    {
+     "a": "sp",
+     "to": "allies",
+     "pct": 10
+    }
+   ],
+   "cd": 20,
+   "note": "자기장: 아군 회복·SP, 유성우 무작위 8회"
+  },
+  "aside2": {
+   "mods": {
+    "hp": 10
+   },
+   "fx": [
+    {
+     "t": "interval",
+     "sec": 10,
+     "do": [
+      {
+       "a": "buff",
+       "to": "allies",
+       "mods": {
+        "dmg": 10
+       },
+       "dur": 5,
+       "key": "orr_supply"
+      },
+      {
+       "a": "heal",
+       "to": "lowest",
+       "pct": 8
+      }
+     ]
+    }
+   ],
+   "note": "최대 HP 증가 + 주기적 지원 물자(피해 증가 / HP 낮은 아군 회복)"
+  },
+  "aside3": {
+   "mods": {
+    "dmg": 8
+   },
+   "scope": "row",
+   "note": "후열 아군 피해 증가 (자신 열)"
+  }
+ },
+ "ricotta": {
+  "fresh": {
+   "do": [
+    {
+     "a": "heal",
+     "to": "lowest",
+     "pct_atk": 200
+    },
+    {
+     "a": "buff",
+     "to": "back_ally",
+     "mods": {
+      "skill_dmg": 15
+     },
+     "dur": 8,
+     "key": "ricotta_course"
+    },
+    {
+     "a": "buff",
+     "to": "self",
+     "mods": {
+      "dmg_taken": -25
+     },
+     "dur": 3,
+     "key": "ricotta_cook"
+    }
+   ],
+   "note": "풀코스: HP 낮은 아군 회복 + 공격력 높은 아군(후열로 근사) 스킬 피해 증가, 시전 중 받는 피해 감소"
+  },
+  "senior": {
+   "do": [
+    {
+     "a": "dmg",
+     "to": "front",
+     "pct": 300,
+     "hits": 4
+    },
+    {
+     "a": "heal",
+     "to": "self",
+     "pct_hp": 10
+    }
+   ],
+   "cd": 18,
+   "note": "재료 손질 4회 + 자신 회복 (최대 HP 비례 피해 생략)"
+  },
+  "enh": {
+   "do": [
+    {
+     "a": "dmg",
+     "to": "around:front",
+     "pct": 80
+    },
+    {
+     "a": "heal",
+     "to": "self",
+     "pct_hp": 4
+    }
+   ],
+   "note": "웍질: 주변 범위 피해 + 회복"
+  },
+  "aside2": {
+   "fx": [
+    {
+     "t": "skill",
+     "which": "fresh",
+     "do": [
+      {
+       "a": "cleanse"
+      },
+      {
+       "a": "buff",
+       "to": "allies",
+       "mods": {
+        "sp_regen": 25
+       },
+       "dur": 6,
+       "key": "ricotta_fondue"
+      }
+     ]
+    }
+   ],
+   "note": "저학년 후 퐁듀 분수: 기절 해제 + 아군 SP 회복 증가"
+  },
+  "aside3": {
+   "mods": {
+    "dmg": 4,
+    "dmg_taken": -4
+   },
+   "scope": "team",
+   "note": "모든 아군 피해 증가·받는 피해 감소"
+  }
+ },
+ "kyarot": {
+  "fresh": {
+   "do": [
+    {
+     "a": "buff",
+     "to": "allies",
+     "mods": {
+      "atk": 10,
+      "dmg_taken": -15
+     },
+     "dur": 8,
+     "key": "kyarot_sap"
+    }
+   ],
+   "note": "수액: 범위 내 아군 공격력 10%, 받는 피해 15% 감소 (전체로 근사, 25% → 15%)"
+  },
+  "senior": {
+   "do": [
+    {
+     "a": "heal",
+     "to": "allies",
+     "pct_hp": 12
+    },
+    {
+     "a": "dmg",
+     "to": "all",
+     "pct": 120,
+     "hits": 6
+    },
+    {
+     "a": "debuff",
+     "to": "front",
+     "mods": {
+      "sp_regen": -40
+     },
+     "dur": 6,
+     "key": "kyarot_silence"
+    }
+   ],
+   "cd": 18,
+   "note": "수액 12발 난사: 아군 회복 + 적 전체 피해, 마지막 발사 침묵(SP 회복 감소)"
+  },
+  "passive": {
+   "mods": {
+    "sp_regen": 5
+   },
+   "fx": [
+    {
+     "t": "start",
+     "do": [
+      {
+       "a": "buff",
+       "to": "row",
+       "mods": {
+        "sp_regen": 10
+       },
+       "dur": 60,
+       "key": "kyarot_passive"
+      }
+     ]
+    }
+   ],
+   "note": "2초마다 자신·주변 아군 SP 회복 → 같은 열 SP 회복 속도 10%"
+  },
+  "enh": {
+   "do": [
+    {
+     "a": "sp",
+     "to": "allies",
+     "pct": 10
+    }
+   ],
+   "note": "마법 성장 비료: 주변 아군 SP 회복 (모든 아군 10%로 근사)"
+  },
+  "aside2": {
+   "fx": [
+    {
+     "t": "normal_n",
+     "n": 4,
+     "do": [
+      {
+       "a": "shield",
+       "to": "row",
+       "pct": 15,
+       "dur": 5
+      },
+      {
+       "a": "sp_pct",
+       "pct": 10
+      }
+     ]
+    }
+   ],
+   "note": "강화 공격에 보호막 추가, 파괴 시 SP 회복 → 강화 공격 때 같은 열 보호막 + 자신 SP"
+  },
+  "aside3": {
+   "mods": {
+    "dmg": 8,
+    "dmg_taken": -5
+   },
+   "scope": "row",
+   "note": "후열 아군 피해 증가·받는 피해 감소 (자신 열)"
+  }
+ },
+ "beni": {
+  "fresh": {
+   "do": [
+    {
+     "a": "heal",
+     "to": "self",
+     "pct_atk": 200
+    },
+    {
+     "a": "buff",
+     "to": "self",
+     "mods": {
+      "crit": 16,
+      "critdmg": 35
+     },
+     "dur": 8,
+     "key": "beni_fish"
+    }
+   ],
+   "note": "생선 먹기: 자신 회복 + 치명타 16%·치명 피해 35% 8초 (피해 없음, 원작 그대로)"
+  },
+  "senior": {
+   "do": [
+    {
+     "a": "dmg",
+     "to": "row_front",
+     "pct": 220,
+     "status": {
+      "s": "stun",
+      "dur": 1.5
+     }
+    }
+   ],
+   "cd": 20,
+   "note": "도끼 내려찍기: 앞열 범위 피해 + 기절 1.5초 (58초 → 20초)"
+  },
+  "passive": {
+   "fx": [
+    {
+     "t": "damaged",
+     "cd": 1,
+     "do": [
+      {
+       "a": "sp",
+       "amt": 3
+      }
+     ]
+    }
+   ],
+   "note": "직접 피해를 받으면 SP 회복 (1초에 1번, SP 3)"
+  }
+ },
+ "amelia": {
+  "fresh": {
+   "do": [
+    {
+     "a": "dmg",
+     "to": "row_front",
+     "pct": 130,
+     "status": {
+      "s": "shock",
+      "dur": 5
+     }
+    }
+   ],
+   "note": "위성 폭격: 앞열 범위 피해 + 감전"
+  },
+  "senior": {
+   "do": [
+    {
+     "a": "dmg",
+     "to": "row_front",
+     "pct": 150,
+     "hits": 6
+    },
+    {
+     "a": "status",
+     "to": "row_front",
+     "s": "stun",
+     "dur": 1.5,
+     "chance": 50
+    }
+   ],
+   "cd": 20,
+   "note": "레이저 캐논 6회 + 감전 적 기절 → 50% 확률 기절 (32초 → 20초)"
+  },
+  "passive": {
+   "fx": [
+    {
+     "t": "interval",
+     "sec": 10,
+     "do": [
+      {
+       "a": "status",
+       "to": "enemies",
+       "s": "shock",
+       "dur": 3
+      }
+     ]
+    }
+   ],
+   "note": "10초마다 적에게 감전 (2명 → 적 전체 3초로 근사)"
+  },
+  "enh": {
+   "do": [
+    {
+     "a": "dmg",
+     "to": "row_front",
+     "pct": 50,
+     "status": {
+      "s": "shock",
+      "dur": 3
+     }
+    }
+   ],
+   "note": "강화 레이저: 직선 범위 피해 + 감전 3초"
+  },
+  "aside2": {
+   "fx": [
+    {
+     "t": "cond",
+     "cond": "vs_status:shock",
+     "mods": {
+      "normal_dmg": 20
+     }
+    }
+   ],
+   "note": "감전 적에게 일반 공격 피해 증가 (확률 증가는 엔진에 없음)"
+  },
+  "aside3": {
+   "mods": {
+    "sp_regen": 10
+   },
+   "scope": "row",
+   "note": "후열 아군 초당 SP 회복 증가 (자신 열)"
+  }
+ },
+ "elena": {
+  "fresh": {
+   "do": [
+    {
+     "a": "dmg",
+     "to": "row_front",
+     "pct": 180,
+     "status": {
+      "s": "shock",
+      "dur": 4
+     }
+    }
+   ],
+   "note": "펄스파: 앞열 범위 피해 + 감전 4초"
+  },
+  "senior": {
+   "do": [
+    {
+     "a": "dmg",
+     "to": "row_front",
+     "pct": 200,
+     "hits": 8
+    },
+    {
+     "a": "dmg",
+     "to": "row_front",
+     "pct": 60
+    }
+   ],
+   "cd": 20,
+   "note": "드론 펄스 8회 + 마지막 폭발"
+  },
+  "passive": {
+   "mods": {
+    "dmg_taken": -8
+   },
+   "note": "덱에 아멜리아가 있으면 받는 피해 감소 → 조건 미지원, 상시 8%로 근사"
+  },
+  "enh": {
+   "do": [
+    {
+     "a": "dmg",
+     "to": "front",
+     "pct": 100
+    }
+   ],
+   "note": "과충전 구체: 추가 피해"
+  }
+ },
+ "coffe": {
+  "fresh": {
+   "do": [
+    {
+     "a": "buff",
+     "to": "self",
+     "mods": {
+      "matk": 15
+     },
+     "dur": 8,
+     "key": "coffe_cup",
+     "stack": 2
+    }
+   ],
+   "note": "맛있는 커피 1잔: 마법 공격력 15% (최대 2중첩)"
+  },
+  "senior": {
+   "do": [
+    {
+     "a": "dmg",
+     "to": "around:front",
+     "pct": 260
+    }
+   ],
+   "cd": 18,
+   "note": "라떼 아트: 가운데 적 주변 범위 마법 피해 (커피 중첩 보너스는 평균치 반영)"
+  },
+  "enh": {
+   "do": [
+    {
+     "a": "sp",
+     "to": "self",
+     "pct": 10
+    },
+    {
+     "a": "dmg",
+     "to": "front",
+     "pct": 60,
+     "hits": 3
+    }
+   ],
+   "note": "원두 3개 발사 + SP 회복"
+  },
+  "aside2": {
+   "mods": {
+    "senior_dmg": 10
+   },
+   "fx": [
+    {
+     "t": "skill",
+     "which": "fresh",
+     "do": [
+      {
+       "a": "sp_pct",
+       "pct": 15
+      }
+     ]
+    },
+    {
+     "t": "skill",
+     "which": "senior",
+     "do": [
+      {
+       "a": "buff",
+       "to": "self",
+       "mods": {
+        "crit": 15,
+        "critdmg": 20
+       },
+       "dur": 8,
+       "key": "coffe_confident"
+      }
+     ]
+    }
+   ],
+   "note": "저학년 후 SP 회복, 고학년 후 바리스텐더의 자신감(치명·치피 증가)"
+  },
+  "aside3": {
+   "mods": {
+    "dmg": 5
+   },
+   "scope": "team",
+   "note": "모든 아군 피해 증가"
+  }
+ },
+ "selene": {
+  "fresh": {
+   "do": [
+    {
+     "a": "dmg",
+     "to": "row_back",
+     "pct": 100,
+     "status": {
+      "s": "stun",
+      "dur": 1.5
+     }
+    }
+   ],
+   "note": "하트 에너지: 가장 먼 적 쪽 범위 피해 + 폭발 기절"
+  },
+  "senior": {
+   "do": [
+    {
+     "a": "dmg",
+     "to": "low",
+     "pct": 250
+    },
+    {
+     "a": "shield",
+     "to": "self",
+     "pct_hp": 20,
+     "dur": 8
+    }
+   ],
+   "cd": 18,
+   "note": "HP 낮은 적 공격, 처치 시 보호막 → 항상 보호막 20%"
+  },
+  "passive": {
+   "mods": {
+    "critres": 15
+   },
+   "note": "치명타 저항 15% (도발 면역은 엔진에 없음)"
+  },
+  "enh": {
+   "do": [
+    {
+     "a": "heal",
+     "to": "self",
+     "pct_hp": 8
+    },
+    {
+     "a": "taunt",
+     "dur": 3
+    }
+   ],
+   "note": "세 번째 공격 대신 회복 + 도발 3초"
+  },
+  "aside2": {
+   "fx": [
+    {
+     "t": "damaged",
+     "cd": 1,
+     "do": [
+      {
+       "a": "sp",
+       "amt": 3
+      }
+     ]
+    },
+    {
+     "t": "normal_n",
+     "n": 4,
+     "do": [
+      {
+       "a": "heal",
+       "to": "self",
+       "pct": 6
+      },
+      {
+       "a": "debuff",
+       "to": "target",
+       "mods": {
+        "aspd": -25
+       },
+       "dur": 4
+      }
+     ]
+    }
+   ],
+   "note": "피격 시 SP 회복, 강화 공격 회복 2배 + 도발한 적 공속 감소"
+  },
+  "aside3": {
+   "mods": {
+    "dmg_taken": -8
+   },
+   "scope": "row",
+   "note": "전열 아군 받는 피해 감소 (자신 열)"
+  }
+ },
+ "alice": {
+  "fresh": {
+   "do": [
+    {
+     "a": "dmg",
+     "to": "around:front",
+     "pct": 130,
+     "hits": 2,
+     "status": {
+      "s": "shock",
+      "dur": 4
+     }
+    },
+    {
+     "a": "dmg",
+     "to": "random:3",
+     "pct": 30
+    },
+    {
+     "a": "status",
+     "to": "random:1",
+     "s": "stun",
+     "dur": 1.5
+    }
+   ],
+   "note": "점괘 3종 중 무작위 → 엔진에 무작위 분기 없음, 세 효과를 약하게 합침"
+  },
+  "senior": {
+   "do": [
+    {
+     "a": "dmg",
+     "to": "row_front",
+     "pct": 180,
+     "status": {
+      "s": "burn",
+      "dur": 5
+     }
+    },
+    {
+     "a": "dmg",
+     "to": "random:3",
+     "pct": 45
+    },
+    {
+     "a": "status",
+     "to": "random:2",
+     "s": "stun",
+     "dur": 1.5
+    }
+   ],
+   "cd": 20,
+   "note": "강화된 점괘 (세 효과 합산)"
+  },
+  "passive": {
+   "fx": [
+    {
+     "t": "normal_n",
+     "n": 4,
+     "do": [
+      {
+       "a": "sp_pct",
+       "pct": 15
+      },
+      {
+       "a": "debuff",
+       "to": "target",
+       "mods": {
+        "sp_regen": -30
+       },
+       "dur": 3
+      }
+     ]
+    }
+   ],
+   "note": "강화 공격 적중 시 적 SP 감소·자신 SP 회복"
+  },
+  "aside2": {
+   "mods": {
+    "skill_dmg": 10
+   },
+   "fx": [
+    {
+     "t": "hits_taken_n",
+     "n": 8,
+     "do": [
+      {
+       "a": "heal",
+       "to": "self",
+       "pct": 5
+      },
+      {
+       "a": "sp_pct",
+       "pct": 10
+      }
+     ]
+    }
+   ],
+   "note": "스킬 피해 증가 + 피격 누적 시 자신 HP·SP 회복"
+  },
+  "aside3": {
+   "mods": {
+    "dmg": 8
+   },
+   "scope": "row",
+   "note": "중열 아군 피해 증가 (자신 열)"
+  }
+ },
+ "risty": {
+  "fresh": {
+   "do": [
+    {
+     "a": "dmg",
+     "to": "low",
+     "pct": 160,
+     "hits": 2
+    },
+    {
+     "a": "dmg",
+     "to": "low",
+     "pct": 140
+    }
+   ],
+   "note": "HP 낮은 적 반복 공격 3회, 마지막 강타"
+  },
+  "senior": {
+   "do": [
+    {
+     "a": "dmg",
+     "to": "low",
+     "pct": 240,
+     "hits": 6
+    },
+    {
+     "a": "dmg",
+     "to": "random:3",
+     "pct": 60
+    },
+    {
+     "a": "status",
+     "to": "low",
+     "s": "stun",
+     "dur": 2
+    }
+   ],
+   "cd": 20,
+   "note": "블록 낙하: HP 낮은 적 집중 + 주변 3명, 마지막 블록 기절 (패시브의 기절 4초 → 2초로 포함)"
+  },
+  "enh": {
+   "do": [
+    {
+     "a": "dmg",
+     "to": "front",
+     "pct": 60
+    }
+   ],
+   "note": "해킹 확정 치명타 → 추가 피해 60%"
+  },
+  "aside2": {
+   "fx": [
+    {
+     "t": "kill",
+     "do": [
+      {
+       "a": "sp_pct",
+       "pct": 20
+      }
+     ]
+    },
+    {
+     "t": "skill",
+     "which": "senior",
+     "do": [
+      {
+       "a": "strike",
+       "mode": "low",
+       "pct": 80
+      }
+     ]
+    }
+   ],
+   "note": "저학년 처치 시 SP 회복, 고학년 후 HP 낮은 적 추가 타격"
+  },
+  "aside3": {
+   "mods": {
+    "sp_regen": 10
+   },
+   "scope": "row",
+   "note": "후열 아군 SP 회복 증가 (자신 열)"
+  }
+ },
+ "hilde": {
+  "fresh": {
+   "do": [
+    {
+     "a": "heal",
+     "to": "allies",
+     "pct_hp": 8
+    },
+    {
+     "a": "buff",
+     "to": "lowest",
+     "mods": {
+      "regen": 3
+     },
+     "dur": 6,
+     "key": "hilde_regen"
+    }
+   ],
+   "note": "파동 회복 + HP 낮은 아군 지속 회복"
+  },
+  "senior": {
+   "do": [
+    {
+     "a": "dmg",
+     "to": "all",
+     "pct": 120
+    },
+    {
+     "a": "buff",
+     "to": "allies",
+     "mods": {
+      "aspd": 30
+     },
+     "dur": 7,
+     "key": "hilde_giant"
+    }
+   ],
+   "cd": 20,
+   "note": "무차별 처방: 적 전체 피해 + 아군 공속 30% 7초 (36초 → 20초)"
+  },
+  "enh": {
+   "do": [
+    {
+     "a": "heal",
+     "to": "lowest",
+     "pct_hp": 12
+    }
+   ],
+   "note": "세 번째 공격 대신 HP 낮은 아군 회복"
+  },
+  "aside2": {
+   "fx": [
+    {
+     "t": "normal_n",
+     "n": 4,
+     "do": [
+      {
+       "a": "heal",
+       "to": "lowest",
+       "pct": 8
+      },
+      {
+       "a": "buff",
+       "to": "lowest",
+       "mods": {
+        "aspd": 30
+       },
+       "dur": 6,
+       "key": "hilde_a2"
+      }
+     ]
+    }
+   ],
+   "note": "강화 공격 회복 2배 + 대상 공속 증가"
+  },
+  "aside3": {
+   "mods": {
+    "mdef": 8
+   },
+   "scope": "team",
+   "note": "모든 아군 받는 마법 피해 감소 → 마법 방어력"
+  }
+ },
+ "guin": {
+  "fresh": {
+   "do": [
+    {
+     "a": "dmg",
+     "to": "row_front",
+     "pct": 120,
+     "hits": 5
+    },
+    {
+     "a": "debuff",
+     "to": "row_front",
+     "mods": {
+      "dmg": -20
+     },
+     "dur": 6,
+     "key": "guin_fog"
+    }
+   ],
+   "note": "서늘한 안개: 앞열 지속 피해 + 주는 피해 20% 감소"
+  },
+  "senior": {
+   "do": [
+    {
+     "a": "dmg",
+     "to": "all",
+     "pct": 150,
+     "hits": 10
+    },
+    {
+     "a": "debuff",
+     "to": "all",
+     "mods": {
+      "aspd": -30
+     },
+     "dur": 4,
+     "key": "guin_ice"
+    }
+   ],
+   "cd": 20,
+   "note": "얼음길 펭귄: 적 전체 피해 + 공속 30% 감소 (40초 → 20초)"
+  },
+  "passive": {
+   "fx": [
+    {
+     "t": "normal_n",
+     "n": 4,
+     "do": [
+      {
+       "a": "buff",
+       "to": "self",
+       "mods": {
+        "dmg_taken": -20
+       },
+       "dur": 6,
+       "key": "guin_p"
+      }
+     ]
+    }
+   ],
+   "note": "강화 공격 시 받는 피해 20% 감소 6초"
+  },
+  "enh": {
+   "do": [
+    {
+     "a": "dmg",
+     "to": "around:front",
+     "pct": 80
+    }
+   ],
+   "note": "가방 휘두르기: 주변 범위 피해"
+  },
+  "aside2": {
+   "fx": [
+    {
+     "t": "skill",
+     "which": "fresh",
+     "do": [
+      {
+       "a": "untarget",
+       "dur": 3
+      },
+      {
+       "a": "buff",
+       "to": "row",
+       "mods": {
+        "atk": 10
+       },
+       "dur": 6,
+       "key": "guin_a2"
+      }
+     ]
+    }
+   ],
+   "note": "저학년 사용 시 눈속임 + 안개 위 아군 공격력 증가"
+  },
+  "aside3": {
+   "mods": {
+    "dmg_taken": -5
+   },
+   "scope": "team",
+   "note": "모든 아군 받는 피해 감소"
+  }
+ },
+ "pira": {
+  "fresh": {
+   "do": [
+    {
+     "a": "dmg",
+     "to": "row_front",
+     "pct": 130
+    },
+    {
+     "a": "debuff",
+     "to": "row_front",
+     "mods": {
+      "aspd": -25
+     },
+     "dur": 6,
+     "key": "pira_shard"
+    }
+   ],
+   "note": "조각상 파편: 앞열 범위 피해 + 공속 25% 감소"
+  },
+  "senior": {
+   "do": [
+    {
+     "a": "dmg",
+     "to": "all",
+     "pct": 130,
+     "hits": 9
+    },
+    {
+     "a": "buff",
+     "to": "allies",
+     "mods": {
+      "crit": 20
+     },
+     "dur": 8,
+     "key": "pira_gold"
+    }
+   ],
+   "cd": 20,
+   "note": "금구슬: 적 전체 9회 + 아군 치명타 20% (부유함 강화는 생략)"
+  },
+  "passive": {
+   "fx": [
+    {
+     "t": "skill",
+     "which": "any",
+     "do": [
+      {
+       "a": "buff",
+       "to": "row",
+       "mods": {
+        "atk": 10
+       },
+       "dur": 5,
+       "key": "pira_wealth"
+      }
+     ]
+    }
+   ],
+   "note": "부유함 획득 시 후열 공격력 10% → 스킬 사용마다 같은 열 공격력 10% 5초"
+  },
+  "enh": {
+   "do": [
+    {
+     "a": "dmg",
+     "to": "random:2",
+     "pct": 50
+    },
+    {
+     "a": "debuff",
+     "to": "front",
+     "mods": {
+      "dmg_taken": 15
+     },
+     "dur": 6,
+     "key": "pira_card"
+    }
+   ],
+   "note": "명함 2장: 무작위 피해 + 받는 피해 15% 증가"
+  },
+  "aside2": {
+   "fx": [
+    {
+     "t": "skill_hit",
+     "which": "fresh",
+     "do": [
+      {
+       "a": "debuff",
+       "to": "target",
+       "mods": {
+        "critres": -10
+       },
+       "dur": 5
+      }
+     ]
+    },
+    {
+     "t": "skill",
+     "which": "senior",
+     "do": [
+      {
+       "a": "heal",
+       "to": "lowest",
+       "pct": 6
+      },
+      {
+       "a": "buff",
+       "to": "lowest",
+       "mods": {
+        "critdmg": 15
+       },
+       "dur": 6,
+       "key": "pira_gift"
+      }
+     ]
+    }
+   ],
+   "note": "저학년 적중 적 치명 저항 감소, 고학년 후 HP 낮은 아군 경품(회복·치명 피해)"
+  },
+  "aside3": {
+   "mods": {
+    "crit": 5,
+    "critdmg": 5
+   },
+   "scope": "team",
+   "note": "모든 아군 치명타·치명 피해 증가"
+  }
+ },
+ "silvia": {
+  "fresh": {
+   "do": [
+    {
+     "a": "buff",
+     "to": "self",
+     "mods": {
+      "regen": 3
+     },
+     "dur": 6,
+     "key": "silvia_tea"
+    },
+    {
+     "a": "debuff",
+     "to": "row_front",
+     "mods": {
+      "dmg_taken": 15
+     },
+     "dur": 6,
+     "key": "silvia_tea_d"
+    },
+    {
+     "a": "buff",
+     "to": "allies",
+     "mods": {
+      "aspd": 10
+     },
+     "dur": 8,
+     "key": "silvia_guest"
+    }
+   ],
+   "note": "티파티: 자신 지속 회복, 주변 적 받는 피해 증가, 초청객(아군 공속)"
+  },
+  "senior": {
+   "do": [
+    {
+     "a": "dmg",
+     "to": "row_front",
+     "pct": 150
+    },
+    {
+     "a": "shield",
+     "to": "allies",
+     "pct_hp": 15,
+     "dur": 6
+    },
+    {
+     "a": "buff",
+     "to": "allies",
+     "mods": {
+      "dmg_taken": -10
+     },
+     "dur": 8,
+     "key": "silvia_bell"
+    }
+   ],
+   "cd": 20,
+   "note": "은분수: 앞열 범위 피해 + 아군 은방울 보호막, 이후 받는 피해 감소"
+  },
+  "enh": {
+   "do": [
+    {
+     "a": "dmg",
+     "to": "high_atk",
+     "pct": 60
+    },
+    {
+     "a": "debuff",
+     "to": "high_atk",
+     "mods": {
+      "dmg": -15
+     },
+     "dur": 5,
+     "key": "silvia_dress"
+    }
+   ],
+   "note": "치장: 공격력 최고 적 피해 + 주는 피해 감소"
+  },
+  "aside2": {
+   "fx": [
+    {
+     "t": "skill",
+     "which": "fresh",
+     "do": [
+      {
+       "a": "shield",
+       "to": "allies",
+       "pct": 12,
+       "dur": 6
+      }
+     ]
+    },
+    {
+     "t": "skill",
+     "which": "senior",
+     "do": [
+      {
+       "a": "buff",
+       "to": "allies",
+       "mods": {
+        "sp_regen": 30
+       },
+       "dur": 5,
+       "key": "silvia_a2"
+      }
+     ]
+    }
+   ],
+   "note": "티파티 중 아군 보호막, 고학년이 아군 SP 회복"
+  },
+  "aside3": {
+   "mods": {
+    "skill_dmg": 6
+   },
+   "scope": "team",
+   "note": "모든 아군 스킬 피해 증가"
+  }
+ },
+ "rollett": {
+  "fresh": {
+   "do": [
+    {
+     "a": "dmg",
+     "to": "row_back",
+     "pct": 150
+    }
+   ],
+   "note": "비둘기 마술: 가장 먼 적 쪽 범위 피해"
+  },
+  "senior": {
+   "do": [
+    {
+     "a": "dmg",
+     "to": "all",
+     "pct": 170,
+     "status": {
+      "s": "stun",
+      "dur": 1
+     }
+    }
+   ],
+   "cd": 20,
+   "note": "폭발 상자: 최대 6명 범위 피해 + 기절 (26초 → 20초, 기절 3 → 1초)"
+  },
+  "enh": {
+   "do": [
+    {
+     "a": "dmg",
+     "to": "row_back",
+     "pct": 40,
+     "status": {
+      "s": "burn",
+      "dur": 3
+     }
+    }
+   ],
+   "note": "강화 화염구: 가장 먼 적 쪽 범위 + 화상"
+  },
+  "aside2": {
+   "mods": {
+    "skill_dmg": 10
+   },
+   "fx": [
+    {
+     "t": "start",
+     "do": [
+      {
+       "a": "sp_pct",
+       "pct": 30
+      }
+     ]
+    },
+    {
+     "t": "skill_hit",
+     "which": "fresh",
+     "do": [
+      {
+       "a": "debuff",
+       "to": "target",
+       "mods": {
+        "atk": -15
+       },
+       "dur": 5
+      }
+     ]
+    }
+   ],
+   "note": "스킬 피해 증가, 시작 시 SP 회복, 저학년 적중 적 공격력 감소(3효과 중 하나)"
+  },
+  "aside3": {
+   "mods": {
+    "dmg": 6,
+    "dmg_taken": -6
+   },
+   "scope": "row",
+   "note": "후열 아군 피해 증가·받는 피해 감소 (자신 열)"
+  }
+ },
+ "sherum": {
+  "fresh": {
+   "do": [
+    {
+     "a": "buff",
+     "to": "row",
+     "mods": {
+      "atk": 10
+     },
+     "dur": 8,
+     "key": "sherum_curtain"
+    },
+    {
+     "a": "dmg",
+     "to": "row_front",
+     "pct": 140,
+     "hits": 7
+    }
+   ],
+   "note": "전승의 커튼: 같은 열 아군 공격력 + 앞열 적 7회"
+  },
+  "senior": {
+   "do": [
+    {
+     "a": "dmg",
+     "to": "around:front",
+     "pct": 220,
+     "hits": 9
+    },
+    {
+     "a": "debuff",
+     "to": "around:front",
+     "mods": {
+      "aspd": -25
+     },
+     "dur": 8,
+     "key": "sherum_regret"
+    }
+   ],
+   "cd": 20,
+   "note": "회한의 영역: 9회 범위 + 공속 감소 (40초 → 20초)"
+  },
+  "passive": {
+   "fx": [
+    {
+     "t": "hp_below",
+     "pct": 50,
+     "do": [
+      {
+       "a": "shield",
+       "to": "self",
+       "pct": 30,
+       "dur": 6
+      }
+     ]
+    }
+   ],
+   "note": "HP 50% 미만 시 보호막 30% 6초 (1회)"
+  },
+  "enh": {
+   "do": [
+    {
+     "a": "dmg",
+     "to": "row_front",
+     "pct": 50
+    }
+   ],
+   "note": "전방 범위 공격 (쿨 감소는 미지원)"
+  },
+  "aside2": {
+   "fx": [
+    {
+     "t": "skill",
+     "which": "senior",
+     "do": [
+      {
+       "a": "sp_pct",
+       "pct": 15
+      }
+     ]
+    },
+    {
+     "t": "skill_hit",
+     "which": "senior",
+     "do": [
+      {
+       "a": "debuff",
+       "to": "target",
+       "mods": {
+        "dmg_taken": 12
+       },
+       "dur": 5
+      }
+     ]
+    }
+   ],
+   "note": "고학년 사용 시 SP 회복 + 첫 타격 적 받는 피해 증가"
+  },
+  "aside3": {
+   "mods": {
+    "crit": 5,
+    "critdmg": 5
+   },
+   "scope": "team",
+   "note": "모든 아군 치명타·치명 피해 증가"
+  }
+ },
+ "ashur": {
+  "fresh": {
+   "do": [
+    {
+     "a": "dmg",
+     "to": "random:6",
+     "pct": 50
+    }
+   ],
+   "note": "빵 6개 무작위 발사"
+  },
+  "senior": {
+   "do": [
+    {
+     "a": "dmg",
+     "to": "front",
+     "pct": 200,
+     "status": {
+      "s": "stun",
+      "dur": 1.5
+     }
+    },
+    {
+     "a": "dmg",
+     "to": "random:3",
+     "pct": 70
+    }
+   ],
+   "cd": 20,
+   "note": "거대 케이크: 기절 + 케이크 조각 3명 튕김 (28초 → 20초)"
+  },
+  "passive": {
+   "fx": [
+    {
+     "t": "hp_below",
+     "pct": 50,
+     "do": [
+      {
+       "a": "shield",
+       "to": "self",
+       "pct": 30,
+       "dur": 6
+      }
+     ]
+    }
+   ],
+   "note": "HP 50% 이하 시 보호막 30% 6초 (1회)"
+  },
+  "enh": {
+   "do": [
+    {
+     "a": "dmg",
+     "to": "around:front",
+     "pct": 40,
+     "status": {
+      "s": "burn",
+      "dur": 3
+     }
+    }
+   ],
+   "note": "불타는 빵: 튕기는 부스러기 + 화상"
+  }
+ },
+ "momo": {
+  "fresh": {
+   "do": [
+    {
+     "a": "dmg",
+     "to": "random:4",
+     "pct": 60
+    },
+    {
+     "a": "dmg",
+     "to": "around:front",
+     "pct": 70,
+     "status": {
+      "s": "shock",
+      "dur": 2
+     }
+    }
+   ],
+   "note": "분신 소환 → 무작위 공격 + 자폭 범위 피해·감전으로 대체"
+  },
+  "senior": {
+   "do": [
+    {
+     "a": "dmg",
+     "to": "row_back",
+     "pct": 230,
+     "hits": 4
+    },
+    {
+     "a": "dmg",
+     "to": "random:3",
+     "pct": 40
+    }
+   ],
+   "cd": 20,
+   "note": "가장 먼 적 뒤에서 4회 범위 + 남긴 분신 공격 (30초 → 20초)"
+  },
+  "passive": {
+   "fx": [
+    {
+     "t": "damaged",
+     "cd": 15,
+     "do": [
+      {
+       "a": "untarget",
+       "dur": 1.5
+      },
+      {
+       "a": "buff",
+       "to": "self",
+       "mods": {
+        "atk": 16,
+        "dmg_taken": -16
+       },
+       "dur": 6,
+       "key": "momo_trick"
+      }
+     ]
+    }
+   ],
+   "note": "피격 시 날쌘 계략: 타겟 불가 + 공격력 증가·받는 피해 감소 (15초 쿨)"
+  },
+  "aside2": {
+   "fx": [
+    {
+     "t": "skill",
+     "which": "fresh",
+     "do": [
+      {
+       "a": "sp_pct",
+       "pct": 10
+      }
+     ]
+    },
+    {
+     "t": "skill",
+     "which": "senior",
+     "do": [
+      {
+       "a": "buff",
+       "to": "self",
+       "mods": {
+        "dmg_taken": -40
+       },
+       "dur": 3,
+       "key": "momo_a2"
+      }
+     ]
+    }
+   ],
+   "note": "분신 소멸 시 SP 회복, 고학년 사용 시 받는 피해 40% 감소 3초"
+  },
+  "aside3": {
+   "mods": {
+    "dmg": 5,
+    "dmg_taken": -3
+   },
+   "scope": "team",
+   "note": "모든 아군 피해 증가·받는 피해 감소"
+  }
+ },
+ "sylla": {
+  "fresh": {
+   "do": [
+    {
+     "a": "dmg",
+     "to": "back",
+     "pct": 380,
+     "hits": 5
+    }
+   ],
+   "note": "가장 먼 적에게 화살 5발"
+  },
+  "senior": {
+   "do": [
+    {
+     "a": "dmg",
+     "to": "back",
+     "pct": 560
+    }
+   ],
+   "cd": 18,
+   "note": "바람의 정령: 가장 먼 적 단일 강타"
+  },
+  "passive": {
+   "mods": {
+    "normal_dmg": 25
+   },
+   "note": "기본 공격 피해 25% 증가"
+  },
+  "aside2": {
+   "mods": {
+    "aspd": 10
+   },
+   "fx": [
+    {
+     "t": "normal_hit",
+     "chance": 20,
+     "do": [
+      {
+       "a": "extra",
+       "pct": 60
+      }
+     ]
+    }
+   ],
+   "note": "공격 속도 증가 + 일반 공격 적중 시 확률로 회오리 추가 피해"
+  },
+  "aside3": {
+   "mods": {
+    "crit": 5,
+    "critdmg": 5
+   },
+   "scope": "team",
+   "note": "모든 아군 치명타·치명 피해 증가"
+  }
+ },
+ "ner": {
+  "fresh": {
+   "do": [
+    {
+     "a": "invuln",
+     "dur": 2
+    },
+    {
+     "a": "buff",
+     "to": "allies",
+     "mods": {
+      "dmg": 18
+     },
+     "dur": 8,
+     "key": "ner_tree"
+    }
+   ],
+   "note": "세계수의 힘: 자신 무적 2초 + 모든 아군 피해량 18%"
+  },
+  "senior": {
+   "do": [
+    {
+     "a": "buff",
+     "to": "allies",
+     "mods": {
+      "dmg_taken": -12
+     },
+     "dur": 6,
+     "key": "ner_bless"
+    },
+    {
+     "a": "dmg",
+     "to": "row_front",
+     "pct": 150
+    }
+   ],
+   "cd": 20,
+   "note": "엘드르의 축복: 아군 받는 피해 12% 감소 + 앞열 범위 피해"
+  },
+  "passive": {
+   "fx": [
+    {
+     "t": "start",
+     "do": [
+      {
+       "a": "buff",
+       "to": "row",
+       "mods": {
+        "sp_regen": 10
+       },
+       "dur": 60,
+       "key": "ner_passive"
+      }
+     ]
+    }
+   ],
+   "note": "2초마다 자신·주변 SP 회복 → 같은 열 SP 회복 속도 10%"
+  },
+  "aside2": {
+   "fx": [
+    {
+     "t": "normal_hit",
+     "cd": 1,
+     "do": [
+      {
+       "a": "buff",
+       "to": "self",
+       "mods": {
+        "dmg_taken": -4
+       },
+       "dur": 3,
+       "key": "ner_a2",
+       "stack": 3
+      },
+      {
+       "a": "heal",
+       "to": "self",
+       "pct": 1
+      }
+     ]
+    },
+    {
+     "t": "skill",
+     "which": "senior",
+     "do": [
+      {
+       "a": "invuln",
+       "dur": 1.5
+      }
+     ]
+    }
+   ],
+   "note": "일반 공격 적중 시 받는 피해 감소·HP 회복, 고학년 사용 시 무적"
+  },
+  "aside3": {
+   "mods": {
+    "dmg": 4,
+    "dmg_taken": -4
+   },
+   "scope": "team",
+   "note": "모든 아군 피해 증가·받는 피해 감소"
+  }
+ },
+ "ronnie": {
+  "fresh": {
+   "do": [
+    {
+     "a": "dmg",
+     "to": "high_atk",
+     "pct": 300
+    },
+    {
+     "a": "debuff",
+     "to": "high_atk",
+     "mods": {
+      "dmg_taken": 10,
+      "sp_regen": -40
+     },
+     "dur": 6,
+     "key": "ronnie_shock"
+    }
+   ],
+   "note": "충격파: 공격력 최고 적(무법자) 피해 + 받는 스킬 피해 증가·침묵(SP 회복 감소)"
+  },
+  "senior": {
+   "do": [
+    {
+     "a": "invuln",
+     "dur": 1.5
+    },
+    {
+     "a": "untarget",
+     "dur": 1.5
+    },
+    {
+     "a": "dmg",
+     "to": "high_atk",
+     "pct": 450,
+     "hits": 6
+    },
+    {
+     "a": "execute",
+     "to": "high_atk",
+     "below": 15
+    }
+   ],
+   "cd": 20,
+   "note": "순간 이동 6연타 + HP 15% 이하 처치, 시전 중 무적"
+  },
+  "enh": {
+   "do": [
+    {
+     "a": "debuff",
+     "to": "high_atk",
+     "mods": {
+      "dmg_taken": 15
+     },
+     "dur": 8,
+     "key": "ronnie_outlaw"
+    },
+    {
+     "a": "status",
+     "to": "high_atk",
+     "s": "bitter",
+     "dur": 4
+    }
+   ],
+   "note": "무법자 지정: 공격력 최고 적 받는 피해 15% 증가 + 쓰라림"
+  },
+  "aside2": {
+   "fx": [
+    {
+     "t": "kill",
+     "do": [
+      {
+       "a": "buff",
+       "to": "allies",
+       "mods": {
+        "dmg": 10
+       },
+       "dur": 6,
+       "key": "ronnie_a2"
+      },
+      {
+       "a": "buff",
+       "to": "self",
+       "mods": {
+        "dmg_taken": -15
+       },
+       "dur": 6,
+       "key": "ronnie_a2s"
+      }
+     ]
+    }
+   ],
+   "note": "무법자 처치 시 모든 아군 피해 증가·자신 받는 피해 감소"
+  },
+  "aside3": {
+   "mods": {
+    "dmg": 5
+   },
+   "scope": "team",
+   "note": "모든 아군 피해 증가"
+  }
+ },
+ "skea": {
+  "fresh": {
+   "do": [
+    {
+     "a": "dmg",
+     "to": "around:front",
+     "pct": 80,
+     "hits": 4
+    },
+    {
+     "a": "debuff",
+     "to": "around:front",
+     "mods": {
+      "sp_regen": -40
+     },
+     "dur": 4,
+     "key": "skea_knot"
+    }
+   ],
+   "note": "언약의 매듭: 주변 적 반복 범위 피해 + 침묵(SP 회복 감소)"
+  },
+  "senior": {
+   "do": [
+    {
+     "a": "dmg",
+     "to": "back",
+     "pct": 240,
+     "hits": 9
+    },
+    {
+     "a": "dmg",
+     "to": "around:front",
+     "pct": 50,
+     "status": {
+      "s": "stun",
+      "dur": 1
+     }
+    }
+   ],
+   "cd": 20,
+   "note": "문양 9회 + 매듭 폭발 기절"
+  },
+  "enh": {
+   "do": [
+    {
+     "a": "sp",
+     "to": "self",
+     "pct": 10
+    },
+    {
+     "a": "buff",
+     "to": "back_ally",
+     "mods": {
+      "skill_dmg": 15
+     },
+     "dur": 6,
+     "key": "skea_bolt"
+    }
+   ],
+   "note": "SP 회복 + 딜러 아군(후열로 근사) 스킬 피해 증가"
+  },
+  "aside2": {
+   "fx": [
+    {
+     "t": "skill_hit",
+     "which": "fresh",
+     "do": [
+      {
+       "a": "debuff",
+       "to": "target",
+       "mods": {
+        "dmg_taken": 10
+       },
+       "dur": 5
+      }
+     ]
+    }
+   ],
+   "power": 20,
+   "note": "매듭 강화: 영역 적 받는 스킬 피해 증가, 저학년 피해 2배(power)"
+  },
+  "aside3": {
+   "mods": {
+    "dmg": 8
+   },
+   "scope": "row",
+   "note": "후열 아군 피해 증가 (자신 열)"
+  }
+ },
+ "polan": {
+  "fresh": {
+   "do": [
+    {
+     "a": "heal",
+     "to": "allies",
+     "pct_atk": 150
+    },
+    {
+     "a": "buff",
+     "to": "allies",
+     "mods": {
+      "skill_dmg": 25
+     },
+     "dur": 8,
+     "key": "polan_morale"
+    },
+    {
+     "a": "invuln",
+     "dur": 2
+    }
+   ],
+   "note": "사기 진작: 모든 아군 회복 + 스킬 피해 25% + 자신(후열) 무적"
+  },
+  "senior": {
+   "do": [
+    {
+     "a": "dmg",
+     "to": "row_front",
+     "pct": 180
+    },
+    {
+     "a": "buff",
+     "to": "allies",
+     "mods": {
+      "hp": 15
+     },
+     "dur": 6,
+     "key": "polan_cannon"
+    },
+    {
+     "a": "heal",
+     "to": "allies",
+     "pct_hp": 8
+    }
+   ],
+   "cd": 17,
+   "note": "대포: 앞열 범위 피해 + 아군 최대 HP 15%·회복"
+  },
+  "enh": {
+   "do": [
+    {
+     "a": "buff",
+     "to": "lowest",
+     "mods": {
+      "regen": 2.5
+     },
+     "dur": 6,
+     "key": "polan_musket"
+    }
+   ],
+   "note": "장전: HP 낮은 아군 지속 회복"
+  },
+  "aside2": {
+   "fx": [
+    {
+     "t": "normal_n",
+     "n": 4,
+     "do": [
+      {
+       "a": "debuff",
+       "to": "target",
+       "mods": {
+        "def": -15
+       },
+       "dur": 3
+      }
+     ]
+    },
+    {
+     "t": "skill",
+     "which": "senior",
+     "do": [
+      {
+       "a": "buff",
+       "to": "allies",
+       "mods": {
+        "dmg": 15
+       },
+       "dur": 6,
+       "key": "polan_a2"
+      }
+     ]
+    }
+   ],
+   "note": "강화 공격 적 방어력 감소, 고학년 사용 시 아군 피해 증가"
+  },
+  "aside3": {
+   "mods": {
+    "dmg": 6,
+    "dmg_taken": -4
+   },
+   "scope": "team",
+   "note": "모든 아군 피해 증가·받는 피해 감소"
+  }
+ },
+ "haley": {
+  "fresh": {
+   "do": [
+    {
+     "a": "dmg",
+     "to": "row_front",
+     "pct": 170,
+     "hits": 3,
+     "status": {
+      "s": "bitter",
+      "dur": 5
+     }
+    }
+   ],
+   "note": "채찍 3회: 앞열 범위 피해 + 쓰라림"
+  },
+  "senior": {
+   "do": [
+    {
+     "a": "dmg",
+     "to": "all",
+     "pct": 190,
+     "hits": 7
+    },
+    {
+     "a": "status",
+     "to": "all",
+     "s": "blind",
+     "dur": 5
+    }
+   ],
+   "cd": 20,
+   "note": "연막탄: 적 전체 지속 피해 + 눈가림 (32초 → 20초)"
+  },
+  "passive": {
+   "fx": [
+    {
+     "t": "cond",
+     "cond": "vs_status:bitter",
+     "mods": {
+      "dmg": 10
+     }
+    },
+    {
+     "t": "cond",
+     "cond": "vs_status:burn",
+     "mods": {
+      "dmg": 10
+     }
+    }
+   ],
+   "note": "쓰라림·화상 상태 적에게 상태 수만큼 추가 피해"
+  },
+  "enh": {
+   "do": [
+    {
+     "a": "buff",
+     "to": "self",
+     "mods": {
+      "patk": 20,
+      "mdef": 30
+     },
+     "dur": 6,
+     "key": "haley_whip"
+    }
+   ],
+   "note": "강화 채찍: 물리 공격력 20%·마법 방어력 30% 6초"
+  },
+  "aside2": {
+   "fx": [
+    {
+     "t": "normal_n",
+     "n": 4,
+     "do": [
+      {
+       "a": "buff",
+       "to": "row",
+       "mods": {
+        "atk": 10,
+        "def": 10
+       },
+       "dur": 6,
+       "key": "haley_a2"
+      }
+     ]
+    },
+    {
+     "t": "skill",
+     "which": "senior",
+     "do": [
+      {
+       "a": "strike",
+       "mode": "front",
+       "pct": 150
+      }
+     ]
+    }
+   ],
+   "note": "강화 공격 시 같은 열 공격력·방어력, 고학년 사용 시 전함 포격"
+  },
+  "aside3": {
+   "mods": {
+    "dmg_taken": -5
+   },
+   "scope": "team",
+   "note": "모든 아군 받는 피해 감소"
+  }
+ },
+ "leets": {
+  "fresh": {
+   "do": [
+    {
+     "a": "buff",
+     "to": "self",
+     "mods": {
+      "dmg_taken": -40,
+      "dmg": 25
+     },
+     "dur": 3,
+     "key": "leets_focus"
+    },
+    {
+     "a": "dmg",
+     "to": "row_front",
+     "pct": 200,
+     "status": {
+      "s": "bitter",
+      "dur": 6
+     }
+    }
+   ],
+   "note": "집중: 받는 피해 40% 감소 + 피해 증가, 끝나면 앞열 범위 피해 + 쓰라림"
+  },
+  "senior": {
+   "do": [
+    {
+     "a": "dmg",
+     "to": "around:front",
+     "pct": 200,
+     "hits": 3
+    }
+   ],
+   "cd": 20,
+   "note": "3연속 베기 범위 피해 (30초 → 20초)"
+  },
+  "passive": {
+   "mods": {
+    "dmg": 15,
+    "dmg_taken": -10
+   },
+   "note": "타겟 적에게 주는 피해 증가·받는 피해 감소 (상시로 근사)"
+  },
+  "enh": {
+   "do": [
+    {
+     "a": "dmg",
+     "to": "around:front",
+     "pct": 60,
+     "status": {
+      "s": "stun",
+      "dur": 1
+     }
+    }
+   ],
+   "note": "범위 공격 + 넉백(기절 1초)"
+  }
+ },
+ "canna": {
+  "fresh": {
+   "do": [
+    {
+     "a": "dmg",
+     "to": "front",
+     "pct": 360
+    }
+   ],
+   "note": "특수 포탄: 단일 물리 피해"
+  },
+  "senior": {
+   "do": [
+    {
+     "a": "dmg",
+     "to": "low",
+     "pct": 540
+    }
+   ],
+   "cd": 18,
+   "note": "양자폭탄: 추적 단일 강타"
+  },
+  "passive": {
+   "mods": {
+    "hp": 15
+   },
+   "note": "최대 HP 15% (강화 공격 확률은 엔진에 없음)"
+  },
+  "enh": {
+   "do": [
+    {
+     "a": "status",
+     "to": "high_atk",
+     "s": "stun",
+     "dur": 1.5,
+     "chance": 50
+    }
+   ],
+   "note": "강화 대포: 공격력 최고 적 50% 확률 기절"
+  },
+  "aside2": {
+   "fx": [
+    {
+     "t": "skill",
+     "which": "fresh",
+     "do": [
+      {
+       "a": "buff",
+       "to": "self",
+       "mods": {
+        "aspd": 25
+       },
+       "dur": 6,
+       "key": "canna_a2"
+      }
+     ]
+    }
+   ],
+   "note": "저학년 사용 후 공격 속도 증가"
+  },
+  "aside3": {
+   "mods": {
+    "dmg_taken": -8
+   },
+   "scope": "row",
+   "note": "후열 아군 받는 피해 감소 (자신 열)"
+  }
+ },
+ "kathy": {
+  "fresh": {
+   "do": [
+    {
+     "a": "dmg",
+     "to": "random:3",
+     "pct": 110
+    },
+    {
+     "a": "debuff",
+     "to": "front",
+     "mods": {
+      "dmg_taken": 12
+     },
+     "dur": 6,
+     "key": "kathy_taser"
+    }
+   ],
+   "note": "연쇄 테이저 3명 + 받는 스킬 피해 증가"
+  },
+  "senior": {
+   "do": [
+    {
+     "a": "invuln",
+     "dur": 1.5
+    },
+    {
+     "a": "untarget",
+     "dur": 1.5
+    },
+    {
+     "a": "dmg",
+     "to": "around:front",
+     "pct": 230
+    },
+    {
+     "a": "status",
+     "to": "front",
+     "s": "stun",
+     "dur": 1
+    }
+   ],
+   "cd": 20,
+   "note": "가방 비행: 범위 피해 + 놀람(기절 1초), 시전 중 무적"
+  },
+  "enh": {
+   "do": [
+    {
+     "a": "dmg",
+     "to": "around:front",
+     "pct": 60
+    },
+    {
+     "a": "sp",
+     "to": "self",
+     "pct": 8
+    }
+   ],
+   "note": "과충전 테이저: 범위 피해 + SP 회복"
+  },
+  "aside2": {
+   "fx": [
+    {
+     "t": "normal_hit",
+     "do": [
+      {
+       "a": "sp",
+       "amt": 2
+      }
+     ]
+    },
+    {
+     "t": "skill_hit",
+     "which": "senior",
+     "do": [
+      {
+       "a": "extra",
+       "pct": 60
+      },
+      {
+       "a": "debuff",
+       "to": "target",
+       "mods": {
+        "aspd": -20,
+        "sp_regen": -30
+       },
+       "dur": 4
+      }
+     ]
+    }
+   ],
+   "note": "기본 공격 적중 시 SP, 고학년 후 불가사의 현상(추가 피해·공속·SP 감소)"
+  },
+  "aside3": {
+   "mods": {
+    "dmg": 6,
+    "dmg_taken": -6
+   },
+   "scope": "row",
+   "note": "후열 아군 피해 증가·받는 피해 감소 (자신 열)"
+  }
+ },
+ "raika": {
+  "fresh": {
+   "do": [
+    {
+     "a": "cleanse",
+     "to": "self"
+    },
+    {
+     "a": "buff",
+     "to": "self",
+     "mods": {
+      "dmg": 20
+     },
+     "dur": 8,
+     "key": "raika_charge"
+    },
+    {
+     "a": "buff",
+     "to": "front_ally",
+     "mods": {
+      "mdef": 25
+     },
+     "dur": 8,
+     "key": "raika_guard"
+    }
+   ],
+   "note": "번개 자극: 상태 해제·피해 증가 + 전열 아군 받는 마법 피해 감소(마법 방어력)"
+  },
+  "senior": {
+   "do": [
+    {
+     "a": "dmg",
+     "to": "row_front",
+     "pct": 230,
+     "status": {
+      "s": "stun",
+      "dur": 1.5
+     }
+    },
+    {
+     "a": "buff",
+     "to": "self",
+     "mods": {
+      "aspd": 40
+     },
+     "dur": 8,
+     "key": "raika_max"
+    }
+   ],
+   "cd": 20,
+   "note": "착지 전기 방출 + 최대 출력!(공속 40%)"
+  },
+  "enh": {
+   "do": [
+    {
+     "a": "dmg",
+     "to": "row_front",
+     "pct": 80
+    }
+   ],
+   "note": "전방 질주 범위 피해"
+  },
+  "aside2": {
+   "fx": [
+    {
+     "t": "skill",
+     "which": "fresh",
+     "do": [
+      {
+       "a": "strike",
+       "mode": "front",
+       "pct": 80
+      },
+      {
+       "a": "strike",
+       "mode": "back",
+       "pct": 80
+      }
+     ]
+    }
+   ],
+   "note": "급속충전 발동 시 번개 주먹 무작위 낙하"
+  },
+  "aside3": {
+   "mods": {
+    "dmg": 6,
+    "dmg_taken": -6
+   },
+   "scope": "row",
+   "note": "전열 아군 피해 증가·받는 피해 감소 (자신 열)"
+  }
+ },
+ "shaydi": {
+  "fresh": {
+   "do": [
+    {
+     "a": "dmg",
+     "to": "back",
+     "pct": 380,
+     "hits": 13
+    },
+    {
+     "a": "debuff",
+     "to": "back",
+     "mods": {
+      "sp_regen": -40
+     },
+     "dur": 4,
+     "key": "shaydi_sp"
+    }
+   ],
+   "note": "가장 먼 적 13연타 + SP 감소"
+  },
+  "senior": {
+   "do": [
+    {
+     "a": "dmg",
+     "to": "random:6",
+     "pct": 90
+    },
+    {
+     "a": "debuff",
+     "to": "all",
+     "mods": {
+      "sp_regen": -30
+     },
+     "dur": 6,
+     "key": "shaydi_silence"
+    }
+   ],
+   "cd": 18,
+   "note": "차원 이동: 무작위 6회 + 침묵(SP 회복 감소)"
+  },
+  "passive": {
+   "fx": [
+    {
+     "t": "damaged",
+     "cd": 1,
+     "do": [
+      {
+       "a": "sp",
+       "amt": 3
+      }
+     ]
+    }
+   ],
+   "note": "직접 피해를 받으면 SP 회복 (1초에 1번)"
+  }
+ },
+ "rim": {
+  "fresh": {
+   "do": [
+    {
+     "a": "heal",
+     "to": "self",
+     "pct_hp": 10
+    },
+    {
+     "a": "dmg",
+     "to": "row_front",
+     "pct": 180,
+     "status": {
+      "s": "bitter",
+      "dur": 6
+     }
+    },
+    {
+     "a": "status",
+     "to": "row_front",
+     "s": "stun",
+     "dur": 1
+    }
+   ],
+   "note": "어둠: 자신 회복 + 범위 참격·쓰라림·넉백(기절 1초)"
+  },
+  "senior": {
+   "do": [
+    {
+     "a": "dmg",
+     "to": "row_front",
+     "pct": 240,
+     "hits": 2,
+     "status": {
+      "s": "stun",
+      "dur": 1
+     }
+    },
+    {
+     "a": "heal",
+     "to": "self",
+     "pct_hp": 15
+    }
+   ],
+   "cd": 20,
+   "note": "그림 해방: 2회 범위 + 넉백, 피해 비례 회복 (56초 → 20초)"
+  },
+  "passive": {
+   "fx": [
+    {
+     "t": "kill",
+     "do": [
+      {
+       "a": "heal",
+       "to": "self",
+       "pct": 12
+      }
+     ]
+    }
+   ],
+   "note": "직접 피해로 처치 시 HP 12% 회복"
+  },
+  "aside2": {
+   "mods": {
+    "skill_dmg": 10
+   },
+   "fx": [
+    {
+     "t": "cond",
+     "cond": "vs_status:bitter",
+     "mods": {
+      "patk": 15
+     }
+    }
+   ],
+   "note": "쓰라림 적에게 물리 공격력 증가 + 스킬 피해 증가"
+  },
+  "aside3": {
+   "mods": {
+    "pdef": 6
+   },
+   "scope": "team",
+   "note": "모든 아군 받는 물리 피해 감소 → 물리 방어력"
+  }
+ },
+ "belita": {
+  "fresh": {
+   "do": [
+    {
+     "a": "dmg",
+     "to": "all",
+     "pct": 190
+    }
+   ],
+   "note": "차원 폭발: 적 전체 범위 피해"
+  },
+  "senior": {
+   "do": [
+    {
+     "a": "dmg",
+     "to": "all",
+     "pct": 240,
+     "hits": 12
+    }
+   ],
+   "cd": 20,
+   "note": "크림슨 레인: 적 전체 12회 (22초 → 20초)"
+  },
+  "passive": {
+   "fx": [
+    {
+     "t": "start",
+     "do": [
+      {
+       "a": "debuff",
+       "to": "enemies",
+       "mods": {
+        "dmg_taken": 6
+       },
+       "dur": 60,
+       "key": "belita_passive"
+      }
+     ]
+    }
+   ],
+   "note": "적 전열 받는 피해 증가 → 엔진에 열 지정 없음, 적 전체 6%로 근사"
+  },
+  "aside2": {
+   "power": 30,
+   "note": "고학년 2번 사용 → 스킬 위력 증가(power)"
+  },
+  "aside3": {
+   "mods": {
+    "dmg": 6,
+    "dmg_taken": -6
+   },
+   "scope": "row",
+   "note": "후열 아군 피해 증가·받는 피해 감소 (자신 열)"
+  }
+ },
+ "snorky": {
+  "fresh": {
+   "do": [
+    {
+     "a": "shield",
+     "to": "front_ally",
+     "pct_hp": 24,
+     "dur": 6
+    },
+    {
+     "a": "debuff",
+     "to": "row_front",
+     "mods": {
+      "pdef": -25
+     },
+     "dur": 5,
+     "key": "snorky_soy"
+    },
+    {
+     "a": "buff",
+     "to": "self",
+     "mods": {
+      "regen": 2
+     },
+     "dur": 6,
+     "key": "snorky_regen"
+    }
+   ],
+   "note": "불법 두유: 전열 아군 보호막 + 주변 적 물리 방어력 감소 + 지속 회복"
+  },
+  "senior": {
+   "do": [
+    {
+     "a": "dmg",
+     "to": "row_front",
+     "pct": 180,
+     "status": {
+      "s": "stun",
+      "dur": 1.5
+     }
+    },
+    {
+     "a": "taunt",
+     "dur": 2
+    }
+   ],
+   "cd": 20,
+   "note": "내려찍기: 앞열 범위 피해 + 넉백(기절) (28초 → 20초)"
+  },
+  "passive": {
+   "fx": [
+    {
+     "t": "normal_n",
+     "n": 4,
+     "do": [
+      {
+       "a": "buff",
+       "to": "self",
+       "mods": {
+        "dmg": 24,
+        "dmg_taken": -12
+       },
+       "dur": 3,
+       "key": "snorky_p"
+      }
+     ]
+    }
+   ],
+   "note": "강화 공격 시 피해 증가·받는 피해 감소 3초"
+  },
+  "enh": {
+   "do": [
+    {
+     "a": "dmg",
+     "to": "around:front",
+     "pct": 80
+    }
+   ],
+   "note": "날아차기: 범위 피해"
+  },
+  "aside2": {
+   "fx": [
+    {
+     "t": "start",
+     "do": [
+      {
+       "a": "shield",
+       "to": "row",
+       "pct": 20,
+       "dur": 8
+      },
+      {
+       "a": "buff",
+       "to": "row",
+       "mods": {
+        "dmg": 20
+       },
+       "dur": 8,
+       "key": "snorky_a2"
+      }
+     ]
+    },
+    {
+     "t": "normal_n",
+     "n": 4,
+     "do": [
+      {
+       "a": "buff",
+       "to": "row",
+       "mods": {
+        "dmg_taken": -20
+       },
+       "dur": 3,
+       "key": "snorky_a2b"
+      }
+     ]
+    }
+   ],
+   "note": "시작 시 전열 보호막·피해 증가, 강화 공격 시 주변 받는 피해 감소"
+  },
+  "aside3": {
+   "mods": {
+    "dmg_taken": -5
+   },
+   "scope": "team",
+   "note": "모든 아군 받는 피해 감소"
+  }
+ },
+ "butter": {
+  "fresh": {
+   "do": [
+    {
+     "a": "dmg",
+     "to": "random:4",
+     "pct": 100
+    }
+   ],
+   "note": "튕기는 탄환: 최대 4회 무작위"
+  },
+  "senior": {
+   "do": [
+    {
+     "a": "dmg",
+     "to": "around:front",
+     "pct": 290,
+     "status": {
+      "s": "stun",
+      "dur": 2
+     }
+    }
+   ],
+   "cd": 18,
+   "note": "거대 짱돌: 범위 피해 + 기절 2초"
+  },
+  "passive": {
+   "mods": {
+    "crit": 20
+   },
+   "fx": [
+    {
+     "t": "start",
+     "do": [
+      {
+       "a": "buff",
+       "to": "row",
+       "mods": {
+        "atk": 8
+       },
+       "dur": 60,
+       "key": "butter_passive"
+      }
+     ]
+    }
+   ],
+   "note": "치명타 20% + 활발 성격 아군 공격력 → 같은 열 아군 공격력 8%로 축소"
+  },
+  "enh": {
+   "do": [
+    {
+     "a": "dmg",
+     "to": "front",
+     "pct": 50
+    }
+   ],
+   "note": "개껌 확정 치명타 → 추가 피해"
+  }
+ },
+ "joanne": {
+  "fresh": {
+   "do": [
+    {
+     "a": "buff",
+     "to": "self",
+     "mods": {
+      "atk": 25,
+      "dmg_taken": -10
+     },
+     "dur": 8,
+     "key": "joanne_split"
+    },
+    {
+     "a": "buff",
+     "to": "back_ally",
+     "mods": {
+      "atk": 20,
+      "dmg_taken": -10
+     },
+     "dur": 8,
+     "key": "joanne_split"
+    }
+   ],
+   "note": "분산: 자신과 공격력 높은 아군(후열로 근사) 공격력 증가·받는 피해 감소 (피해 분배는 미지원)"
+  },
+  "senior": {
+   "do": [
+    {
+     "a": "dmg",
+     "to": "row_front",
+     "pct": 200
+    },
+    {
+     "a": "debuff",
+     "to": "row_front",
+     "mods": {
+      "sp_regen": -40
+     },
+     "dur": 6,
+     "key": "joanne_dream"
+    },
+    {
+     "a": "shield",
+     "to": "allies",
+     "pct_hp": 20,
+     "dur": 8
+    }
+   ],
+   "cd": 20,
+   "note": "꿈결 형상: 범위 피해 + 적 고학년 지연(SP 회복 감소) + 아군 보호막 (42초 → 20초)"
+  },
+  "passive": {
+   "fx": [
+    {
+     "t": "start",
+     "do": [
+      {
+       "a": "buff",
+       "to": "allies",
+       "mods": {
+        "atk": 6
+       },
+       "dur": 60,
+       "key": "joanne_passive"
+      }
+     ]
+    }
+   ],
+   "note": "모든 아군 공격력 6% (필드 밖에서도)"
+  },
+  "enh": {
+   "do": [
+    {
+     "a": "buff",
+     "to": "allies",
+     "mods": {
+      "dmg_taken": -8,
+      "normal_dmg": 8,
+      "skill_dmg": 8
+     },
+     "dur": 8,
+     "key": "joanne_enh"
+    }
+   ],
+   "note": "배치 열별 효과(받는 피해 감소/일반 공격/스킬 피해)를 절반씩 합침"
+  },
+  "aside2": {
+   "mods": {
+    "hp": 10
+   },
+   "fx": [
+    {
+     "t": "skill_hit",
+     "which": "senior",
+     "do": [
+      {
+       "a": "status",
+       "to": "target",
+       "s": "stun",
+       "dur": 1.5
+      }
+     ]
+    }
+   ],
+   "note": "최대 HP 증가 + 고학년 대상 기절"
+  },
+  "aside3": {
+   "mods": {
+    "dmg": 5,
+    "dmg_taken": -5
+   },
+   "scope": "team",
+   "note": "모든 아군 피해 증가·받는 피해 감소"
+  }
+ },
+ "erpin": {
+  "fresh": {
+   "do": [
+    {
+     "a": "dmg",
+     "to": "random:3",
+     "pct": 130
+    }
+   ],
+   "note": "마력탄 3개 무작위 범위"
+  },
+  "senior": {
+   "do": [
+    {
+     "a": "dmg",
+     "to": "around:front",
+     "pct": 290
+    }
+   ],
+   "cd": 16,
+   "note": "돌격: 범위 마법 피해"
+  },
+  "passive": {
+   "fx": [
+    {
+     "t": "start",
+     "do": [
+      {
+       "a": "buff",
+       "to": "row",
+       "mods": {
+        "atk": 8
+       },
+       "dur": 60,
+       "key": "erpin_passive"
+      }
+     ]
+    }
+   ],
+   "note": "순수 성격 아군 공격력 → 같은 열 아군 공격력 8%로 축소, 강화 공격 SP 증가는 생략"
+  },
+  "enh": {
+   "do": [
+    {
+     "a": "sp",
+     "to": "self",
+     "pct": 20
+    }
+   ],
+   "note": "몰래 케이크: SP 20% 회복"
+  },
+  "aside2": {
+   "mods": {
+    "aspd": 10
+   },
+   "fx": [
+    {
+     "t": "normal_n",
+     "n": 4,
+     "do": [
+      {
+       "a": "heal",
+       "to": "self",
+       "pct": 5
+      }
+     ]
+    },
+    {
+     "t": "skill",
+     "which": "senior",
+     "do": [
+      {
+       "a": "invuln",
+       "dur": 1.5
+      }
+     ]
+    }
+   ],
+   "note": "공격 속도 + 강화 공격 후 회복 + 고학년 중 무적"
+  },
+  "aside3": {
+   "mods": {
+    "dmg": 6,
+    "dmg_taken": -6
+   },
+   "scope": "row",
+   "note": "후열 아군 피해 증가·받는 피해 감소 (자신 열)"
+  }
+ },
+ "tig": {
+  "fresh": {
+   "do": [
+    {
+     "a": "dmg",
+     "to": "row_front",
+     "pct": 200
+    }
+   ],
+   "note": "순간 전진 범위 베기 (최대 HP 비례 추가 피해는 생략)"
+  },
+  "senior": {
+   "do": [
+    {
+     "a": "dmg",
+     "to": "row_front",
+     "pct": 200
+    },
+    {
+     "a": "buff",
+     "to": "self",
+     "mods": {
+      "aspd": 40,
+      "normal_dmg": 25,
+      "enh_dmg": 25
+     },
+     "dur": 8,
+     "key": "tig_overdrive"
+    }
+   ],
+   "cd": 20,
+   "note": "오버드라이브: 범위 검기 + 공속·일반/강화 공격 피해 증가 (32초 → 20초)"
+  },
+  "passive": {
+   "mods": {
+    "aspd": 15
+   },
+   "note": "공격 속도 15%"
+  },
+  "enh": {
+   "do": [
+    {
+     "a": "dmg",
+     "to": "around:front",
+     "pct": 60
+    },
+    {
+     "a": "sp",
+     "to": "self",
+     "pct": 15
+    }
+   ],
+   "note": "쌍검 회전: 주변 범위 + SP 회복"
+  },
+  "aside2": {
+   "mods": {
+    "dmg": 8,
+    "aspd": 8
+   },
+   "fx": [
+    {
+     "t": "skill",
+     "which": "senior",
+     "do": [
+      {
+       "a": "invuln",
+       "dur": 2
+      }
+     ]
+    }
+   ],
+   "note": "티그·루포·베니 피해·공속 증가(자신만) + 오버드라이브 중 무적"
+  },
+  "aside3": {
+   "mods": {
+    "dmg": 6,
+    "aspd": 6
+   },
+   "scope": "row",
+   "note": "전열 아군 피해·공속 증가 (자신 열)"
+  }
+ },
+ "renewa": {
+  "fresh": {
+   "do": [
+    {
+     "a": "dmg",
+     "to": "row_front",
+     "pct": 190,
+     "hits": 5
+    },
+    {
+     "a": "debuff",
+     "to": "row_front",
+     "mods": {
+      "heal_in": -40
+     },
+     "dur": 5,
+     "key": "renewa_heal"
+    },
+    {
+     "a": "heal",
+     "to": "self",
+     "pct_hp": 10
+    }
+   ],
+   "note": "포격 5회: 앞열 범위 + 회복량 감소, 짝수 포격 회복 (보호막 제거는 생략)"
+  },
+  "senior": {
+   "do": [
+    {
+     "a": "buff",
+     "to": "allies",
+     "mods": {
+      "aspd": 20,
+      "dmg_taken": -12
+     },
+     "dur": 7,
+     "key": "renewa_accel"
+    },
+    {
+     "a": "debuff",
+     "to": "all",
+     "mods": {
+      "aspd": -20
+     },
+     "dur": 7,
+     "key": "renewa_slow"
+    },
+    {
+     "a": "status",
+     "to": "all",
+     "s": "stun",
+     "dur": 1.5
+    },
+    {
+     "a": "dmg",
+     "to": "all",
+     "pct": 150,
+     "hits": 6
+    }
+   ],
+   "cd": 20,
+   "note": "시간 조작: 아군 가속·받는 피해 감소, 적 감속·정지(기절 1.5초) + 6회 피해 (40초 → 20초)"
+  },
+  "passive": {
+   "mods": {
+    "dmg": 8
+   },
+   "note": "딜러가 순수 성격 적에게 주는 피해 증가 → 자신 피해 8%로 축소 (도발 면역 미지원)"
+  },
+  "enh": {
+   "do": [
+    {
+     "a": "buff",
+     "to": "self",
+     "mods": {
+      "patk": 20
+     },
+     "dur": 6,
+     "key": "renewa_laser"
+    }
+   ],
+   "note": "비전 레이저 후 물리 공격력 20% 6초"
+  },
+  "aside2": {
+   "fx": [
+    {
+     "t": "interval",
+     "sec": 6,
+     "do": [
+      {
+       "a": "strike",
+       "mode": "front",
+       "pct": 100
+      }
+     ]
+    },
+    {
+     "t": "skill",
+     "which": "fresh",
+     "do": [
+      {
+       "a": "strike",
+       "mode": "front",
+       "pct": 100
+      }
+     ]
+    }
+   ],
+   "note": "6초마다·저학년 사용 시 미사일 범위 피해"
+  },
+  "aside3": {
+   "mods": {
+    "dmg": 5
+   },
+   "scope": "team",
+   "note": "모든 아군 피해 증가"
+  }
+ },
+ "amelia_r41": {
+  "fresh": {
+   "do": [
+    {
+     "a": "heal",
+     "to": "allies",
+     "pct_atk": 140
+    },
+    {
+     "a": "shield",
+     "to": "allies",
+     "pct_hp": 10,
+     "dur": 5
+    }
+   ],
+   "note": "치료 증폭 드론: 주변 아군 회복 + 초과 회복 보호막"
+  },
+  "senior": {
+   "do": [
+    {
+     "a": "cleanse",
+     "to": "allies"
+    },
+    {
+     "a": "dmg",
+     "to": "all",
+     "pct": 150
+    },
+    {
+     "a": "status",
+     "to": "all",
+     "s": "stun",
+     "dur": 1,
+     "chance": 40
+    }
+   ],
+   "cd": 20,
+   "note": "정화 파동(상태 해제) + 전자포 전체 피해, 감전 적 기절 → 40% 확률"
+  },
+  "enh": {
+   "do": [
+    {
+     "a": "buff",
+     "to": "lowest",
+     "mods": {
+      "regen": 3
+     },
+     "dur": 6,
+     "key": "r41_drone"
+    }
+   ],
+   "note": "치료 드론: HP 낮은 아군 지속 회복"
+  },
+  "aside2": {
+   "fx": [
+    {
+     "t": "cond",
+     "cond": "has_shield",
+     "mods": {
+      "aspd": 12,
+      "dmg": 12
+     }
+    }
+   ],
+   "power": 30,
+   "note": "저학년 회복 2배(power) + 고출력 보호막 유지 중 공속·피해 증가"
+  },
+  "aside3": {
+   "mods": {
+    "skill_dmg": 6
+   },
+   "scope": "team",
+   "note": "모든 아군 스킬 피해 증가"
+  }
+ },
+ "vela": {
+  "fresh": {
+   "do": [
+    {
+     "a": "dmg",
+     "to": "row_front",
+     "pct": 120
+    },
+    {
+     "a": "taunt",
+     "dur": 4
+    },
+    {
+     "a": "buff",
+     "to": "allies",
+     "mods": {
+      "atk": 10,
+      "hp": 10
+     },
+     "dur": 8,
+     "key": "vela_persist"
+    }
+   ],
+   "note": "불꽃길: 앞열 범위 피해 + 도발, 모든 아군 존속(공격력·최대 HP 10%)"
+  },
+  "senior": {
+   "do": [
+    {
+     "a": "dmg",
+     "to": "random:6",
+     "pct": 40
+    },
+    {
+     "a": "taunt",
+     "dur": 4
+    },
+    {
+     "a": "heal",
+     "to": "allies",
+     "pct_atk": 120
+    },
+    {
+     "a": "heal",
+     "to": "self",
+     "pct_hp": 12
+    }
+   ],
+   "cd": 20,
+   "note": "불꽃 빼앗기: 무작위 6회 + 도발, 아군 회복 후 자신 회복"
+  },
+  "passive": {
+   "fx": [
+    {
+     "t": "hp_below",
+     "pct": 15,
+     "do": [
+      {
+       "a": "invuln",
+       "dur": 2
+      },
+      {
+       "a": "heal",
+       "to": "self",
+       "pct": 40
+      }
+     ]
+    }
+   ],
+   "note": "영속(저학년): 쓰러질 때 1회 부활 → HP 15% 이하 시 1회 무적 2초 + HP 40% 회복으로 근사"
+  },
+  "enh": {
+   "do": [
+    {
+     "a": "dmg",
+     "to": "around:front",
+     "pct": 80
+    },
+    {
+     "a": "heal",
+     "to": "self",
+     "pct_hp": 6
+    },
+    {
+     "a": "shield",
+     "to": "self",
+     "pct_hp": 10,
+     "dur": 4
+    }
+   ],
+   "note": "4회 피격마다 불꽃 → 강화 공격 때 범위 피해 + 회복 + 존재의 보호막"
+  },
+  "aside2": {
+   "fx": [
+    {
+     "t": "skill",
+     "which": "senior",
+     "do": [
+      {
+       "a": "buff",
+       "to": "self",
+       "mods": {
+        "dmg_taken": -15
+       },
+       "dur": 6,
+       "key": "vela_a2"
+      }
+     ]
+    },
+    {
+     "t": "start",
+     "do": [
+      {
+       "a": "buff",
+       "to": "allies",
+       "mods": {
+        "aspd": 10,
+        "dmg": 10
+       },
+       "dur": 8,
+       "key": "vela_a2b"
+      }
+     ]
+    }
+   ],
+   "note": "고학년 도발 대상 수만큼 받는 피해 감소, 영속 보유 시 아군 공속·피해 증가"
+  },
+  "aside3": {
+   "mods": {
+    "dmg": 5
+   },
+   "scope": "team",
+   "note": "모든 아군 피해 증가"
+  }
+ },
+ "aya": {
+  "fresh": {
+   "do": [
+    {
+     "a": "dmg",
+     "to": "around:front",
+     "pct": 190,
+     "hits": 3
+    },
+    {
+     "a": "debuff",
+     "to": "around:front",
+     "mods": {
+      "skill_dmg": -30
+     },
+     "dur": 6,
+     "key": "aya_butterfly"
+    },
+    {
+     "a": "sp",
+     "to": "self",
+     "pct": 15
+    }
+   ],
+   "note": "얼음 나비: 주변 적 다단 피해 + 스킬 피해 30% 감소 + SP 회복"
+  },
+  "senior": {
+   "do": [
+    {
+     "a": "dmg",
+     "to": "all",
+     "pct": 230
+    },
+    {
+     "a": "debuff",
+     "to": "all",
+     "mods": {
+      "dmg_taken": 8
+     },
+     "dur": 6,
+     "key": "aya_frost"
+    }
+   ],
+   "cd": 20,
+   "note": "눈꽃 연쇄: 적 전체 피해 + 동상(받는 피해 증가) (28초 → 20초)"
+  },
+  "passive": {
+   "mods": {
+    "critres": 15
+   },
+   "fx": [
+    {
+     "t": "start",
+     "do": [
+      {
+       "a": "buff",
+       "to": "row",
+       "mods": {
+        "atk": 6
+       },
+       "dur": 60,
+       "key": "aya_passive"
+      }
+     ]
+    }
+   ],
+   "note": "받는 치명 피해 감소(치명 저항) + 냉정 성격 아군 공격력 → 같은 열 6%로 축소"
+  },
+  "enh": {
+   "do": [
+    {
+     "a": "dmg",
+     "to": "around:front",
+     "pct": 50
+    },
+    {
+     "a": "debuff",
+     "to": "front",
+     "mods": {
+      "aspd": -20
+     },
+     "dur": 4,
+     "key": "aya_slow"
+    }
+   ],
+   "note": "눈꽃검 범위 2회 + 공속 감소"
+  },
+  "aside2": {
+   "fx": [
+    {
+     "t": "interval",
+     "sec": 6,
+     "do": [
+      {
+       "a": "next_normal",
+       "extra": 60,
+       "stun": 1
+      }
+     ]
+    },
+    {
+     "t": "skill",
+     "which": "fresh",
+     "do": [
+      {
+       "a": "heal",
+       "to": "self",
+       "pct": 5
+      }
+     ]
+    }
+   ],
+   "note": "주기적 눈꽃 개화: 다음 일반 공격 추가 피해·기절, 저학년 후 회복"
+  },
+  "aside3": {
+   "mods": {
+    "dmg": 6,
+    "dmg_taken": -6
+   },
+   "scope": "row",
+   "note": "중열 아군 피해 증가·받는 피해 감소 (자신 열)"
+  }
+ },
+ "daya": {
+  "fresh": {
+   "do": [
+    {
+     "a": "dmg",
+     "to": "random:3",
+     "pct": 130,
+     "status": {
+      "s": "bitter",
+      "dur": 6
+     }
+    }
+   ],
+   "note": "다이아 솟구치기: 적 3명 피해 + 쓰라림"
+  },
+  "senior": {
+   "do": [
+    {
+     "a": "dmg",
+     "to": "all",
+     "pct": 290
+    }
+   ],
+   "cd": 20,
+   "note": "재채기: 적 전체 범위 피해 (32초 → 20초)"
+  },
+  "passive": {
+   "fx": [
+    {
+     "t": "start",
+     "do": [
+      {
+       "a": "buff",
+       "to": "row",
+       "mods": {
+        "skill_dmg": 10
+       },
+       "dur": 60,
+       "key": "daya_passive"
+      }
+     ]
+    }
+   ],
+   "note": "후열 아군 스킬 피해 증가 → 같은 열 10%"
+  },
+  "enh": {
+   "do": [
+    {
+     "a": "status",
+     "to": "front",
+     "s": "bitter",
+     "dur": 4
+    }
+   ],
+   "note": "큰 다이아: 쓰라림 4초"
+  },
+  "aside2": {
+   "fx": [
+    {
+     "t": "skill",
+     "which": "fresh",
+     "do": [
+      {
+       "a": "sp_pct",
+       "pct": 30
+      }
+     ]
+    },
+    {
+     "t": "skill_hit",
+     "which": "senior",
+     "do": [
+      {
+       "a": "status",
+       "to": "target",
+       "s": "stun",
+       "dur": 1
+      }
+     ]
+    }
+   ],
+   "note": "저학년 적중 시 SP 회복, 고학년에 기절 추가"
+  },
+  "aside3": {
+   "mods": {
+    "dmg": 5
+   },
+   "scope": "team",
+   "note": "모든 아군 피해 증가"
+  }
+ },
+ "_fav": {
+  "rone_gauntlet": {
+   "owner": "rohne",
+   "replace": "enh",
+   "do": [
+    {
+     "a": "dmg",
+     "to": "front",
+     "pct": 80
+    },
+    {
+     "a": "status",
+     "to": "front",
+     "s": "stun",
+     "dur": 2,
+     "chance": 50
+    }
+   ],
+   "note": "강화 공격 추가: 강한 일격 + 넉백, 기절 확률·시간 증가 (35%·1.5초 → 50%·2초)"
+  },
+  "levi_dagger": {
+   "owner": "levi",
+   "replace": "senior",
+   "do": [
+    {
+     "a": "dmg",
+     "to": "around:front",
+     "pct": 250
+    },
+    {
+     "a": "heal",
+     "to": "self",
+     "pct_atk": 100
+    }
+   ],
+   "note": "레비드 더 섀도우: 범위 피해 25% 증가 + 입힌 피해 일부 회복(공격력 100% 회복으로 근사)"
+  },
+  "kommy_pillow": {
+   "owner": "kommy",
+   "replace": "senior",
+   "do": [
+    {
+     "a": "buff",
+     "to": "self",
+     "mods": {
+      "dmg": 25,
+      "aspd": 40
+     },
+     "dur": 8,
+     "key": "kommy_giant"
+    },
+    {
+     "a": "dmg",
+     "to": "row_front",
+     "pct": 220,
+     "status": {
+      "s": "stun",
+      "dur": 1.5
+     }
+    },
+    {
+     "a": "heal",
+     "to": "self",
+     "pct_hp": 13
+    }
+   ],
+   "note": "엘프산 특대형 사료: 충격파 기절 추가, 피해·공속·회복 ~25% 강화"
+  },
+  "shoupan_backpack": {
+   "owner": "shoupan",
+   "replace": "enh",
+   "do": [
+    {
+     "a": "heal",
+     "to": "lowest",
+     "pct_hp": 12
+    },
+    {
+     "a": "shield",
+     "to": "lowest",
+     "pct_hp": 20,
+     "dur": 6
+    },
+    {
+     "a": "buff",
+     "to": "lowest",
+     "mods": {
+      "def": 30
+     },
+     "dur": 6,
+     "key": "shoupan_bag"
+    }
+   ],
+   "note": "강화 공격 변경: HP 낮은 아군 회복 + 보호막 20% + 방어력 30% 6초"
+  },
+  "blanchet_bird": {
+   "owner": "blanchet",
+   "replace": "senior",
+   "do": [
+    {
+     "a": "dmg",
+     "to": "back",
+     "pct": 250,
+     "hits": 3
+    },
+    {
+     "a": "dmg",
+     "to": "around:front",
+     "pct": 140
+    },
+    {
+     "a": "debuff",
+     "to": "back",
+     "mods": {
+      "sp_regen": -40
+     },
+     "dur": 4,
+     "key": "blanchet_silence"
+    }
+   ],
+   "note": "흩날리는 파랑새: 가장 먼 적에게 3회 + 범위 마무리 강화(~+25%)"
+  },
+  "blanchet_bouquet": {
+   "owner": "blanchet",
+   "replace": "fresh",
+   "do": [
+    {
+     "a": "dmg",
+     "to": "random:2",
+     "pct": 115
+    },
+    {
+     "a": "dmg",
+     "to": "low",
+     "pct": 165
+    }
+   ],
+   "note": "싱크로즈 블러썸: 저학년 싱크로즈 피해 ~25% 증가"
+  },
+  "barong_doll": {
+   "owner": "barong",
+   "replace": "enh",
+   "do": [
+    {
+     "a": "dmg",
+     "to": "front",
+     "pct": 110,
+     "hits": 3
+    },
+    {
+     "a": "debuff",
+     "to": "front",
+     "mods": {
+      "aspd": -30
+     },
+     "dur": 5,
+     "key": "barong_doll"
+    },
+    {
+     "a": "untarget",
+     "dur": 4
+    }
+   ],
+   "note": "강화 공격 변경: 못 3회 + 공속 30% 감소 5초 + 타겟 불가 4초"
+  },
+  "jade_pen": {
+   "owner": "jade",
+   "replace": "senior",
+   "do": [
+    {
+     "a": "dmg",
+     "to": "row_front",
+     "pct": 230,
+     "hits": 4
+    },
+    {
+     "a": "dmg",
+     "to": "front",
+     "pct": 100
+    },
+    {
+     "a": "sp",
+     "to": "self",
+     "pct": 15
+    }
+   ],
+   "note": "게르마늄: 범위 피해 + 메테옥 추가 타격 (~+25%)"
+  },
+  "picora_pouch": {
+   "owner": "picora",
+   "replace": "fresh",
+   "do": [
+    {
+     "a": "heal",
+     "to": "lowest",
+     "pct_atk": 250
+    },
+    {
+     "a": "heal",
+     "to": "random_ally:2",
+     "pct_atk": 125
+    },
+    {
+     "a": "buff",
+     "to": "allies",
+     "mods": {
+      "pdef": 15,
+      "critres": 15
+     },
+     "dur": 8,
+     "key": "picora_sticker"
+    },
+    {
+     "a": "buff",
+     "to": "lowest",
+     "mods": {
+      "regen": 2
+     },
+     "dur": 8,
+     "key": "picora_regen"
+    }
+   ],
+   "note": "초판 한정 스티커: 회복·방어 ~25% 강화 + HP 낮은 아군 지속 회복"
+  },
+  "kyarot_sugarcane": {
+   "owner": "kyarot",
+   "replace": "fresh",
+   "do": [
+    {
+     "a": "buff",
+     "to": "allies",
+     "mods": {
+      "atk": 12,
+      "dmg": 15,
+      "dmg_taken": -16
+     },
+     "dur": 8,
+     "key": "kyarot_sap"
+    }
+   ],
+   "note": "급성장 수액: 원문은 '고학년 강화'라 적혀 있으나 효과(피해량·받는 피해 감소·공격력 버프)가 저학년 수액과 같아 저학년 강화로 처리"
+  },
+  "amelia_epad": {
+   "owner": "amelia",
+   "replace": "fresh",
+   "do": [
+    {
+     "a": "dmg",
+     "to": "row_front",
+     "pct": 165,
+     "hits": 4,
+     "status": {
+      "s": "shock",
+      "dur": 8
+     }
+    }
+   ],
+   "note": "새틀라이트 오버히트: 4회 범위 폭격, 피해 ~27% 증가 + 감전 8초"
+  },
+  "elena_drone": {
+   "owner": "elena",
+   "replace": "senior",
+   "do": [
+    {
+     "a": "dmg",
+     "to": "row_front",
+     "pct": 230,
+     "hits": 8
+    },
+    {
+     "a": "dmg",
+     "to": "row_front",
+     "pct": 70,
+     "status": {
+      "s": "stun",
+      "dur": 1.5
+     }
+    }
+   ],
+   "note": "D-CAT 펄스 웨이브: 피해 ~15% 증가 + 마지막 폭발 기절"
+  },
+  "selene_mirage": {
+   "owner": "selene",
+   "replace": "senior",
+   "do": [
+    {
+     "a": "dmg",
+     "to": "low",
+     "pct": 300
+    },
+    {
+     "a": "shield",
+     "to": "self",
+     "pct_hp": 26,
+     "dur": 8
+    },
+    {
+     "a": "buff",
+     "to": "self",
+     "mods": {
+      "dmg_taken": -20
+     },
+     "dur": 8,
+     "key": "selene_mirage"
+    }
+   ],
+   "note": "채널 No.5: 피해·보호막 ~25% 증가 + 보호막 동안 받는 피해 감소"
+  },
+  "risty_controller": {
+   "owner": "risty",
+   "replace": "enh",
+   "do": [
+    {
+     "a": "dmg",
+     "to": "front",
+     "pct": 90
+    },
+    {
+     "a": "debuff",
+     "to": "front",
+     "mods": {
+      "sp_regen": -30
+     },
+     "dur": 4,
+     "key": "risty_hack"
+    }
+   ],
+   "note": "강화 공격 변경: 확정 치명타 + 폭발 + 적 SP 감소 (쿨 감소는 미지원)"
+  },
+  "risty_glove": {
+   "owner": "risty",
+   "replace": "enh",
+   "do": [
+    {
+     "a": "dmg",
+     "to": "front",
+     "pct": 120
+    },
+    {
+     "a": "sp",
+     "to": "self",
+     "pct": 25
+    }
+   ],
+   "note": "강화 공격 변경: 강한 확정 치명타 + SP 회복 (3타마다 → 강화 공격 주기 그대로)"
+  },
+  "hilde_uniform": {
+   "owner": "hilde",
+   "replace": "fresh",
+   "do": [
+    {
+     "a": "heal",
+     "to": "allies",
+     "pct_hp": 10
+    },
+    {
+     "a": "shield",
+     "to": "allies",
+     "pct_hp": 8,
+     "dur": 5
+    },
+    {
+     "a": "buff",
+     "to": "lowest",
+     "mods": {
+      "regen": 4
+     },
+     "dur": 6,
+     "key": "hilde_regen"
+    }
+   ],
+   "note": "피톤치드 스프레이: 회복 ~25% 증가 + 초과 회복 보호막"
+  },
+  "rollett_hat": {
+   "owner": "rollett",
+   "replace": "fresh",
+   "do": [
+    {
+     "a": "dmg",
+     "to": "row_back",
+     "pct": 190,
+     "hits": 3
+    },
+    {
+     "a": "sp",
+     "to": "self",
+     "pct": 30
+    }
+   ],
+   "note": "박수를 원하는 엔터테이너: 비둘기 3마리(피해 ~27% 증가) + SP 회복"
+  },
+  "sylla_arrow": {
+   "owner": "sylla",
+   "mods": {
+    "normal_dmg": 15
+   },
+   "note": "일반 공격 강화: 화살 2회(80%×2) → 일반 공격 피해 15% 증가로 근사"
+  },
+  "ner_flag": {
+   "owner": "ner",
+   "replace": "fresh",
+   "do": [
+    {
+     "a": "invuln",
+     "dur": 2
+    },
+    {
+     "a": "buff",
+     "to": "allies",
+     "mods": {
+      "dmg": 22,
+      "atk": 10
+     },
+     "dur": 8,
+     "key": "ner_tree"
+    }
+   ],
+   "note": "워리어즈 생츄어리: 피해량 버프 강화 + 공격력 10% 추가"
+  },
+  "reet_sword": {
+   "owner": "leets",
+   "replace": "fresh",
+   "do": [
+    {
+     "a": "buff",
+     "to": "self",
+     "mods": {
+      "dmg_taken": -40,
+      "dmg": 35
+     },
+     "dur": 3,
+     "key": "leets_focus"
+    },
+    {
+     "a": "dmg",
+     "to": "row_front",
+     "pct": 250,
+     "status": {
+      "s": "bitter",
+      "dur": 6
+     }
+    }
+   ],
+   "note": "대지 분쇄: 범위 피해 25% 증가 + 집중 효과 강화"
+  },
+  "reet_whetstone": {
+   "owner": "leets",
+   "mods": {
+    "dmg": 10,
+    "dmg_taken": -8,
+    "normal_dmg": 20
+   },
+   "note": "패시브 강화: 주는 피해·받는 피해 감소 추가 + 일반 공격 피해 20%"
+  },
+  "shady_scythe": {
+   "owner": "shaydi",
+   "replace": "fresh",
+   "do": [
+    {
+     "a": "dmg",
+     "to": "back",
+     "pct": 400,
+     "hits": 13
+    },
+    {
+     "a": "dmg",
+     "to": "back",
+     "pct": 80
+    },
+    {
+     "a": "debuff",
+     "to": "back",
+     "mods": {
+      "sp_regen": -40,
+      "def": -20
+     },
+     "dur": 6,
+     "key": "shaydi_sp"
+    }
+   ],
+   "note": "불좀 꺼줄래? Max!: 13연타 + 무기 낙하 + 방어력 감소 (~+25%)"
+  },
+  "rim_scythe": {
+   "owner": "rim",
+   "replace": "senior",
+   "do": [
+    {
+     "a": "dmg",
+     "to": "row_front",
+     "pct": 300,
+     "hits": 2,
+     "status": {
+      "s": "stun",
+      "dur": 1
+     }
+    },
+    {
+     "a": "heal",
+     "to": "self",
+     "pct_hp": 15
+    }
+   ],
+   "note": "그림 스크래치: 왕복 회전 낫, 피해 25% 증가"
+  },
+  "belita_staff": {
+   "owner": "belita",
+   "replace": "fresh",
+   "do": [
+    {
+     "a": "dmg",
+     "to": "all",
+     "pct": 235
+    },
+    {
+     "a": "status",
+     "to": "row_front",
+     "s": "stun",
+     "dur": 1
+    }
+   ],
+   "note": "블랙홀 오브 위치: 적을 모아 폭발, 피해 ~24% 증가 + 밀치기(앞열 기절 1초)"
+  },
+  "snorky_fedora": {
+   "owner": "snorky",
+   "replace": "enh",
+   "do": [
+    {
+     "a": "dmg",
+     "to": "around:front",
+     "pct": 110,
+     "status": {
+      "s": "stun",
+      "dur": 2,
+      "chance": 50
+     }
+    }
+   ],
+   "note": "강화 공격 변경: 강한 날아차기 + 50% 확률 기절 2초"
+  },
+  "butter_card": {
+   "owner": "butter",
+   "replace": "enh",
+   "do": [
+    {
+     "a": "dmg",
+     "to": "around:front",
+     "pct": 120
+    }
+   ],
+   "note": "분노 누적 범위 확정 치명타 → 강화 공격 때 범위 피해로 근사 (분노 게이지 미지원)"
+  },
+  "erpin_staff": {
+   "owner": "erpin",
+   "replace": "fresh",
+   "do": [
+    {
+     "a": "dmg",
+     "to": "random:4",
+     "pct": 120
+    }
+   ],
+   "note": "어마어마력탄 폭주: 마력탄 4개, 총 피해 ~23% 증가"
+  },
+  "erpin_cake": {
+   "owner": "erpin",
+   "replace": "enh",
+   "do": [
+    {
+     "a": "sp",
+     "to": "self",
+     "pct": 25
+    },
+    {
+     "a": "buff",
+     "to": "self",
+     "mods": {
+      "skill_dmg": 30
+     },
+     "dur": 8,
+     "key": "erpin_cake"
+    }
+   ],
+   "note": "케이크: SP 회복 증가 + 다음 스킬 피해 증가 → 스킬 피해 30% 8초"
+  },
+  "tig_sword": {
+   "owner": "tig",
+   "replace": "senior",
+   "do": [
+    {
+     "a": "dmg",
+     "to": "row_front",
+     "pct": 250
+    },
+    {
+     "a": "buff",
+     "to": "self",
+     "mods": {
+      "aspd": 40,
+      "normal_dmg": 30,
+      "enh_dmg": 30
+     },
+     "dur": 8,
+     "key": "tig_overdrive"
+    }
+   ],
+   "note": "오버드라이브 블레이즈: 검기 피해 25% 증가 + 버프 강화 (강화 공격 화상은 생략)"
+  },
+  "daya_cutter": {
+   "owner": "daya",
+   "replace": "enh",
+   "do": [
+    {
+     "a": "dmg",
+     "to": "around:front",
+     "pct": 70,
+     "status": {
+      "s": "bitter",
+      "dur": 4
+     }
+    }
+   ],
+   "note": "강화 공격 변경: 큰 다이아 범위 피해 + 쓰라림"
+  }
+ }
+}

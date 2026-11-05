@@ -93,6 +93,14 @@ func advance(dt: float) -> void:
 		"result":
 			if phase_left <= 0.0:
 				_start_prep()
+		"carousel":
+			var car: Dictionary = state["carousel"]
+			var who: String = car["order"][car["turn"]] if car["turn"] < car["order"].size() else ""
+			# 봇이나 연결이 끊긴 사람은 바로, 사람은 시간이 다 되면 자동으로 고름
+			if who != "" and (player(who)["bot"] or not player(who)["connected"]) and phase_left < float(B["carousel_turn"]) - 0.8:
+				_carousel_pick(who, Bot.carousel_choice(self, who))
+			elif phase_left <= 0.0 and who != "":
+				_carousel_pick(who, -1)
 
 
 func _is_human(pid: String) -> bool:
@@ -161,11 +169,89 @@ func _start_prep() -> void:
 		_refresh_shop(p)
 		if is_artifact_round(r):
 			p["art_offer"] = {"options": _roll_artifacts(r, int(B["artifact_choices"])), "rerolled": [false, false, false]}
+	state["round_kind"] = "monster" if _in(B.get("monster_rounds", []), r) else "pvp"
+	if _in(B.get("carousel_rounds", []), r):
+		_start_carousel(r)
+		return
+	_enter_prep()
+
+
+func _enter_prep() -> void:
+	state["phase"] = "prep"
+	var r: int = state["round"]
+	phase_left = float(B.get("first_prep_time", B["prep_time"])) if r == 1 else float(B["prep_time"])
 	_log("라운드 %d 준비 시작" % r)
 	_bot_second_done = false
 	for pid in alive_players():
 		if player(pid)["bot"]:
 			Bot.play(self, pid)
+	state_changed.emit()
+
+
+static func _in(list: Array, r: int) -> bool:
+	for x in list:
+		if int(x) == r:
+			return true
+	return false
+
+
+# ─────────────────────────────── 공유 선택 라운드 ───────────────────────────────
+## 체력이 낮은 사람부터 차례로 사도+아티팩트 묶음 하나씩 고른다.
+
+func _start_carousel(r: int) -> void:
+	var ids := alive_players()
+	for i in range(ids.size() - 1, 0, -1):
+		var j := rng.randi_range(0, i)
+		var t = ids[i]
+		ids[i] = ids[j]
+		ids[j] = t
+	ids.sort_custom(func(a, b): return int(player(a)["hp"]) < int(player(b)["hp"]))
+	var max_cost := clampi(1 + r / 4, 1, 5)
+	var opts := []
+	for i in ids.size() + 2:
+		var cands := []
+		for aid in GameData.roster:
+			if GameData.cost_of[aid] <= max_cost and GameData.cost_of[aid] >= max_cost - 2:
+				cands.append(aid)
+		var aid: String = cands[rng.randi_range(0, cands.size() - 1)]
+		opts.append({"aid": aid, "art": _roll_artifact(r), "by": ""})
+	state["carousel"] = {"options": opts, "order": ids, "turn": 0}
+	state["phase"] = "carousel"
+	phase_left = float(B["carousel_turn"])
+	_log("라운드 %d 공유 선택" % r)
+	state_changed.emit()
+
+
+func _carousel_pick(pid: String, idx: int) -> void:
+	var car: Dictionary = state["carousel"]
+	var opts: Array = car["options"]
+	if idx < 0 or idx >= opts.size() or opts[idx]["by"] != "":
+		idx = -1
+		for i in opts.size():
+			if opts[i]["by"] == "":
+				idx = i
+				break
+	if idx >= 0:
+		var o: Dictionary = opts[idx]
+		o["by"] = pid
+		var p := player(pid)
+		var u := {"uid": _uid(), "aid": o["aid"], "star": 1, "arts": [], "pers": ""}
+		var free: int = p["bench"].find(null)
+		if free >= 0:
+			p["bench"][free] = u
+			_try_merge(p, o["aid"], 1)
+		elif _count_copies(p, o["aid"], 1) >= 2:
+			_try_merge(p, o["aid"], 1, u)
+		else:
+			p["gold"] += GameData.cost_of.get(o["aid"], 1)   # 대기석이 가득 차면 골드로
+		state["pool"][o["aid"]] = maxi(0, int(state["pool"].get(o["aid"], 0)) - 1)
+		p["inv"].append({"uid": _uid(), "id": o["art"]})
+		_log("%s: 공유 선택 %s + %s" % [p["name"], GameData.apostle(o["aid"]).get("name", ""), GameData.artifact(o["art"]).get("name", "")])
+	car["turn"] += 1
+	if car["turn"] >= car["order"].size():
+		_enter_prep()
+		return
+	phase_left = float(B["carousel_turn"])
 	state_changed.emit()
 
 
@@ -194,6 +280,9 @@ func _start_battle() -> void:
 		if not p["art_offer"].is_empty():
 			_cmd_art_pick(p, {"i": 0})
 	state["phase"] = "battle"
+	if state.get("round_kind", "pvp") == "monster":
+		_start_monster_battles()
+		return
 	var ids := alive_players()
 	# 섞은 뒤 직전 상대와 겹치지 않게 짝을 맞춘다
 	for i in range(ids.size() - 1, 0, -1):
@@ -246,10 +335,80 @@ func _start_battle() -> void:
 	state_changed.emit()
 
 
+# ─────────────────────────────── 몬스터 라운드 ───────────────────────────────
+## 각자 그림자 몬스터와 싸운다. 연승·연패와 체력은 그대로, 처치 수만큼 골드, 이기면 보상.
+
+func monster_army(r: int, seed_rng: RandomNumberGenerator) -> Array:
+	var M: Dictionary = B["monster"]
+	var n := clampi(int(M["count_base"]) + int(r * float(M["count_per_round"])), 1, int(M["count_max"]))
+	var max_cost := clampi(1 + r / 5, 1, 5)
+	var cands := []
+	for aid in GameData.roster:
+		if GameData.cost_of[aid] <= max_cost:
+			cands.append(aid)
+	var power := float(M["power_base"]) + float(M["power_per_round"]) * r
+	var out := []
+	var used := {}
+	for i in n:
+		var aid: String = cands[seed_rng.randi_range(0, cands.size() - 1)]
+		var row: int = {"front": 0, "mid": 1, "back": 2}.get(GameData.apostle(aid).get("row", "mid"), 1)
+		for k in 3:
+			if int(used.get(row, 0)) < 3:
+				break
+			row = (row + 1) % 3
+		var slot: int = used.get(row, 0)
+		used[row] = slot + 1
+		out.append({"aid": aid, "star": 2 if r >= 14 else 1, "row": row, "slot": slot, "arts": [], "pers": "", "monster": true, "mpow": power})
+	return out
+
+
+func _start_monster_battles() -> void:
+	var r: int = state["round"]
+	var battles := []
+	var longest := 0.0
+	for pid in alive_players():
+		var seed := rng.randi()
+		var mr := RandomNumberGenerator.new()
+		mr.seed = seed
+		var army_a := army_of(pid)
+		var army_b := monster_army(r, mr)
+		var result := BattleSim.new(army_a, army_b, seed).run()
+		if _is_human(pid):
+			longest = maxf(longest, float(result["end_time"]))
+		battles.append({"a": pid, "b": "", "ghost": "", "monster": true, "seed": seed, "army_a": army_a, "army_b": army_b,
+			"winner": result["winner"], "survivors": result["survivors"], "end_time": result["end_time"],
+			"kills": int(result.get("deaths", [0, 0])[1])})
+	state["battles"] = battles
+	phase_left = (longest + 2.5) if longest > 0.0 else 3.0
+	state["battle_len"] = phase_left
+	for pid in state["players"]:
+		player(pid)["skip"] = false
+	_log("라운드 %d 몬스터 전투" % r)
+	state_changed.emit()
+
+
+func _monster_reward(bt: Dictionary) -> void:
+	var p := player(bt["a"])
+	var r: int = state["round"]
+	var gold := mini(int(bt.get("kills", 0)), int(B["monster"]["kill_gold_max"]))
+	var art := ""
+	if int(bt["winner"]) == 0:
+		if r <= 2:
+			gold += 1
+		else:
+			art = _roll_artifact(r)
+			p["inv"].append({"uid": _uid(), "id": art})
+	p["gold"] += gold
+	bt["reward"] = {"gold": gold, "art": art}
+
+
 func _end_battle() -> void:
 	var r: int = state["round"]
 	var base_dmg := int(B["damage_base"]) + r / int(B["damage_per_round_div"])
 	for bt in state["battles"]:
+		if bt.get("monster", false):
+			_monster_reward(bt)
+			continue
 		var a := player(bt["a"])
 		var b := player(bt["b"]) if bt["b"] != "" else {}
 		match int(bt["winner"]):
@@ -531,6 +690,17 @@ func command(pid: String, cmd: Dictionary) -> String:
 			return "전투 중이 아님"
 		p["skip"] = true
 		state_changed.emit()
+		return ""
+	if t == "carousel_pick":
+		if state["phase"] != "carousel":
+			return "공유 선택 중이 아님"
+		var car: Dictionary = state["carousel"]
+		if car["turn"] >= car["order"].size() or car["order"][car["turn"]] != pid:
+			return "아직 내 차례가 아님"
+		var ci := int(cmd.get("i", -1))
+		if ci < 0 or ci >= car["options"].size() or car["options"][ci]["by"] != "":
+			return "이미 가져간 묶음"
+		_carousel_pick(pid, ci)
 		return ""
 	var prep_only := ["buy", "sell", "move", "reroll", "buy_xp", "art_reroll", "art_pick", "equip", "art_merge", "ready"]
 	if prep_only.has(t) and state["phase"] != "prep":

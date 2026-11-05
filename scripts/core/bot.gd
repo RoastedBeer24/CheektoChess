@@ -246,3 +246,32 @@ static func _trim_bench(m: Match, pid: String) -> void:
 			worst = i
 	if worst >= 0:
 		m.command(pid, {"t": "sell", "loc": {"bench": worst}})
+
+
+## 공유 선택: 이미 가진 사도(합성) > 보드 시너지와 겹치는 사도 > 비싼 사도
+static func carousel_choice(m: Match, pid: String) -> int:
+	var p := m.player(pid)
+	var opts: Array = m.state["carousel"]["options"]
+	var have := {}
+	for u in m._all_units(p):
+		have[u["aid"]] = have.get(u["aid"], 0) + 1
+	var mine := {}
+	for k in p["board"]:
+		for t in GameData.traits_of(p["board"][k]["aid"]):
+			mine[t] = true
+	var best := -1
+	var best_score := -999.0
+	for i in opts.size():
+		if opts[i]["by"] != "":
+			continue
+		var aid: String = opts[i]["aid"]
+		var score := float(GameData.cost_of.get(aid, 1))
+		score += 6.0 * have.get(aid, 0)
+		for t in GameData.traits_of(aid):
+			if mine.has(t):
+				score += 3.0
+		score += 0.5 * ["common", "advanced", "rare", "legend"].find(GameData.artifact(opts[i]["art"]).get("grade", "common"))
+		if score > best_score:
+			best_score = score
+			best = i
+	return best

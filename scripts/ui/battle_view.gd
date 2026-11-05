@@ -119,6 +119,8 @@ func setup(bt: Dictionary, my_side: int, name_a: String, name_b: String) -> void
 			sp.box = SPRITE_BOX
 			sp.pivot_offset = Vector2(TILE.x / 2.0, TILE.y)
 			sp.shadow = true
+			if u.get("monster", false):
+				sp.modulate = Color(0.45, 0.32, 0.62)   # 그림자 몬스터
 			_field.add_child(sp)
 			_sprites[u["i"]] = sp
 		var tile := UnitTile.new(TILE)

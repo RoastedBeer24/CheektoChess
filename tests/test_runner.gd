@@ -8,6 +8,7 @@ func _ready() -> void:
 	fails += _test_battle()
 	fails += _test_match()
 	fails += _test_group_synergies()
+	fails += _test_special_rounds()
 	fails += await _test_ui()
 	print("TESTS DONE, failures=%d" % fails)
 	get_tree().quit(1 if fails > 0 else 0)
@@ -105,6 +106,44 @@ func _test_group_synergies() -> int:
 	print("수집가 HP %.0f vs 시너지 없음 %.0f" % [opal_hp, plain.max_hp(plain.units[0])])
 	if opal_hp <= plain.max_hp(plain.units[0]):
 		print("FAIL: 수집가 아티팩트 비례 효과 없음"); fails += 1
+	return fails
+
+
+## 몬스터 라운드(연승·연패·체력 변화 없음, 보상)와 공유 선택 라운드
+func _test_special_rounds() -> int:
+	var fails := 0
+	var players := []
+	for i in 4:
+		players.append({"id": "b%d" % i, "name": "봇%d" % i, "bot": true})
+	var m := Match.new(players, 77)
+	m.start()
+	var saw_carousel := false
+	var monster_ok := true
+	var rewards := 0
+	var guard := 0
+	while int(m.state["round"]) < 7 and m.state["phase"] != "over" and guard < 200000:
+		guard += 1
+		var before := {}
+		if m.state["phase"] == "battle" and m.state.get("round_kind", "") == "monster":
+			for pid in m.state["players"]:
+				before[pid] = [int(m.player(pid)["hp"]), int(m.player(pid)["streak"])]
+		m.advance(0.25)
+		if m.state["phase"] == "carousel":
+			saw_carousel = true
+		if not before.is_empty() and m.state["phase"] != "battle":
+			for pid in before:
+				if before[pid][0] != int(m.player(pid)["hp"]) or before[pid][1] != int(m.player(pid)["streak"]):
+					monster_ok = false
+			for bt in m.state["battles"]:
+				if bt.has("reward"):
+					rewards += 1
+	print("특수 라운드: 공유 선택=%s, 몬스터 라운드 체력·연승 그대로=%s, 보상 %d건, 라운드 %d" % [saw_carousel, monster_ok, rewards, int(m.state["round"])])
+	if not saw_carousel:
+		print("FAIL: 공유 선택 라운드 없음"); fails += 1
+	if not monster_ok:
+		print("FAIL: 몬스터 라운드가 체력·연승을 바꿈"); fails += 1
+	if rewards == 0:
+		print("FAIL: 몬스터 보상 없음"); fails += 1
 	return fails
 
 

@@ -52,7 +52,14 @@ func _build_side(army: Array, side: int) -> void:
 			"n_hits_taken": 0, "n_skill_hits": 0, "counters": {}, "cds": {}, "once": {},
 			"pending_normal": [], "force_crit": false, "invuln": 0.0, "untarget": 0.0,
 			"taunt": 0.0, "regens": [], "damaged_by": {}, "power": 1.0, "arts": spec.get("arts", []),
+			"monster": spec.get("monster", false),
 		}
+		if u["monster"]:
+			# 그림자 몬스터: 라운드에 따라 약하게/강하게, 시너지 없음
+			var mp := float(spec.get("mpow", 1.0))
+			u["base"]["hp"] *= mp
+			u["base"]["atk"] *= mp
+			u["name"] = "그림자 " + String(u["name"])
 		# 어사이드 1성 (기본 적용)
 		Rules.add_mods(u["mods"], Rules.aside1_mods(aid))
 		# 어사이드 2성: 스킬 위력 증가 (간이)
@@ -90,7 +97,8 @@ func _apply_team_effects() -> void:
 		# 시너지 (그룹)
 		var specs := []
 		for u in allies:
-			specs.append({"aid": u["aid"], "pers": u["pers"]})
+			if not u["monster"]:
+				specs.append({"aid": u["aid"], "pers": u["pers"]})
 		var counts := Rules.count_traits(specs)
 		var tiers := Rules.active_tiers(counts)
 		var names: Array = tiers.keys()
@@ -105,7 +113,7 @@ func _apply_team_effects() -> void:
 				continue
 			var members := []
 			for u in allies:
-				if GameData.traits_of(u["aid"]).has(name):
+				if _traits(u).has(name):
 					members.append(u)
 			if members.is_empty():
 				continue
@@ -198,6 +206,11 @@ func _apply_synergy(side: int, name: String, spec: Dictionary, members: Array, a
 		guardian[side] = true
 	if spec.has("revive"):
 		revive[side] = {"syn": name, "pct": float(spec["revive"]["pct"]), "delay": float(spec["revive"]["delay"])}
+
+
+## 유닛의 시너지 (그림자 몬스터는 없음)
+func _traits(u: Dictionary) -> Array:
+	return [] if u.get("monster", false) else GameData.traits_of(u["aid"])
 
 
 func _add_static(u: Dictionary, mods: Dictionary) -> void:
@@ -348,7 +361,7 @@ func run() -> Dictionary:
 		winner = 1
 	var survivors := a_alive if winner == 0 else (b_alive if winner == 1 else 0)
 	_emit("end", -1, -1, winner)
-	return {"winner": winner, "survivors": survivors, "end_time": time, "events": events, "units": unit_snapshots()}
+	return {"winner": winner, "survivors": survivors, "end_time": time, "events": events, "units": unit_snapshots(), "deaths": deaths.duplicate()}
 
 
 ## 진영 단위 주기 효과·부활
@@ -359,7 +372,7 @@ func _tick_side() -> void:
 			continue
 		st["t"] += st["sec"]
 		for u in units:
-			if u["side"] == st["side"] and u["alive"] and GameData.traits_of(u["aid"]).has(st["syn"]):
+			if u["side"] == st["side"] and u["alive"] and _traits(u).has(st["syn"]):
 				_run_actions(u, st["do"], null, {})
 				break
 	var keep := []
@@ -382,7 +395,7 @@ func unit_snapshots() -> Array:
 	var out := []
 	for u in units:
 		out.append({"i": u["i"], "side": u["side"], "aid": u["aid"], "name": u["name"], "star": u["star"],
-			"row": u["row"], "slot": u["slot"], "max_hp": max_hp(u), "pers": u["pers"]})
+			"row": u["row"], "slot": u["slot"], "max_hp": max_hp(u), "pers": u["pers"], "monster": u["monster"]})
 	return out
 
 
@@ -833,7 +846,7 @@ func _kill(src: Dictionary, dst: Dictionary) -> void:
 					_run_actions(u, f["do"], dst, {})
 	# 유령 늪: 처음 쓰러진 시너지 사도 부활
 	var rv: Dictionary = revive[dst["side"]]
-	if not rv.is_empty() and GameData.traits_of(dst["aid"]).has(rv["syn"]):
+	if not rv.is_empty() and _traits(dst).has(rv["syn"]):
 		revive[dst["side"]] = {}
 		pending_revive.append({"i": dst["i"], "at": time + rv["delay"], "pct": rv["pct"]})
 	for u in units:
@@ -947,7 +960,7 @@ func _resolve_to(u: Dictionary, to: String, target, trait_name: String = "") -> 
 		"trait":
 			var out := []
 			for a in _allies(u):
-				if GameData.traits_of(a["aid"]).has(String(trait_name)):
+				if _traits(a).has(String(trait_name)):
 					out.append(a)
 			return out
 		"target":
