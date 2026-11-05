@@ -30,7 +30,7 @@ func _init(players: Array, seed: int, rules: Dictionary = {}) -> void:
 			"streak": 0, "alive": true, "place": 0,
 			"shop": [], "locks": [], "bench": _empty_bench(), "board": {}, "inv": [],
 			"art_offer": {}, "connected": true, "dc_round": 0, "last_opp": "", "ready": false,
-			"augs": [], "aug_offer": {}, "aug_st": {}, "style": p.get("style", ""),
+			"augs": [], "aug_offer": {}, "aug_st": {}, "style": p.get("style", ""), "avatar": p.get("avatar", ""),
 		}
 	state = {
 		"round": 0, "phase": "lobby", "phase_end": 0.0, "players": ps, "pool": pool,
@@ -235,6 +235,7 @@ func _start_prep() -> void:
 
 func _enter_prep() -> void:
 	state["phase"] = "prep"
+	state["next_pairs"] = _make_pairs() if state.get("round_kind", "pvp") == "pvp" else []
 	var r: int = state["round"]
 	phase_left = float(B.get("first_prep_time", B["prep_time"])) if r == 1 else float(B["prep_time"])
 	if tutorial:
@@ -354,31 +355,11 @@ func _start_battle() -> void:
 	if state.get("round_kind", "pvp") == "monster":
 		_start_monster_battles()
 		return
-	var ids := alive_players()
-	# 섞은 뒤 직전 상대와 겹치지 않게 짝을 맞춘다
-	for i in range(ids.size() - 1, 0, -1):
-		var j := rng.randi_range(0, i)
-		var t = ids[i]
-		ids[i] = ids[j]
-		ids[j] = t
-	var pairs := []
-	var pending := ids.duplicate()
-	while pending.size() >= 2:
-		var a: String = pending.pop_front()
-		var pick := 0
-		for k in pending.size():
-			if pending[k] != player(a)["last_opp"]:
-				pick = k
-				break
-		var b: String = pending.pop_at(pick)
-		pairs.append([a, b, ""])
-	if pending.size() == 1:
-		# 홀수: 다른 플레이어 보드를 복제한 유령과 싸운다
-		var a: String = pending[0]
-		var others := alive_players()
-		others.erase(a)
-		var ghost_of: String = others[rng.randi_range(0, others.size() - 1)] if not others.is_empty() else a
-		pairs.append([a, "", ghost_of])
+	# 준비 단계 시작 때 미리 정한 대진 (다음 상대 미리보기), 그사이 바뀌었으면 새로
+	var pairs: Array = state.get("next_pairs", [])
+	if not _pairs_valid(pairs):
+		pairs = _make_pairs()
+	state["next_pairs"] = []
 	var battles := []
 	var longest := 0.0   # 사람이 참여한 전투 중 가장 긴 시간 (봇끼리의 전투는 기다리지 않음)
 	for pr in pairs:
@@ -432,6 +413,61 @@ func monster_army(r: int, seed_rng: RandomNumberGenerator) -> Array:
 		used[row] = slot + 1
 		out.append({"aid": aid, "star": 2 if r >= 14 else 1, "row": row, "slot": slot, "arts": [], "pers": "", "monster": true, "mpow": power})
 	return out
+
+
+## 섞은 뒤 직전 상대와 겹치지 않게 짝을 맞춘다. 홀수면 한 명은 다른 플레이어 보드를 복제한 유령과.
+func _make_pairs() -> Array:
+	var ids := alive_players()
+	for i in range(ids.size() - 1, 0, -1):
+		var j := rng.randi_range(0, i)
+		var t = ids[i]
+		ids[i] = ids[j]
+		ids[j] = t
+	var pairs := []
+	var pending := ids.duplicate()
+	while pending.size() >= 2:
+		var a: String = pending.pop_front()
+		var pick := 0
+		for k in pending.size():
+			if pending[k] != player(a)["last_opp"]:
+				pick = k
+				break
+		var b: String = pending.pop_at(pick)
+		pairs.append([a, b, ""])
+	if pending.size() == 1:
+		var a: String = pending[0]
+		var others := alive_players()
+		others.erase(a)
+		var ghost_of: String = others[rng.randi_range(0, others.size() - 1)] if not others.is_empty() else a
+		pairs.append([a, "", ghost_of])
+	return pairs
+
+
+func _pairs_valid(pairs: Array) -> bool:
+	if pairs.is_empty():
+		return false
+	var alive := alive_players()
+	var seen := 0
+	for pr in pairs:
+		for k in [0, 1]:
+			if String(pr[k]) == "":
+				continue
+			if not alive.has(pr[k]):
+				return false
+			seen += 1
+	return seen == alive.size()
+
+
+## 다음 상대 (pid → 상대 이름용 정보): {"opp": pid, "ghost": pid} / 몬스터 라운드면 {"monster": true}
+func next_opponent(pid: String) -> Dictionary:
+	if state.get("round_kind", "pvp") == "monster":
+		return {"monster": true}
+	for pr in state.get("next_pairs", []):
+		if pr[0] == pid:
+			return {"opp": pr[1], "ghost": pr[2]}
+		if pr[1] == pid:
+			return {"opp": pr[0], "ghost": ""}
+	return {}
 
 
 func _start_monster_battles() -> void:

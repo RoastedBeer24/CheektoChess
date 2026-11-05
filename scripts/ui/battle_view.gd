@@ -138,6 +138,7 @@ func setup(bt: Dictionary, my_side: int, name_a: String, name_b: String) -> void
 		_pos[i] = _start_pos(u)
 		_disp[i] = _pos[i]
 		if Settings.flag("battle_motion") and MotionSprite.available(u["aid"]):
+			MotionSprite.preload_anims(u["aid"], ["Idle", "Move", "Attack1_1"])
 			var sp := MotionSprite.new(u["aid"])
 			sp.face_right = u["side"] == my_side   # 왼쪽(우리 편)은 오른쪽을 봄
 			sp.shadow = true

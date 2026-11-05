@@ -176,15 +176,26 @@ func _show_title() -> void:
 	var cv := VBoxContainer.new()
 	cv.add_theme_constant_override("separation", 14)
 	card.add_child(cv)
-	cv.add_child(UI.label("내 이름", 22, UI.SUB))
+	cv.add_child(UI.label("내 이름 · 대표 사도", 22, UI.SUB))
+	var nh := HBoxContainer.new()
+	nh.add_theme_constant_override("separation", 10)
+	cv.add_child(nh)
+	var av := Button.new()
+	av.custom_minimum_size = Vector2(64, 64)
+	av.icon = UI.portrait(SessionNode.my_avatar())
+	av.expand_icon = true
+	av.tooltip_text = "대표 사도 바꾸기"
+	av.pressed.connect(_show_avatar_picker)
+	nh.add_child(av)
 	var name_edit := LineEdit.new()
 	name_edit.text = App.session.my_name
 	name_edit.max_length = 12
 	name_edit.custom_minimum_size = Vector2(0, 64)
+	name_edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	name_edit.text_changed.connect(func(t):
 		App.session.my_name = t.strip_edges() if t.strip_edges() != "" else "플레이어"
 		App.session.save_profile())
-	cv.add_child(name_edit)
+	nh.add_child(name_edit)
 	cv.add_child(UI.hsep())
 	var solo := HBoxContainer.new()
 	solo.add_theme_constant_override("separation", 14)
@@ -397,10 +408,15 @@ func _on_lobby_changed() -> void:
 			var tag := "방장" if i == 0 else ("봇" if p["bot"] else "참가자")
 			if me:
 				tag += " · 나"
+			var ch := HBoxContainer.new()
+			ch.add_theme_constant_override("separation", 12)
+			card.add_child(ch)
+			if String(p.get("avatar", "")) != "":
+				ch.add_child(UI.tex_rect(UI.portrait(p["avatar"]), Vector2(84, 84), true))
 			var cv := VBoxContainer.new()
 			cv.add_child(UI.label(p["name"], 30, UI.ACCENT if me else UI.TEXT))
-			cv.add_child(UI.label(tag, 20, UI.SUB))
-			card.add_child(cv)
+			cv.add_child(UI.label(tag + (("  · " + Bot.STYLE_NAME.get(p.get("style", ""), "")) if p["bot"] else ""), 20, UI.SUB))
+			ch.add_child(cv)
 			card.add_theme_stylebox_override("panel", UI.box(Color(UI.PANEL, 0.95), 14, UI.ACCENT if me else UI.LINE, 2))
 		else:
 			card.add_child(UI.label("빈 자리", 24, Color(1, 1, 1, 0.25), HORIZONTAL_ALIGNMENT_CENTER))
@@ -569,3 +585,40 @@ func _show_rules_with(r: Dictionary) -> void:
 		App.session.rules = keep
 	else:
 		Settings._data["rules"] = keep_set
+
+
+## 대표 사도 고르기 (지금 그룹의 사도, ★3 을 해 본 사도는 금색 테두리)
+func _show_avatar_picker() -> void:
+	var v := _modal_box("대표 사도")
+	v.add_child(UI.label("대기실·플레이어 목록에 내 이름과 함께 보입니다.", 20, UI.SUB, HORIZONTAL_ALIGNMENT_CENTER))
+	var sc := ScrollContainer.new()
+	sc.custom_minimum_size = Vector2(900, 520)
+	sc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	v.add_child(sc)
+	var grid := GridContainer.new()
+	grid.columns = 8
+	grid.add_theme_constant_override("h_separation", 8)
+	grid.add_theme_constant_override("v_separation", 8)
+	sc.add_child(grid)
+	var recs := History.apostle_records()
+	var cur := SessionNode.my_avatar()
+	var ids: Array = GameData.roster.duplicate()
+	ids.sort_custom(func(a, b): return GameData.cost_of.get(a, 1) * 1000 + int(GameData.apostle(a).get("name", "").unicode_at(0)) < GameData.cost_of.get(b, 1) * 1000 + int(GameData.apostle(b).get("name", "").unicode_at(0)))
+	for aid in ids:
+		var b := Button.new()
+		b.custom_minimum_size = Vector2(100, 100)
+		b.icon = UI.portrait(aid)
+		b.expand_icon = true
+		b.tooltip_text = GameData.apostle(aid).get("name", aid)
+		var gold: bool = recs.get(aid, {}).get("star3", "") != ""
+		var border := UI.ACCENT if aid == cur else (Color("ffd23f") if gold else UI.LINE)
+		b.add_theme_stylebox_override("normal", UI.box(UI.BG2, 10, border, 4 if aid == cur else 2))
+		var id: String = aid
+		b.pressed.connect(func():
+			Settings.set_value("avatar", id)
+			_close_modal()
+			_show_title())
+		grid.add_child(b)
+	var close := UI.button("닫기", 22, Vector2(0, 60))
+	close.pressed.connect(_close_modal)
+	v.add_child(close)

@@ -55,18 +55,47 @@ static func available(id: String) -> bool:
 	return not meta_of(id).is_empty()
 
 
+## 시트 텍스처: 최근에 쓴 것만 MAX_TEX 개까지 메모리에 (오래 안 쓴 것부터 버림).
+## 모션 화질 '낮음'이면 절반 크기로 읽어 메모리 1/4.
+const MAX_TEX := 72
+static var _tex_order: Array = []
+static var _quality := -1
+
+
 static func _sheet(id: String, anim: String) -> Texture2D:
 	var key := id + "/" + anim
+	var q := int(Settings.num("motion_quality"))
+	if q != _quality:
+		_quality = q
+		_tex_cache.clear()
+		_tex_order.clear()
 	if _tex_cache.has(key):
+		var at := _tex_order.find(key)
+		if at >= 0 and at < _tex_order.size() - 8:   # 자주 쓰는 것은 뒤로 (매 프레임 옮기지 않게 여유)
+			_tex_order.remove_at(at)
+			_tex_order.append(key)
 		return _tex_cache[key]
 	var tex: Texture2D = null
 	var path := DIR + id + "/" + anim + ".webp"
 	if FileAccess.file_exists(path):
 		var img := Image.new()
 		if img.load_webp_from_buffer(FileAccess.get_file_as_bytes(path)) == OK:
+			if q == 0:
+				img.resize(img.get_width() / 2, img.get_height() / 2, Image.INTERPOLATE_BILINEAR)
 			tex = ImageTexture.create_from_image(img)
 	_tex_cache[key] = tex
+	_tex_order.append(key)
+	while _tex_order.size() > MAX_TEX:
+		_tex_cache.erase(_tex_order.pop_front())
 	return tex
+
+
+## 전투 시작 전에 미리 읽어 두기 (처음 공격·이동 때 끊기지 않게)
+static func preload_anims(id: String, anims: Array) -> void:
+	var m := meta_of(id)
+	for a in anims:
+		if m.get("anims", {}).has(a):
+			_sheet(id, a)
 
 
 func _init(apostle_id: String = "") -> void:
@@ -148,7 +177,7 @@ func _draw() -> void:
 		return
 	var info: Dictionary = _meta["anims"][_anim]
 	var cols := int(info["cols"])
-	var cell := float(_meta.get("size", 192))
+	var cell := float(_meta.get("size", 192)) * (0.5 if _quality == 0 else 1.0)
 	var src := Rect2((_frame % cols) * cell, (_frame / cols) * cell, cell, cell)
 	var feet := float(_meta.get("feet", 0.9))
 	# 발이 컨트롤 아래쪽 가운데에 오도록 (사도마다 크기 보정)

@@ -77,11 +77,13 @@ func _build_settings() -> void:
 	_choice("전투 기본 속도", "battle_speed", [["x1", 1.0], ["x2", 2.0]])
 	_toggle("전투 모션 (끄면 초상화 카드로 싸움 — 저사양 기기용)", "battle_motion")
 	_toggle("준비 단계 보드에서 사도 모션", "board_motion")
+	_choice("모션 화질 (낮음: 메모리 1/4 — 저사양 기기용, 다음 전투부터)", "motion_quality", [["높음", 1], ["낮음", 0]])
 	_toggle("전투 이펙트 (탄환·타격·스킬 빛)", "effects")
 	_toggle("화면 흔들림 (치명타·궁극기)", "screen_shake")
 	Info.section(_body, "화면·조작")
 	_choice("글자 크기 (다음에 여는 화면부터)", "text_scale", [["보통", 1.0], ["크게", 1.15], ["아주 크게", 1.3]])
 	_toggle("색약 모드 (좋음=파랑, 위험=주황)", "colorblind")
+	_toggle("상점 구매 추천 (보드에 올리면 시너지 단계가 오르는 사도에 ▲ 표시)", "shop_hint")
 	if OS.has_feature("android"):
 		_toggle("진동", "vibrate")
 	Info.section(_body, "튜토리얼")
@@ -164,18 +166,28 @@ func _build_history() -> void:
 		v.add_child(UI.label(pair[0], 18, UI.SUB))
 		v.add_child(UI.label(pair[1], 32, UI.ACCENT))
 		grid.add_child(card)
-	Info.section(_body, "많이 쓴 사도 (마지막 보드 기준)")
-	var flow := HFlowContainer.new()
-	flow.add_theme_constant_override("h_separation", 8)
-	flow.add_theme_constant_override("v_separation", 8)
-	_body.add_child(flow)
-	for pair in st["apostles"].slice(0, 12):
-		var aid: String = pair[0]
-		var card := HBoxContainer.new()
-		card.add_theme_constant_override("separation", 6)
-		card.add_child(UI.tex_rect(UI.portrait(aid), Vector2(52, 52), true))
-		card.add_child(UI.label("%s ×%d" % [GameData.apostle(aid).get("name", aid), pair[1]], 20, UI.TEXT))
-		flow.add_child(card)
+	# 도감 수집: 이번 그룹 사도 중 써 본 사도·★3 을 만든 사도
+	var recs := History.apostle_records()
+	var used := 0
+	var s3 := 0
+	for aid in GameData.roster:
+		if recs.has(aid) and int(recs[aid]["used"]) > 0:
+			used += 1
+		if recs.get(aid, {}).get("star3", "") != "":
+			s3 += 1
+	Info.section(_body, "도감 수집 (%s)" % GameData.group_name(GameData.group_id))
+	var cl := HBoxContainer.new()
+	cl.add_theme_constant_override("separation", 14)
+	_body.add_child(cl)
+	for pair in [["써 본 사도", "%d / %d" % [used, GameData.roster.size()]], ["★3 을 만든 사도", "%d / %d" % [s3, GameData.roster.size()]]]:
+		var card := UI.panel(UI.BG2, 12)
+		card.custom_minimum_size = Vector2(240, 0)
+		var cv := VBoxContainer.new()
+		card.add_child(cv)
+		cv.add_child(UI.label(pair[0], 18, UI.SUB))
+		cv.add_child(UI.label(pair[1], 30, UI.ACCENT))
+		cl.add_child(card)
+	_body.add_child(UI.wrap_label("사도별 기록(쓴 판·1위·★3)은 도감에서 사도를 누르면 볼 수 있습니다.", 18, UI.SUB))
 	Info.section(_body, "많이 켠 시너지")
 	var sflow := HFlowContainer.new()
 	sflow.add_theme_constant_override("h_separation", 8)

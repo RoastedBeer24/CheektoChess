@@ -39,6 +39,7 @@ var _players_box: VBoxContainer
 var _syn_box: VBoxContainer
 var _board_root: Control
 var _board_info: Label
+var _next_btn: Button
 var _board_tiles := {}
 var _battle_view: BattleView
 var _banner: Label
@@ -350,8 +351,20 @@ func _build_board() -> Control:
 	var v := VBoxContainer.new()
 	v.alignment = BoxContainer.ALIGNMENT_CENTER
 	v.add_theme_constant_override("separation", 10)
+	var bih := HBoxContainer.new()
+	bih.alignment = BoxContainer.ALIGNMENT_CENTER
+	bih.add_theme_constant_override("separation", 14)
+	v.add_child(bih)
 	_board_info = UI.label("", 22, UI.SUB, HORIZONTAL_ALIGNMENT_CENTER)
-	v.add_child(_board_info)
+	bih.add_child(_board_info)
+	# 다음 상대 미리보기 (누르면 그 사람 보드)
+	_next_btn = UI.button("", 18, Vector2(0, 40), Color("5a2f3a"))
+	_next_btn.visible = false
+	_next_btn.pressed.connect(func():
+		var opp: String = _next_btn.get_meta("pid", "")
+		if opp != "":
+			_show_player(opp))
+	bih.add_child(_next_btn)
 	var heads := HBoxContainer.new()
 	heads.alignment = BoxContainer.ALIGNMENT_CENTER
 	heads.add_theme_constant_override("separation", 14)
@@ -653,6 +666,11 @@ func _refresh_players() -> void:
 		var h := HBoxContainer.new()
 		h.add_theme_constant_override("separation", 6)
 		row.add_child(h)
+		if String(p.get("avatar", "")) != "":
+			var av := UI.tex_rect(UI.portrait(p["avatar"]), Vector2(34, 34), true)
+			if not p["alive"]:
+				av.modulate = Color(1, 1, 1, 0.4)
+			h.add_child(av)
 		var name_l := UI.label("%d %s" % [rank, p["name"]], 19, UI.ACCENT if mine else (UI.TEXT if p["alive"] else UI.SUB))
 		name_l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		name_l.clip_text = true
@@ -832,6 +850,7 @@ func _refresh_board() -> void:
 				t.set_corner("◆ 합성", Color("c9a7ff"))
 		t.set_selected(sel.get("unit", {}) == {"board": key})
 	_board_info.text = "보드 %d / %d   (레벨만큼 올릴 수 있음%s)" % [p.get("board", {}).size(), Match.board_cap(p), ", 확장 보드 +1" if Match.has_aug(p, "board_plus") else ""]
+	_refresh_next_opp()
 
 
 ## 사도 칸 아래 작은 글씨 (성격·종족은 아이콘으로 표시하므로 공명/이면 선택만)
@@ -894,10 +913,13 @@ func _refresh_bench_shop() -> void:
 		t.set_badge("%dG" % cost, UI.cost_color(aid).lightened(0.35), 24)
 		t.set_name_color(UI.cost_color(aid).lightened(0.45))
 		var owned := _owned_count(p, aid)
+		var up: Array = _tier_up_traits(p, aid) if Settings.flag("shop_hint") and prep else []
 		if owned >= 2:
 			t.set_corner("★ 합성!", Color("ffe066"))
 		elif owned > 0:
 			t.set_corner("보유 %d/3" % owned, UI.ACCENT)
+		elif not up.is_empty():
+			t.set_corner("▲ " + UI.syn_short(up[0]), Color("7fffd4"))
 		var locks: Array = p.get("locks", [])
 		t.set_locked(i < locks.size() and locks[i] == true)
 		t.set_dim(gold < cost)
@@ -990,6 +1012,55 @@ func _tile_tip(loc: Dictionary) -> String:
 	return UI.unit_tip(u, extra)
 
 
+## 다음 상대: 준비 단계에 미리 정해진 대진에서 내 상대
+func _refresh_next_opp() -> void:
+	var st := App.session.state
+	_next_btn.visible = false
+	if st.get("phase", "") != "prep" or not me().get("alive", false):
+		return
+	if st.get("round_kind", "pvp") == "monster":
+		_next_btn.text = "다음 상대: 그림자 몬스터"
+		_next_btn.set_meta("pid", "")
+		_next_btn.visible = true
+		return
+	for pr in st.get("next_pairs", []):
+		var opp := ""
+		var ghost := ""
+		if pr[0] == App.session.my_pid:
+			opp = pr[1]
+			ghost = pr[2]
+		elif pr[1] == App.session.my_pid:
+			opp = pr[0]
+		else:
+			continue
+		var who: String = opp if opp != "" else ghost
+		var nm: String = String(st["players"].get(who, {}).get("name", "?"))
+		_next_btn.text = "다음 상대: %s%s  ▶ 보드 보기" % [nm, " (유령)" if opp == "" else ""]
+		_next_btn.set_meta("pid", who)
+		_next_btn.visible = true
+		return
+
+
+## 구매 추천: 이 사도를 사서 보드에 올리면 단계가 오르는 시너지 (보드에 없는 사도일 때)
+func _tier_up_traits(p: Dictionary, aid: String) -> Array:
+	var specs := []
+	var on_board := false
+	for k in p.get("board", {}):
+		specs.append(p["board"][k])
+		if p["board"][k]["aid"] == aid:
+			on_board = true
+	if on_board:
+		return []
+	var before := Rules.active_tiers(Rules.apply_emblems(Rules.count_traits(specs), p.get("augs", [])))
+	specs.append({"aid": aid, "pers": ""})
+	var after := Rules.active_tiers(Rules.apply_emblems(Rules.count_traits(specs), p.get("augs", [])))
+	var out := []
+	for n in after:
+		if int(after[n]) > int(before.get(n, 0)) and GameData.synergies.get(n, {}).get("kind", "") != "unique":
+			out.append(n)
+	return out
+
+
 func _shop_tip(i: int) -> String:
 	var p := me()
 	var shop: Array = p.get("shop", [])
@@ -999,6 +1070,9 @@ func _shop_tip(i: int) -> String:
 	var cost: int = GameData.cost_of[aid]
 	var owned := _owned_count(p, aid)
 	var extra := "보유 [color=#ffd25e]%d/3[/color]%s" % [owned, "  [color=#ffe066]→ 사면 ★ 합성![/color]" if owned >= 2 else ""]
+	var up := _tier_up_traits(p, aid)
+	if not up.is_empty():
+		extra += "\n[color=#7fffd4]▲ 보드에 올리면 시너지 단계 오름: %s[/color]" % ", ".join(up)
 	if int(p.get("gold", 0)) < cost:
 		extra += "\n[color=#ff7070]골드 %d 부족[/color]" % (cost - int(p.get("gold", 0)))
 	extra += "\n[color=#8a8fa6]누르면 구매 · 끌어서 원하는 칸에 구매 · 꾹 눌러 잠금[/color]"
@@ -2090,7 +2164,11 @@ func _show_game_over() -> void:
 	var st := App.session.state
 	if _recorded_seed != int(st.get("seed", 0)):
 		_recorded_seed = int(st.get("seed", 0))
-		History.record(st, App.session.my_pid, App.session.mode)
+		var s3 := []
+		for key in _star_seen:
+			if String(key).ends_with(":3"):
+				s3.append(String(key).split(":")[0])
+		History.record(st, App.session.my_pid, App.session.mode, s3)
 	var v := _modal("게임 종료", "over")
 	var list: Array = st["players"].values()
 	list.sort_custom(func(a, b): return int(a["place"]) < int(b["place"]))

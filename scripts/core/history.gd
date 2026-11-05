@@ -14,7 +14,7 @@ static func load_all() -> Array:
 
 
 ## 게임이 끝났을 때 한 번 호출 (같은 seed 는 한 번만 기록)
-static func record(state: Dictionary, my_pid: String, mode: String) -> void:
+static func record(state: Dictionary, my_pid: String, mode: String, star3: Array = []) -> void:
 	var p: Dictionary = state.get("players", {}).get(my_pid, {})
 	if p.is_empty():
 		return
@@ -38,7 +38,7 @@ static func record(state: Dictionary, my_pid: String, mode: String) -> void:
 		"date": Time.get_datetime_string_from_system(false, true),
 		"seed": seed, "mode": mode, "group": GameData.group_name(state.get("group", GameData.group_id)),
 		"players": state.get("players", {}).size(), "place": int(p.get("place", 0)) if int(p.get("place", 0)) > 0 else 1,
-		"round": int(state.get("round", 0)), "board": board, "synergies": syns,
+		"round": int(state.get("round", 0)), "board": board, "synergies": syns, "star3": star3,
 	})
 	if games.size() > MAX_GAMES:
 		games = games.slice(games.size() - MAX_GAMES)
@@ -77,3 +77,31 @@ static func stats() -> Dictionary:
 	return {"games": games.size(), "wins": wins, "top4": top4,
 		"avg_place": (float(place_sum) / games.size()) if not games.is_empty() else 0.0,
 		"apostles": al, "synergies": sl}
+
+
+## 사도별 내 기록 (도감 수집): {aid: {used: 마지막 보드에 쓴 판 수, wins: 1위 판 수, star3: 처음 ★3 을 만든 날짜("" = 아직)}}
+static func apostle_records() -> Dictionary:
+	var out := {}
+	for g in load_all():
+		var pl := int(g.get("place", 9))
+		var seen := {}
+		for u in g.get("board", []):
+			var aid: String = u["aid"]
+			if seen.has(aid):
+				continue
+			seen[aid] = true
+			var r: Dictionary = out.get(aid, {"used": 0, "wins": 0, "star3": ""})
+			r["used"] += 1
+			if pl == 1:
+				r["wins"] += 1
+			out[aid] = r
+		var s3: Array = g.get("star3", [])
+		for u in g.get("board", []):
+			if int(u.get("star", 1)) >= 3 and not s3.has(u["aid"]):
+				s3.append(u["aid"])
+		for aid in s3:
+			var r: Dictionary = out.get(aid, {"used": 0, "wins": 0, "star3": ""})
+			if r["star3"] == "":
+				r["star3"] = String(g.get("date", "")).substr(0, 10)
+			out[aid] = r
+	return out

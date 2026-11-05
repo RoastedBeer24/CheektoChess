@@ -16,7 +16,10 @@ const DEFAULTS := {
 	"text_scale": 1.0,      # 1.0 / 1.15 / 1.3
 	"colorblind": false,    # 색약 모드: 좋음/위험 색을 파랑/주황으로
 	"tutorial_done": false,
-	"rules": {},            # 방 규칙 (방장·혼자 하기): {fast, augments, hp, gold, prep}
+	"rules": {},
+	"avatar": "",
+	"shop_hint": true,      # 상점 구매 추천 표시
+	"motion_quality": 1,    # 모션 화질: 1 높음, 0 낮음(저사양: 메모리 1/4)           # 프로필 대표 사도 (사도 id)            # 방 규칙 (방장·혼자 하기): {fast, augments, hp, gold, prep}
 }
 
 static var _data: Dictionary = {}

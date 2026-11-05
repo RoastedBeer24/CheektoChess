@@ -87,7 +87,7 @@ func start_offline(bots: int, use_rules: bool = true) -> void:
 	rules = Dictionary(Settings.get_value("rules")).duplicate() if use_rules else {}
 	mode = "offline"
 	my_pid = token
-	lobby = [{"id": my_pid, "name": my_name, "bot": false, "connected": true}]
+	lobby = [{"id": my_pid, "name": my_name, "bot": false, "connected": true, "avatar": my_avatar()}]
 	for i in bots:
 		add_bot()
 	start_game()
@@ -120,7 +120,7 @@ func host_room() -> Error:
 		return err
 	mode = "host"
 	my_pid = token
-	lobby = [{"id": my_pid, "name": my_name, "bot": false, "connected": true}]
+	lobby = [{"id": my_pid, "name": my_name, "bot": false, "connected": true, "avatar": my_avatar()}]
 	_lobby_updated()
 	return OK
 
@@ -166,7 +166,9 @@ func add_bot() -> void:
 	_bot_seq += 1
 	# 봇 성향: 차례로 돌아가며 (난이도는 같음)
 	var style: String = Bot.STYLES[(_bot_seq - 1) % Bot.STYLES.size()]
-	lobby.append({"id": "bot%d" % _bot_seq, "name": "봇 %d" % _bot_seq, "bot": true, "connected": true, "style": style})
+	var roster: Array = GameData.roster
+	var av: String = roster[(_bot_seq * 7) % roster.size()] if not roster.is_empty() else ""
+	lobby.append({"id": "bot%d" % _bot_seq, "name": "봇 %d" % _bot_seq, "bot": true, "connected": true, "style": style, "avatar": av})
 	_lobby_updated()
 
 
@@ -283,7 +285,15 @@ func _peer_ips() -> Dictionary:
 
 func _on_connected() -> void:
 	_conn = 1
-	_rpc_hello.rpc_id(1, token, my_name, App.build)
+	_rpc_hello.rpc_id(1, token, my_name, App.build, my_avatar())
+
+
+## 프로필 대표 사도 (고르지 않았으면 그룹 첫 사도)
+static func my_avatar() -> String:
+	var a := String(Settings.get_value("avatar"))
+	if a == "" or GameData.apostle(a).is_empty():
+		a = "erpin" if not GameData.apostle("erpin").is_empty() else (GameData.roster[0] if not GameData.roster.is_empty() else "")
+	return a
 
 
 # ─────────────────────────────── 재접속 · 방장 넘기기 ───────────────────────────────
@@ -437,7 +447,7 @@ func _on_peer_left(peer_id: int) -> void:
 # ─────────────────────────────── RPC ───────────────────────────────
 
 @rpc("any_peer", "reliable")
-func _rpc_hello(their_token: String, their_name: String, their_build: int = 0) -> void:
+func _rpc_hello(their_token: String, their_name: String, their_build: int = 0, their_avatar: String = "") -> void:
 	if mode != "host":
 		return
 	var peer := multiplayer.get_remote_sender_id()
@@ -480,7 +490,7 @@ func _rpc_hello(their_token: String, their_name: String, their_build: int = 0) -
 			_rpc_reject.rpc_id(peer, "같은 기기가 이미 참가 중입니다.")
 			return
 	peer_to_pid[peer] = their_token
-	lobby.append({"id": their_token, "name": their_name, "bot": false, "connected": true})
+	lobby.append({"id": their_token, "name": their_name, "bot": false, "connected": true, "avatar": their_avatar})
 	_rpc_welcome.rpc_id(peer, their_token)
 	_lobby_updated()
 

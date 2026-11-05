@@ -299,11 +299,18 @@ func _list_apostles() -> void:
 	else:
 		ids.sort_custom(func(x, y): return GameData.apostle(x)["name"] < GameData.apostle(y)["name"])
 	_count.text = "사도 %d / %d명" % [ids.size(), GameData.roster.size()]
+	var recs := History.apostle_records()
 	for aid in ids:
 		var a := GameData.apostle(aid)
 		var t := UnitTile.new(Vector2(150, 150))
 		t.set_unit({"aid": aid}, "%s · %s" % [GameData.ROW_NAME[a["row"]], GameData.ROLE_NAME[a["role"]]], UI.cost_color(aid))
 		t.set_badge("%dG" % GameData.cost_of[aid], UI.cost_color(aid).lightened(0.3))
+		# 도감 수집: ★3 을 만들어 본 사도는 금색 ★, 써 본 사도는 ✓
+		var rec: Dictionary = recs.get(aid, {})
+		if rec.get("star3", "") != "":
+			t.set_corner("★★★", Color("ffd23f"))
+		elif int(rec.get("used", 0)) > 0:
+			t.set_corner("✓ %d판" % int(rec["used"]), UI.GOOD)
 		var id: String = aid
 		t.pressed.connect(func(): _show_apostle(id))
 		_grid.add_child(t)
@@ -319,6 +326,15 @@ func _show_apostle(aid: String) -> void:
 	for id in GameData.artifacts:
 		if GameData.artifact(id).get("owner", "") == name:
 			favs.append(id)
+	var rec: Dictionary = History.apostle_records().get(aid, {})
+	Info.section(_detail, "내 기록")
+	if rec.is_empty():
+		_detail.add_child(UI.label("아직 써 본 적 없음", 17, UI.SUB))
+	else:
+		var txt := "마지막 보드에 쓴 판 [color=#ffd25e]%d[/color] · 그중 1위 [color=#5ee39b]%d[/color]" % [int(rec.get("used", 0)), int(rec.get("wins", 0))]
+		if rec.get("star3", "") != "":
+			txt += "\n[color=#ffd23f]★3 달성[/color] (%s)" % rec["star3"]
+		_detail.add_child(UI.rich_desc(txt, 18, UI.TEXT))
 	Info.section(_detail, "애착 아티팩트")
 	if favs.is_empty():
 		_detail.add_child(UI.label("없음", 17, UI.SUB))
