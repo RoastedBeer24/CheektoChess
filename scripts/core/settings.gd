@@ -20,7 +20,8 @@ const DEFAULTS := {
 	"tutorial_done": false,
 	"rules": {},
 	"avatar": "",
-	"pet": "",              # 내 펫 (펫 id, "" = 없음)
+	"pet": "",
+	"group": "",            # 혼자 하기·방 만들기에 쓸 그룹 (그룹 id, "" = 첫 그룹)              # 내 펫 (펫 id, "" = 없음)
 	"shop_hint": true,
 	"ui_scale": 0.0,
 	"battle_full": 0,       # 전투 크게 보기: 0 자동(휴대폰은 켬), 1 켬, 2 끔        # 화면 크기 배율: 0 = 자동(휴대폰은 크게), 그 외 그 값      # 상점 구매 추천 표시

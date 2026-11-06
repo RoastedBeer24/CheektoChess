@@ -141,7 +141,9 @@ func _show_title() -> void:
 	App.net.start_discovery()
 	var screen := Control.new()
 	screen.add_child(_collage())
-	var root := _margin(48)
+	# 세로가 낮은 화면(휴대폰을 크게 키운 경우): 제목·여백을 줄여 아래 버튼이 잘리지 않게
+	var compact := get_viewport_rect().size.y < 880.0
+	var root := _margin(24 if compact else 48)
 	root.set_anchors_preset(Control.PRESET_FULL_RECT)
 	screen.add_child(root)
 	var h := HBoxContainer.new()
@@ -150,11 +152,19 @@ func _show_title() -> void:
 
 	var left := VBoxContainer.new()
 	left.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	left.add_theme_constant_override("separation", 18)
+	left.add_theme_constant_override("separation", 8 if compact else 18)
 	h.add_child(left)
-	var logo := UI.outlined("볼토체스", 104, UI.ACCENT, 14, HORIZONTAL_ALIGNMENT_LEFT)
-	left.add_child(logo)
-	left.add_child(UI.label("트릭컬 팬게임 · 오토체스  (비공식)", 28, UI.TEXT))
+	var lrow := HBoxContainer.new()
+	lrow.add_theme_constant_override("separation", 20)
+	left.add_child(lrow)
+	var logo := UI.outlined("볼토체스", 64 if compact else 104, UI.ACCENT, 10 if compact else 14, HORIZONTAL_ALIGNMENT_LEFT)
+	lrow.add_child(logo)
+	var sub := UI.label("트릭컬 팬게임 · 오토체스  (비공식)", 22 if compact else 28, UI.TEXT)
+	if compact:
+		sub.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		lrow.add_child(sub)
+	else:
+		left.add_child(sub)
 	var vrow := HBoxContainer.new()
 	vrow.add_theme_constant_override("separation", 16)
 	left.add_child(vrow)
@@ -169,13 +179,13 @@ func _show_title() -> void:
 	setb.pressed.connect(func(): add_child(SettingsPanel.new()))
 	vrow.add_child(setb)
 	var sp := Control.new()
-	sp.custom_minimum_size.y = 20
+	sp.custom_minimum_size.y = 0 if compact else 20
 	left.add_child(sp)
 
 	var card := UI.panel(Color(UI.PANEL, 0.92))
 	left.add_child(card)
 	var cv := VBoxContainer.new()
-	cv.add_theme_constant_override("separation", 14)
+	cv.add_theme_constant_override("separation", 8 if compact else 14)
 	card.add_child(cv)
 	cv.add_child(UI.label("내 이름 · 대표 사도", 22, UI.SUB))
 	var nh := HBoxContainer.new()
@@ -208,10 +218,28 @@ func _show_title() -> void:
 		App.session.save_profile())
 	nh.add_child(name_edit)
 	cv.add_child(UI.hsep())
+	# 그룹 (혼자 하기·방 만들기에 쓰임, 다음에도 기억)
+	var saved_g := String(Settings.get_value("group"))
+	if saved_g != "" and saved_g != GameData.group_id:
+		GameData.set_group(saved_g)
+	var grow := HBoxContainer.new()
+	grow.add_theme_constant_override("separation", 10)
+	cv.add_child(grow)
+	grow.add_child(UI.label("그룹", 24, UI.ACCENT))
+	for g in GameData.groups:
+		var on: bool = g["id"] == GameData.group_id
+		var gb := UI.button(String(g.get("name", g["id"])), 22, Vector2(0, 56), UI.ACCENT.darkened(0.55) if on else UI.PANEL_LIGHT)
+		gb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		var gid: String = g["id"]
+		gb.pressed.connect(func():
+			Settings.set_value("group", gid)
+			GameData.set_group(gid)
+			_show_title())
+		grow.add_child(gb)
 	var solo := HBoxContainer.new()
 	solo.add_theme_constant_override("separation", 14)
 	cv.add_child(solo)
-	var b_solo := UI.button("혼자 하기", 30, Vector2(0, 84), Color("2f6b4a"))
+	var b_solo := UI.button("혼자 하기", 30, Vector2(0, 66 if compact else 84), Color("2f6b4a"))
 	b_solo.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	solo.add_child(b_solo)
 	var bots := VBoxContainer.new()
@@ -238,7 +266,7 @@ func _show_title() -> void:
 	var rb := UI.button("규칙 설정", 20, Vector2(150, 52), Color("4a3f6b"))
 	rb.pressed.connect(_show_rules)
 	rules_row.add_child(rb)
-	var b_host := UI.button("방 만들기 (LAN)", 30, Vector2(0, 84), Color("2f4f86"))
+	var b_host := UI.button("방 만들기 (LAN)", 30, Vector2(0, 66 if compact else 84), Color("2f4f86"))
 	b_host.pressed.connect(func():
 		var err := App.session.host_room()
 		if err != OK:
@@ -319,7 +347,9 @@ func _show_lobby() -> void:
 	App.net.stop_discovery()
 	var screen := Control.new()
 	screen.add_child(_collage())
-	var root := _margin(48)
+	# 세로가 낮은 화면(휴대폰을 크게 키운 경우): 제목·여백을 줄여 아래 버튼이 잘리지 않게
+	var compact := get_viewport_rect().size.y < 880.0
+	var root := _margin(24 if compact else 48)
 	root.set_anchors_preset(Control.PRESET_FULL_RECT)
 	screen.add_child(root)
 	var v := VBoxContainer.new()

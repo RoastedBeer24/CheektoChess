@@ -365,6 +365,9 @@ func _fit_texts() -> void:
 		base = mini(base, int(size.y * 0.17) + 1)
 	if _stars != null:
 		_stars.add_theme_font_size_override("font_size", 18 if size.y >= 100.0 else 14)
+		_stars.visible = _stars.text != ""   # 빈 별 줄이 자리를 차지해 이름 띠를 칸 밖으로 밀어내지 않게
+	if _badge != null and size.y < 100.0:
+		_badge.add_theme_font_size_override("font_size", 15)
 	var font: Font = _name.get_theme_font("font")
 	var avail := size.x - 10.0
 	var fsz := base

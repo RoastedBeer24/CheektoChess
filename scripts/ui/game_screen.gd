@@ -41,6 +41,8 @@ var _board_root: Control
 var _board_info: Label
 var _next_btn: Button
 var _pause_btn: Button
+var _top_row: HBoxContainer
+var _next_holder: VBoxContainer
 var _pet: PetBuddy
 var _pause_cover: Control
 var _board_tiles := {}
@@ -247,8 +249,35 @@ func _fit_layout() -> void:
 			break
 		k = clampf(k - over / (BOARD_TILE * 3.0 + BENCH_TILE + SHOP_H) - 0.005, 0.45, 1.0)
 	_fit_k = k
+	_fit_width()
 	if OS.get_environment("CHEEKTO_DEBUG_FIT") != "":
 		print("FIT avail=", avail, " need=", need, " k=", k, " root_min=", _root.get_combined_minimum_size())
+
+
+## 가로가 좁은 화면(긴 휴대폰을 크게 키운 경우): 상점 카드·버튼 너비를 줄이고, 그래도 넘치면 위 막대 글자를 줄인다
+func _fit_width() -> void:
+	var vw := get_viewport_rect().size.x
+	if vw <= 0:
+		return
+	var shop_row: Control = _shop_tiles[0].get_parent() if not _shop_tiles.is_empty() else null
+	if shop_row != null:
+		for t in _shop_tiles:
+			t.custom_minimum_size.x = 206
+		_reroll_btn.custom_minimum_size.x = 170
+		_xp_btn.custom_minimum_size.x = 170
+		var over: float = shop_row.get_combined_minimum_size().x + 40.0 - vw
+		if over > 0.0:
+			var tw := clampf(206.0 - over / 6.0, 120.0, 206.0)
+			for t in _shop_tiles:
+				t.custom_minimum_size.x = tw
+			var bw := clampf(170.0 - over / 6.0, 120.0, 170.0)
+			_reroll_btn.custom_minimum_size.x = bw
+			_xp_btn.custom_minimum_size.x = bw
+	if _top_row != null:
+		_top_row.add_theme_constant_override("separation", 12)
+		var top_over: float = _top_row.get_combined_minimum_size().x + 40.0 - vw
+		if top_over > 0.0:
+			_top_row.add_theme_constant_override("separation", 4)
 
 
 func _apply_fit(k: float) -> void:
@@ -276,12 +305,13 @@ func _build_top() -> Control:
 	tsb.content_margin_top = 6
 	tsb.content_margin_bottom = 6
 	var h := HBoxContainer.new()
-	h.add_theme_constant_override("separation", 22)
+	h.add_theme_constant_override("separation", 12)
 	top.add_child(h)
+	_top_row = h
 	_round_lbl = UI.label("", 30, UI.ACCENT)
 	h.add_child(_round_lbl)
 	var pv := VBoxContainer.new()
-	pv.custom_minimum_size.x = 300
+	pv.custom_minimum_size.x = 240
 	pv.add_theme_constant_override("separation", 4)
 	h.add_child(pv)
 	_phase_pill = UI.panel(PHASE_COLOR["prep"], 10)
@@ -294,7 +324,7 @@ func _build_top() -> Control:
 	sp.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	h.add_child(sp)
 	var hpv := VBoxContainer.new()
-	hpv.custom_minimum_size.x = 200
+	hpv.custom_minimum_size.x = 150
 	hpv.add_theme_constant_override("separation", 2)
 	h.add_child(hpv)
 	_hp_lbl = UI.label("", 22, UI.GOOD)
@@ -308,14 +338,14 @@ func _build_top() -> Control:
 	gv.add_theme_constant_override("separation", -4)
 	gold.add_child(gv)
 	_gold_lbl = UI.label("", 26, UI.ACCENT, HORIZONTAL_ALIGNMENT_CENTER)
-	_gold_lbl.custom_minimum_size.x = 150
+	_gold_lbl.custom_minimum_size.x = 120
 	gv.add_child(_gold_lbl)
 	_income_lbl = UI.label("", 15, Color("e8d9a8"), HORIZONTAL_ALIGNMENT_CENTER)
 	gv.add_child(_income_lbl)
 	h.add_child(gold)
 	Tips.set_tip(gold, _gold_tip)
 	var lv := VBoxContainer.new()
-	lv.custom_minimum_size.x = 200
+	lv.custom_minimum_size.x = 160
 	lv.add_theme_constant_override("separation", 2)
 	h.add_child(lv)
 	_lvl_lbl = UI.label("", 22)
@@ -324,28 +354,28 @@ func _build_top() -> Control:
 	lv.add_child(_xp_bar)
 	lv.mouse_filter = Control.MOUSE_FILTER_STOP
 	Tips.set_tip(lv, _level_tip)
-	_offer_btn = UI.button("아티팩트 선택", 22, Vector2(190, 52), Color("8a5a1f"))
+	_offer_btn = UI.button("아티팩트 선택", 22, Vector2(170, 52), Color("8a5a1f"))
 	_offer_btn.pressed.connect(func():
 		_offer_hidden = false
 		refresh())
 	h.add_child(_offer_btn)
-	var codex := UI.button("도감", 22, Vector2(100, 52), Color("4f3586"))
+	var codex := UI.button("도감", 22, Vector2(86, 52), Color("4f3586"))
 	codex.pressed.connect(func(): add_child(Codex.new()))
 	h.add_child(codex)
 	Tips.set_tip(codex, "[b]도감[/b]\n모든 사도·아티팩트·시너지·용어를 찾아볼 수 있습니다.")
-	_ready_btn = UI.button("준비 완료", 22, Vector2(160, 52), Color("2f6b4a"))
+	_ready_btn = UI.button("준비 완료", 22, Vector2(150, 52), Color("2f6b4a"))
 	_ready_btn.pressed.connect(_on_ready_btn)
 	Tips.set_tip(_ready_btn, "[b]준비 완료[/b]  [color=#8a8fa6]［스페이스］[/color]\n사람 플레이어가 모두 준비하면 시간이 남아도 바로 전투합니다.\n전투 중에는 [b]건너뛰기[/b] — 모두 누르면 바로 다음 라운드.")
 	h.add_child(_ready_btn)
-	_pause_btn = UI.button("일시정지", 22, Vector2(120, 52), Color("3a4058"))
+	_pause_btn = UI.button("일시정지", 22, Vector2(110, 52), Color("3a4058"))
 	_pause_btn.pressed.connect(func(): App.session.set_paused(not App.session.paused))
 	Tips.set_tip(_pause_btn, "[b]일시정지[/b]\n나 말고 모두 봇인 게임에서만 멈출 수 있습니다.")
 	h.add_child(_pause_btn)
-	var setb := UI.button("설정", 22, Vector2(90, 52), Color("3a4058"))
+	var setb := UI.button("설정", 22, Vector2(80, 52), Color("3a4058"))
 	setb.pressed.connect(func(): add_child(SettingsPanel.new()))
 	Tips.set_tip(setb, "[b]설정·기록[/b]\n음량, 전투 속도, 모션·이펙트, 글자 크기, 색약 모드, 게임 기록")
 	h.add_child(setb)
-	var quit := UI.button("나가기", 22, Vector2(110, 52), Color("6b3535"))
+	var quit := UI.button("나가기", 22, Vector2(96, 52), Color("6b3535"))
 	quit.pressed.connect(_confirm_quit)
 	h.add_child(quit)
 	return top
@@ -361,6 +391,11 @@ func _build_left() -> Control:
 	lv.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	lv.add_theme_constant_override("separation", 8)
 	scroll.add_child(lv)
+	# 다음 상대 (누르면 그 보드) — 보드 위 열 이름 줄에 두면 좁은 화면에서 잘려서 여기로
+	_next_holder = VBoxContainer.new()
+	lv.add_child(_next_holder)
+	if _next_btn != null and _next_btn.get_parent() == null:
+		_next_holder.add_child(_next_btn)
 	lv.add_child(UI.label("시너지", 26, UI.ACCENT))
 	_syn_box = VBoxContainer.new()
 	_syn_box.add_theme_constant_override("separation", 6)
@@ -434,7 +469,7 @@ func _build_board() -> Control:
 	_board_info.mouse_filter = Control.MOUSE_FILTER_STOP
 	Tips.set_tip(_board_info, func(): return "[b]보드 인원[/b]\n보드에 올릴 수 있는 사도 수 = 레벨%s" % (" (+1 확장 보드)" if Match.has_aug(me(), "board_plus") else ""))
 	# 다음 상대 미리보기 (누르면 그 사람 보드)
-	_next_btn = UI.button("", 18, Vector2(420, 40), Color("5a2f3a"))
+	_next_btn = UI.button("", 18, Vector2(0, 56), Color("5a2f3a"))
 	_next_btn.clip_text = true
 	_next_btn.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	_next_btn.visible = false
@@ -483,7 +518,8 @@ func _build_board() -> Control:
 			_board_tiles[key] = t
 	# 적 방향 표시는 열 이름 줄 오른쪽에 (아래에 두면 좁은 화면에서 대기석과 겹침)
 	heads.add_child(UI.label("적 ▶▶", 20, UI.BAD.lightened(0.2), HORIZONTAL_ALIGNMENT_LEFT))
-	heads.add_child(_next_btn)
+	if _next_holder != null:
+		_next_holder.add_child(_next_btn)
 	return v
 
 
@@ -1353,7 +1389,7 @@ func _refresh_next_opp() -> void:
 		var who: String = opp if opp != "" else ghost
 		var nm: String = String(st["players"].get(who, {}).get("name", "?"))
 		var sm := _opp_summary(st["players"].get(who, {}))
-		_next_btn.text = "다음: %s%s%s" % [nm, " (유령)" if opp == "" else "", ("  ·  " + sm["short"]) if sm["short"] != "" else ""]
+		_next_btn.text = "다음: %s%s%s" % [nm, " (유령)" if opp == "" else "", ("\n" + sm["short"]) if sm["short"] != "" else ""]
 		_next_btn.set_meta("pid", who)
 		_next_btn.visible = true
 		return
