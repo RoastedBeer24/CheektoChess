@@ -55,35 +55,43 @@ func _ready() -> void:
 	root.add_child(top)
 	top.add_child(UI.outlined("도감", 40, UI.ACCENT, 8, HORIZONTAL_ALIGNMENT_LEFT))
 	for t in [["apostle", "사도"], ["artifact", "아티팩트"], ["synergy", "시너지"], ["terms", "용어"]]:
-		var b := UI.button(t[1], 24, Vector2(150, 60))
+		var b := UI.button(t[1], 24, Vector2(120, 60))
 		var key: String = t[0]
 		b.pressed.connect(func(): _set_tab(key))
 		top.add_child(b)
 		_tab_btns[key] = b
+	var tsp := Control.new()
+	tsp.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	top.add_child(tsp)
+	var close := UI.button("닫기", 22, Vector2(96, 60), Color("6b3535"))
+	close.pressed.connect(queue_free)
+	top.add_child(close)
+	# 검색·정렬은 둘째 줄 (좁은 화면에서 첫 줄이 넘치지 않게)
+	var top2 := HBoxContainer.new()
+	top2.add_theme_constant_override("separation", 12)
+	root.add_child(top2)
 	_search = LineEdit.new()
-	_search.placeholder_text = "이름 검색 (초성 가능: ㅇㄹㅍ)"
+	_search.placeholder_text = "이름 검색 (초성 가능)"
 	_search.custom_minimum_size = Vector2(0, 60)
 	_search.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_search.clear_button_enabled = true
 	_search.text_changed.connect(func(t):
 		query = t.strip_edges()
 		_rebuild())
-	top.add_child(_search)
-	_sort_btn = UI.button("", 20, Vector2(150, 60))
+	top2.add_child(_search)
+	_sort_btn = UI.button("", 20, Vector2(130, 60))
 	_sort_btn.pressed.connect(func():
 		sort_mode = "name" if sort_mode == "cost" else "cost"
 		_rebuild())
-	top.add_child(_sort_btn)
-	var close := UI.button("닫기", 22, Vector2(120, 60), Color("6b3535"))
-	close.pressed.connect(queue_free)
-	top.add_child(close)
+	top2.add_child(_sort_btn)
 
 	var body := HBoxContainer.new()
 	body.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	body.add_theme_constant_override("separation", 10)
 	root.add_child(body)
 	var fpanel := UI.panel()
-	fpanel.custom_minimum_size.x = 330
+	var narrow := get_viewport_rect().size.x < 1800.0
+	fpanel.custom_minimum_size.x = 270 if narrow else 330
 	body.add_child(fpanel)
 	var fscroll := DragScroll.new(UI.PANEL)
 	fscroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
@@ -110,7 +118,7 @@ func _ready() -> void:
 	gscroll.add_child(_grid)
 
 	var dpanel := UI.panel()
-	dpanel.custom_minimum_size.x = 470
+	dpanel.custom_minimum_size.x = 400 if narrow else 470
 	body.add_child(dpanel)
 	var dscroll := DragScroll.new(UI.PANEL)
 	dscroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
@@ -120,6 +128,13 @@ func _ready() -> void:
 	_detail.add_theme_constant_override("separation", 6)
 	dscroll.add_child(_detail)
 	_set_tab("apostle")
+
+
+## 가운데 목록 열 수: 화면 너비에 맞춰 (좁은 휴대폰에서 도감이 화면 밖으로 넘치지 않게)
+func _cols(cell_w: float, most: int) -> int:
+	var vw := get_viewport_rect().size.x
+	var side := (270.0 + 400.0) if vw < 1800.0 else (330.0 + 470.0)
+	return clampi(int((vw - side - 130.0) / cell_w), 2, most)
 
 
 func _set_tab(t: String) -> void:
@@ -268,7 +283,7 @@ func _rebuild() -> void:
 
 
 func _list_apostles() -> void:
-	_grid.columns = 6
+	_grid.columns = _cols(158.0, 6)
 	var ids := []
 	for aid in GameData.roster:
 		var a := GameData.apostle(aid)
@@ -347,7 +362,7 @@ func _show_apostle(aid: String) -> void:
 
 
 func _list_artifacts() -> void:
-	_grid.columns = 3
+	_grid.columns = _cols(310.0, 3)
 	var order: Array = GameData.balance["grade_order"]
 	var ids := []
 	for id in GameData.artifacts:
@@ -389,7 +404,7 @@ func _show_artifact(id: String) -> void:
 
 
 func _list_synergies() -> void:
-	_grid.columns = 3
+	_grid.columns = _cols(308.0, 3)
 	_count.text = "%s · 시너지 %d개" % [GameData.group_name(GameData.group_id), GameData.synergies.size()]
 	var names: Array = GameData.synergies.keys()
 	var order := {"origin": 0, "cls": 1, "unique": 2}
@@ -438,7 +453,7 @@ func _list_synergies() -> void:
 
 ## 용어 사전 (분류별 카드)
 func _list_terms() -> void:
-	_grid.columns = 2
+	_grid.columns = _cols(428.0, 2)
 	_count.text = "용어 %d개 · 밑줄 친 단어는 설명 글 어디서나 눌러 볼 수 있습니다" % Glossary.TERMS.size()
 	var cats := {}
 	for term in Glossary.TERMS:

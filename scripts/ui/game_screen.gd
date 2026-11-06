@@ -43,6 +43,7 @@ var _next_btn: Button
 var _pause_btn: Button
 var _top_row: HBoxContainer
 var _next_holder: VBoxContainer
+var _board_corner: Array = []   # 보드 구석에 띄우는 글자 (보드 인원·적 방향)
 var _pet: PetBuddy
 var _pause_cover: Control
 var _board_tiles := {}
@@ -146,6 +147,8 @@ func _build() -> void:
 	_board_root = _build_board()
 	_board_root.set_anchors_preset(Control.PRESET_FULL_RECT)
 	cstack.add_child(_board_root)
+	for c in _board_corner:
+		cstack.add_child(c)
 	# 내 펫 (보드 왼쪽 아래 구석)
 	if SessionNode.my_pet() != "":
 		_pet = PetBuddy.new(SessionNode.my_pet(), Vector2(118, 118))
@@ -486,7 +489,6 @@ func _build_board() -> Control:
 	heads.alignment = BoxContainer.ALIGNMENT_CENTER
 	heads.add_theme_constant_override("separation", 14)
 	v.add_child(heads)
-	heads.add_child(_board_info)
 	var grid := GridContainer.new()
 	grid.columns = 3
 	grid.add_theme_constant_override("h_separation", 14)
@@ -517,7 +519,17 @@ func _build_board() -> Control:
 			grid.add_child(t)
 			_board_tiles[key] = t
 	# 적 방향 표시는 열 이름 줄 오른쪽에 (아래에 두면 좁은 화면에서 대기석과 겹침)
-	heads.add_child(UI.label("적 ▶▶", 20, UI.BAD.lightened(0.2), HORIZONTAL_ALIGNMENT_LEFT))
+	# 보드 인원·적 방향은 열 이름 줄 밖(보드 칸 위 양쪽 구석)에 — 줄이 보드보다 넓어지지 않게
+	_board_info.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	_board_info.position = Vector2(10, 6)
+	_board_corner.append(_board_info)
+	var foe := UI.label("적 ▶▶", 20, UI.BAD.lightened(0.2), HORIZONTAL_ALIGNMENT_RIGHT)
+	foe.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	foe.offset_left = -110
+	foe.offset_right = -10
+	foe.offset_top = 6
+	foe.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_board_corner.append(foe)
 	if _next_holder != null:
 		_next_holder.add_child(_next_btn)
 	return v
@@ -744,6 +756,8 @@ func refresh() -> void:
 	_offer_btn.visible = prep and (not p.get("art_offer", {}).is_empty() or has_aug_offer) and _offer_hidden
 	_offer_btn.text = "증강 선택" if has_aug_offer else "아티팩트 선택"
 	_board_root.visible = phase != "battle"
+	for c in _board_corner:
+		c.visible = _board_root.visible
 	if _pet:
 		_pet.visible = _board_root.visible
 	_battle_view.visible = phase == "battle"
@@ -2427,11 +2441,29 @@ func _modal(title: String, kind: String = "") -> VBoxContainer:
 	cc.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var p := UI.panel(UI.PANEL, 18, UI.LINE, 2)
 	cc.add_child(p)
+	# 내용이 화면보다 크면 창 안에서 스크롤 (휴대폰에서 아래 버튼이 잘리지 않게)
+	var sc := DragScroll.new(UI.PANEL)
+	sc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	p.add_child(sc)
 	var v := VBoxContainer.new()
-	v.add_theme_constant_override("separation", 16)
-	p.add_child(v)
-	v.add_child(UI.label(title, 34, UI.ACCENT, HORIZONTAL_ALIGNMENT_CENTER))
+	v.add_theme_constant_override("separation", 12 if _vh() < 880.0 else 16)
+	sc.add_child(v)
+	v.add_child(UI.label(title, 30 if _vh() < 880.0 else 34, UI.ACCENT, HORIZONTAL_ALIGNMENT_CENTER))
+	_fit_modal.call_deferred(sc, v)
 	return v
+
+
+func _vh() -> float:
+	return get_viewport_rect().size.y
+
+
+## 창 크기 = 내용 크기 (화면을 넘으면 화면 안으로 줄이고 스크롤)
+func _fit_modal(sc: ScrollContainer, v: Control) -> void:
+	if not is_instance_valid(sc) or not is_instance_valid(v):
+		return
+	var m := v.get_combined_minimum_size()
+	var vp := get_viewport_rect().size
+	sc.custom_minimum_size = Vector2(minf(m.x, vp.x - 60.0), minf(m.y, vp.y - 60.0))
 
 
 func _close_modal() -> void:
@@ -2510,16 +2542,23 @@ func _show_carousel(car: Dictionary) -> void:
 		pb.react.call_deferred("tap")
 	turn_row.add_child(UI.label("내 차례! 하나를 고르세요" if my_turn else "%s 님이 고르는 중..." % st["players"].get(who, {}).get("name", "?"), 26, UI.ACCENT if my_turn else UI.TEXT, HORIZONTAL_ALIGNMENT_CENTER))
 	var grid := GridContainer.new()
-	grid.columns = mini(5, car["options"].size())
+	# 화면에 맞춘 카드 크기: 줄 수만큼 높이를 나눠 모션 높이를 줄인다
+	var vp := get_viewport_rect().size
+	var cols := mini(5, car["options"].size())
+	var card_w := clampf((vp.x - 140.0) / cols - 12.0, 180.0, 250.0)
+	var rows := ceili(float(car["options"].size()) / cols)
+	var card_h := (vp.y - 260.0) / rows - 10.0
+	var spr_h := clampf(card_h - (180.0 if my_turn else 140.0), 60.0, 150.0)
+	grid.columns = cols
 	grid.add_theme_constant_override("h_separation", 12)
-	grid.add_theme_constant_override("v_separation", 12)
+	grid.add_theme_constant_override("v_separation", 10)
 	v.add_child(grid)
 	for i in car["options"].size():
 		var o: Dictionary = car["options"][i]
 		var taken: bool = o["by"] != ""
 		var col := UI.cost_color(o["aid"])
 		var card := UI.panel(col.darkened(0.7), 14, col if not taken else UI.LINE, 3)
-		card.custom_minimum_size = Vector2(250, 0)
+		card.custom_minimum_size = Vector2(card_w, 0)
 		if taken:
 			card.modulate = Color(1, 1, 1, 0.45)
 		var cv := VBoxContainer.new()
@@ -2529,20 +2568,23 @@ func _show_carousel(car: Dictionary) -> void:
 			var sp := MotionSprite.new(o["aid"])
 			sp.face_right = true
 			sp.shadow = true
-			sp.custom_minimum_size = Vector2(220, 150)
-			sp.box = 150 / 0.82
+			sp.custom_minimum_size = Vector2(card_w - 30.0, spr_h)
+			sp.box = spr_h / 0.82
 			cv.add_child(sp)
 		else:
-			cv.add_child(UI.tex_rect(UI.portrait(o["aid"]), Vector2(220, 150), true))
+			cv.add_child(UI.tex_rect(UI.portrait(o["aid"]), Vector2(card_w - 30.0, spr_h), true))
 		var a := GameData.apostle(o["aid"])
-		cv.add_child(UI.label("%s  %d코스트" % [a.get("name", ""), GameData.cost_of.get(o["aid"], 1)], 22, col.lightened(0.4), HORIZONTAL_ALIGNMENT_CENTER))
-		var ab := UI.artifact_button(o["art"], Vector2(226, 56), 18)
+		var nl := UI.label("%s  %d코" % [a.get("name", ""), GameData.cost_of.get(o["aid"], 1)], 20, col.lightened(0.4), HORIZONTAL_ALIGNMENT_CENTER)
+		nl.clip_text = true
+		nl.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+		cv.add_child(nl)
+		var ab := UI.artifact_button(o["art"], Vector2(card_w - 24.0, 46), 17)
 		ab.disabled = true
 		cv.add_child(ab)
 		if taken:
 			cv.add_child(UI.label("가져감: %s" % st["players"].get(o["by"], {}).get("name", "?"), 18, UI.SUB, HORIZONTAL_ALIGNMENT_CENTER))
 		elif my_turn:
-			var b := UI.button("고르기", 22, Vector2(0, 52), Color("2f6b4a"))
+			var b := UI.button("고르기", 22, Vector2(0, 46), Color("2f6b4a"))
 			var k: int = i
 			b.pressed.connect(func(): App.session.submit({"t": "carousel_pick", "i": k}))
 			cv.add_child(b)
@@ -2717,7 +2759,7 @@ func _record_round() -> void:
 		if side < 0:
 			continue
 		var opp: String = bt["b"] if side == 0 else bt["a"]
-		var opp_name: String = "그림자 몬스터" if bt.get("monster", false) else ("유령 상대" if opp == "" else String(st["players"].get(opp, {}).get("name", "?")))
+		var opp_name: String = "몬스터" if bt.get("monster", false) else ("유령 상대" if opp == "" else String(st["players"].get(opp, {}).get("name", "?")))
 		var sm: Dictionary = _battle_view.summary() if _watch < 0 else {}
 		_round_log.append({"round": int(st["round"]), "opp": opp_name, "side": side, "win": int(bt["winner"]),
 			"hp": int(me().get("hp", 0)), "bt": bt.duplicate(true), "dealt": sm.get("dealt", -1), "mvp": sm.get("mvp", ""),
@@ -2850,7 +2892,7 @@ func _start_battle_view(watch: int = -1) -> void:
 	var name_a: String = pa.get("name", "?")
 	var name_b := ""
 	if mine.get("monster", false):
-		name_b = "그림자 몬스터"
+		name_b = "몬스터"
 	elif mine["ghost"] != "":
 		name_b = "유령 (%s)" % st["players"].get(mine["ghost"], {}).get("name", "?")
 	else:
@@ -2861,13 +2903,18 @@ func _start_battle_view(watch: int = -1) -> void:
 ## 관전 막대: 전투마다 버튼 (지금 보는 전투는 강조)
 func _build_watch_bar(battles: Array, cur: int, my_idx: int) -> void:
 	if _watch_bar == null or not is_instance_valid(_watch_bar):
+		# 오른쪽 아래 버튼(통계·크게 보기·속도)과 겹치지 않게 너비를 제한하고, 넘치면 옆으로 밀어 보기
+		var ws := DragScroll.new(Color(0, 0, 0, 0))
+		ws.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+		ws.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
+		ws.offset_left = 10
+		ws.offset_right = -420
+		ws.offset_top = -58
+		ws.offset_bottom = -6
+		_battle_view.add_child(ws)
 		_watch_bar = HBoxContainer.new()
 		_watch_bar.add_theme_constant_override("separation", 6)
-		_watch_bar.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
-		_watch_bar.offset_left = 10
-		_watch_bar.offset_top = -58
-		_watch_bar.offset_bottom = -8
-		_battle_view.add_child(_watch_bar)
+		ws.add_child(_watch_bar)
 	UI.clear(_watch_bar)
 	if battles.size() <= 1:
 		return

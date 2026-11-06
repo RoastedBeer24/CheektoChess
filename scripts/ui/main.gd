@@ -3,7 +3,7 @@ extends Control
 
 var _screen: Control
 var _toast: VBoxContainer          # 알림 여러 개를 위에서부터 차례로 쌓는다 (최대 3개)
-const TOAST_MAX := 3
+const TOAST_MAX := 2
 var _rooms_box: VBoxContainer
 var _group_box: HBoxContainer
 var _lobby_list: GridContainer
@@ -63,7 +63,7 @@ func show_toast(msg: String, secs: float = 2.5) -> void:
 		old.queue_free()
 	var item := UI.panel(Color("101220").lerp(UI.ACCENT, 0.08), 14, UI.ACCENT, 2)
 	item.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var l := UI.label(msg, 24, UI.TEXT, HORIZONTAL_ALIGNMENT_CENTER)
+	var l := UI.label(msg, 22, UI.TEXT, HORIZONTAL_ALIGNMENT_CENTER)
 	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	l.custom_minimum_size.x = minf(900.0, 24.0 * msg.length() + 20.0)
 	item.add_child(l)
@@ -78,8 +78,8 @@ func show_toast(msg: String, secs: float = 2.5) -> void:
 func _place_toast() -> void:
 	_toast.reset_size()
 	var vp := get_viewport_rect().size
-	# 화면 아래쪽 (상점 위) — 보드·상단 정보를 가리지 않게
-	_toast.position = Vector2((vp.x - _toast.size.x) / 2.0, 8.0)   # 위 정보 줄 위 (보드·대기석을 가리지 않게)
+	# 보드 아래쪽 (대기석 바로 위) — 위 막대(골드·체력)와 상점을 가리지 않게
+	_toast.position = Vector2((vp.x - _toast.size.x) / 2.0, vp.y * 0.62 - _toast.size.y)
 
 
 func _set_screen(c: Control) -> void:

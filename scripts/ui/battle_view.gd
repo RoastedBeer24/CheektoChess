@@ -14,6 +14,7 @@ var _box := 200.0         # 모션 그림 크기(px)
 var _card_k := 1.0        # 카드 크기 배율
 var _ppu_v := Vector2(60, 80)   # 전장 1칸 → 화면 px
 var _origin := Vector2.ZERO     # 전장 (0, 첫 줄 발 위치) 의 화면 위치
+var _float_live := {}     # 유닛 index -> 지금 떠 있는 글자 수
 var _float_n := {}        # 유닛 index -> 떠오르는 글자 개수 (겹치지 않게 비켜 놓기)
 var _status_until := {}   # 유닛 index -> 상태 표시가 끝나는 전투 시간
 var _units: Array = []
@@ -88,6 +89,14 @@ func _ready() -> void:
 	_line_layer.draw.connect(_draw_focus)
 	add_child(_line_layer)
 	# 결과: 위쪽 띠 (제목 아래) — 통계 창과 겹치지 않게
+	_banner_band = ColorRect.new()
+	_banner_band.color = Color(0.03, 0.04, 0.08, 0.72)
+	_banner_band.set_anchors_preset(Control.PRESET_TOP_WIDE)
+	_banner_band.offset_top = 40
+	_banner_band.offset_bottom = 128
+	_banner_band.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_banner_band.visible = false
+	add_child(_banner_band)
 	_banner = UI.outlined("", 46, UI.ACCENT, 10)
 	_banner.set_anchors_preset(Control.PRESET_TOP_WIDE)
 	_banner.offset_top = 40
@@ -128,6 +137,20 @@ func _ready() -> void:
 		_full_btn.text = "기본 보기" if UI.battle_full() else "크게 보기"
 		full_toggled.emit())
 	add_child(_full_btn)
+	_stats_btn = UI.button("통계", 20, Vector2(110, 48), Color("4a3f6b"))
+	_stats_btn.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
+	_stats_btn.offset_left = -410
+	_stats_btn.offset_top = -56
+	_stats_btn.offset_right = -298
+	_stats_btn.offset_bottom = -8
+	_stats_btn.visible = false
+	_stats_btn.pressed.connect(func():
+		if _stats_panel and is_instance_valid(_stats_panel):
+			_stats_panel.queue_free()
+			_stats_panel = null
+		else:
+			_show_stats())
+	add_child(_stats_btn)
 	resized.connect(_layout)
 
 
@@ -143,6 +166,7 @@ func setup(bt: Dictionary, my_side: int, name_a: String, name_b: String) -> void
 	_sprites.clear()
 	_plates.clear()
 	_float_n.clear()
+	_float_live.clear()
 	_status_until.clear()
 	_anim.clear()
 	_stats.clear()
@@ -159,6 +183,9 @@ func setup(bt: Dictionary, my_side: int, name_a: String, name_b: String) -> void
 	_speed_btn.text = speed_text(_speed)
 	_banner.text = ""
 	_sub_banner.text = ""
+	_end_stage = 0
+	_stats_btn.visible = false
+	_banner_band.visible = false
 	_target.clear()
 	_focus = -1
 	_line_layer.queue_redraw()
@@ -319,6 +346,8 @@ func skip_to_end() -> void:
 	while _ev_i < _events.size():
 		_apply(_events[_ev_i])
 		_ev_i += 1
+	if _end_stage in [1, 2]:
+		_tick_end()
 	_skipping = false
 	_t = float(_events[-1][0]) if not _events.is_empty() else _t
 	_update_bars()
@@ -335,6 +364,36 @@ func _stat(i: int, key: String, v: float) -> void:
 
 ## 전투가 끝나면 사도별 통계 (준 피해·받은 피해·막은 피해·회복, MVP). 우리 편/상대 편 전환.
 var _stats_side := -1
+
+
+var _banner_band: ColorRect
+var _end_w := -1
+var _end_at := 0.0
+var _end_stage := 0       # 0 없음, 1 쓰러짐 보는 중, 2 승리 동작 중, 3 결과 띠 표시
+var _stats_btn: Button
+
+
+func _tick_end() -> void:
+	if _end_stage == 1 and (_clock >= _end_at or _skipping):
+		_end_stage = 2
+		_say_end(_end_w)
+		_end_at = _clock + (0.0 if _skipping else 0.8)
+	if _end_stage == 2 and (_clock >= _end_at or _skipping):
+		_end_stage = 3
+		var w := _end_w
+		if w == -1:
+			_banner.text = "무승부"
+		elif w == _my_side:
+			_banner.text = "승리!"
+		else:
+			_banner.text = "패배"
+		_banner.add_theme_color_override("font_color", UI.SUB if w == -1 else (UI.ACCENT if w == _my_side else UI.BAD))
+		_sub_banner.text = one_line()
+		_banner.modulate.a = 0.0
+		create_tween().tween_property(_banner, "modulate:a", 1.0, 0.25)
+		_stats_btn.visible = true
+		_banner_band.visible = true
+		_playing = false
 
 
 func _show_stats(side: int = -1) -> void:
@@ -567,6 +626,8 @@ func _process(delta: float) -> void:
 		_field.position = Vector2.ZERO
 		_fx.position = Vector2.ZERO
 		_plate_layer.position = Vector2.ZERO
+	if _end_stage in [1, 2]:
+		_tick_end()
 	if not _playing or App.session.paused:
 		return
 	_t += delta * _speed
@@ -577,7 +638,7 @@ func _process(delta: float) -> void:
 		changed = true
 	if changed:
 		_update_bars()
-	if _ev_i >= _events.size():
+	if _ev_i >= _events.size() and _end_stage == 0:
 		_playing = false
 
 
@@ -694,8 +755,7 @@ func _apply(e: Array) -> void:
 			else:
 				_float(dst, names.get(st, st), scol.get(st, Color("ffb3e6")), 18)
 		"buff":
-			if String(e[5]) != "":
-				_float(dst, String(e[5]), Color("b3ffcc"), 16, -20)
+			pass   # 버프·아티팩트 이름은 띄우지 않음 (머리 위가 난잡해짐)
 		"immune":
 			_float(dst, "무적", Color("dddddd"), 16)
 		"miss":
@@ -703,17 +763,10 @@ func _apply(e: Array) -> void:
 		"execute":
 			_float(dst, "처형!", UI.BAD, 30)
 		"end":
-			var w := int(e[4])
-			_say_end(w)
-			if w == -1:
-				_banner.text = "무승부"
-			elif w == _my_side:
-				_banner.text = "승리!"
-			else:
-				_banner.text = "패배"
-			_banner.add_theme_color_override("font_color", UI.SUB if w == -1 else (UI.ACCENT if w == _my_side else UI.BAD))
-			_sub_banner.text = one_line()
-			_show_stats()
+			# 마지막 적이 쓰러지는 동작을 잠깐 보여 준 뒤 승리 동작·대사, 그다음 결과 띠 (건너뛰기면 바로)
+			_end_w = int(e[4])
+			_end_at = _clock + (0.0 if _skipping else 0.9)
+			_end_stage = 1
 
 
 ## 떠오르는 글자 (머리 위). 같은 사도에 연달아 뜨면 좌우·위아래로 비켜 놓아 겹치지 않게.
@@ -721,6 +774,10 @@ func _apply(e: Array) -> void:
 func _float(i: int, text: String, color: Color, fsize: int, dy: float = 0.0, pop: bool = false) -> void:
 	if not _udata.has(i):
 		return
+	# 한 사도 위에 동시에 떠 있는 글자는 3개까지 (치명타·부활 같은 큰 글자는 예외)
+	if int(_float_live.get(i, 0)) >= 3 and not pop:
+		return
+	_float_live[i] = int(_float_live.get(i, 0)) + 1
 	var n: int = _float_n.get(i, 0)
 	_float_n[i] = n + 1
 	var l := UI.label(text, fsize, color, HORIZONTAL_ALIGNMENT_CENTER)
@@ -745,7 +802,10 @@ func _float(i: int, text: String, color: Color, fsize: int, dy: float = 0.0, pop
 		l.pivot_offset = l.size / 2.0
 		l.scale = Vector2(1.45, 1.45)
 		tw.tween_property(l, "scale", Vector2.ONE, 0.18).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	tw.chain().tween_callback(l.queue_free)
+	var fi := i
+	tw.chain().tween_callback(func():
+		_float_live[fi] = maxi(0, int(_float_live.get(fi, 1)) - 1)
+		l.queue_free())
 
 
 ## 스킬 이름 말풍선 (머리 위, 어두운 바탕)
@@ -949,6 +1009,25 @@ func _animate(delta: float) -> void:
 		if t != null:
 			t.scale = Vector2.ONE * _card_k * (1.0 + 0.12 * pk)
 	_sort_depth()
+	_declutter_plates()
+
+
+## 겹친 이름표를 위아래로 비켜 놓는다 (발밑 기준 위치에서 최대 한 칸만큼)
+func _declutter_plates() -> void:
+	var ps := []
+	for i in _plates:
+		var pl: BattlePlate = _plates[i]
+		if pl.visible and not _anim.get(i, {}).get("dead", false):
+			ps.append(pl)
+	ps.sort_custom(func(a, b): return a.position.y < b.position.y)
+	var h: float = BattlePlate.H * (ps[0].scale.y if not ps.is_empty() else 1.0) + 2.0
+	var w: float = BattlePlate.W * (ps[0].scale.x if not ps.is_empty() else 1.0)
+	for k in range(1, ps.size()):
+		for j in k:
+			var a: BattlePlate = ps[j]
+			var b: BattlePlate = ps[k]
+			if absf(a.position.x - b.position.x) < w * 0.85 and b.position.y - a.position.y < h and b.position.y >= a.position.y:
+				b.position.y = a.position.y + h
 
 
 ## 아래 줄(발이 아래)에 있는 사도가 앞에 보이도록 그리는 순서 정렬 (z_index 대신: 다른 레이어를 덮지 않게)
