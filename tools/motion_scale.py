@@ -33,7 +33,7 @@ def main():
     out = {}
     for aid in sorted(os.listdir(D)):
         p = os.path.join(D, aid, "Idle.webp")
-        if not os.path.exists(p):
+        if aid.startswith("m_") or aid.startswith("pet_") or not os.path.exists(p):   # 몬스터·펫은 monsters.json 의 size 로
             continue
         cell = json.load(open(os.path.join(D, aid, "meta.json"))).get("size", 192)
         h = body_h(p, cell)

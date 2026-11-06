@@ -1,0 +1,661 @@
+{
+ "_doc": "몬스터 라운드에 나오는 몬스터 (트릭컬 스파인 뷰어의 몬스터 모션). id = m_<모델 이름>. hp·atk = 같은 역할 사도 대비 배율(라운드 배율과 곱함), size = 전투 화면 크기 배율. rounds: 라운드마다 구성 — small n마리 / squad 무리 하나 / mid 보스 1 + 졸개 / boss 최종 보스 1 + 호위.",
+ "list": [
+  {
+   "id": "m_Wisps",
+   "name": "위스프",
+   "role": "dealer",
+   "row": "back",
+   "damage": "magic",
+   "hp": 0.8,
+   "atk": 0.75,
+   "size": 0.85,
+   "tier": "small"
+  },
+  {
+   "id": "m_HatSnail",
+   "name": "햇팽이",
+   "role": "tank",
+   "row": "front",
+   "damage": "physical",
+   "hp": 0.8,
+   "atk": 0.75,
+   "size": 0.85,
+   "tier": "small"
+  },
+  {
+   "id": "m_Orange",
+   "name": "오렌지",
+   "role": "dealer",
+   "row": "mid",
+   "damage": "physical",
+   "hp": 0.8,
+   "atk": 0.75,
+   "size": 0.85,
+   "tier": "small"
+  },
+  {
+   "id": "m_Furring",
+   "name": "퍼리",
+   "role": "dealer",
+   "row": "front",
+   "damage": "physical",
+   "hp": 0.8,
+   "atk": 0.75,
+   "size": 0.85,
+   "tier": "small"
+  },
+  {
+   "id": "m_Buseuleogi",
+   "name": "부스러기",
+   "role": "dealer",
+   "row": "mid",
+   "damage": "physical",
+   "hp": 0.8,
+   "atk": 0.75,
+   "size": 0.85,
+   "tier": "small"
+  },
+  {
+   "id": "m_Ginseng",
+   "name": "산사모",
+   "role": "support",
+   "row": "back",
+   "damage": "magic",
+   "hp": 0.8,
+   "atk": 0.75,
+   "size": 0.85,
+   "tier": "small"
+  },
+  {
+   "id": "m_Nependers",
+   "name": "한입초",
+   "role": "dealer",
+   "row": "front",
+   "damage": "physical",
+   "hp": 0.8,
+   "atk": 0.75,
+   "size": 0.85,
+   "tier": "small"
+  },
+  {
+   "id": "m_Lupalu",
+   "name": "루파루",
+   "role": "dealer",
+   "row": "mid",
+   "damage": "physical",
+   "hp": 0.8,
+   "atk": 0.75,
+   "size": 0.85,
+   "tier": "small"
+  },
+  {
+   "id": "m_Herring",
+   "name": "헤링",
+   "role": "dealer",
+   "row": "front",
+   "damage": "physical",
+   "hp": 0.8,
+   "atk": 0.75,
+   "size": 0.85,
+   "tier": "small"
+  },
+  {
+   "id": "m_Halibut",
+   "name": "할리벗",
+   "role": "tank",
+   "row": "front",
+   "damage": "physical",
+   "hp": 0.8,
+   "atk": 0.75,
+   "size": 0.85,
+   "tier": "small"
+  },
+  {
+   "id": "m_Hatchling",
+   "name": "목도룡",
+   "role": "dealer",
+   "row": "mid",
+   "damage": "magic",
+   "hp": 0.8,
+   "atk": 0.75,
+   "size": 0.85,
+   "tier": "small"
+  },
+  {
+   "id": "m_Pumpkin",
+   "name": "호바깅",
+   "role": "dealer",
+   "row": "back",
+   "damage": "magic",
+   "hp": 0.8,
+   "atk": 0.75,
+   "size": 0.85,
+   "tier": "small"
+  },
+  {
+   "id": "m_MarshmallowTanker",
+   "name": "탱탱 멜로",
+   "role": "tank",
+   "row": "front",
+   "damage": "physical",
+   "hp": 1.0,
+   "atk": 1.0,
+   "size": 0.9,
+   "tier": "squad"
+  },
+  {
+   "id": "m_MarshmallowDealer",
+   "name": "말랑 멜로",
+   "role": "dealer",
+   "row": "mid",
+   "damage": "physical",
+   "hp": 1.0,
+   "atk": 1.0,
+   "size": 0.9,
+   "tier": "squad"
+  },
+  {
+   "id": "m_MarshmallowSupporter",
+   "name": "쫀득 멜로",
+   "role": "support",
+   "row": "back",
+   "damage": "magic",
+   "hp": 1.0,
+   "atk": 1.0,
+   "size": 0.9,
+   "tier": "squad"
+  },
+  {
+   "id": "m_FairyMobCloseRange",
+   "name": "저혈당 요정",
+   "role": "dealer",
+   "row": "front",
+   "damage": "physical",
+   "hp": 1.0,
+   "atk": 1.0,
+   "size": 0.9,
+   "tier": "squad"
+  },
+  {
+   "id": "m_FairyMobLongRange",
+   "name": "고혈당 요정",
+   "role": "dealer",
+   "row": "back",
+   "damage": "magic",
+   "hp": 1.0,
+   "atk": 1.0,
+   "size": 0.9,
+   "tier": "squad"
+  },
+  {
+   "id": "m_FurryWarriorCloseRange",
+   "name": "수인 광전사",
+   "role": "dealer",
+   "row": "front",
+   "damage": "physical",
+   "hp": 1.0,
+   "atk": 1.0,
+   "size": 0.9,
+   "tier": "squad"
+  },
+  {
+   "id": "m_FurryWarriorLongRange",
+   "name": "수인 궁수",
+   "role": "dealer",
+   "row": "back",
+   "damage": "physical",
+   "hp": 1.0,
+   "atk": 1.0,
+   "size": 0.9,
+   "tier": "squad"
+  },
+  {
+   "id": "m_ElfSoldierCloseRange",
+   "name": "엘프 돌격병",
+   "role": "dealer",
+   "row": "front",
+   "damage": "physical",
+   "hp": 1.0,
+   "atk": 1.0,
+   "size": 0.9,
+   "tier": "squad"
+  },
+  {
+   "id": "m_ElfSoldierLongRange",
+   "name": "엘프 명사수",
+   "role": "dealer",
+   "row": "back",
+   "damage": "physical",
+   "hp": 1.0,
+   "atk": 1.0,
+   "size": 0.9,
+   "tier": "squad"
+  },
+  {
+   "id": "m_ShadyfollowerCloseRange",
+   "name": "셰이디아 열혈팬",
+   "role": "dealer",
+   "row": "front",
+   "damage": "physical",
+   "hp": 1.0,
+   "atk": 1.0,
+   "size": 0.9,
+   "tier": "squad"
+  },
+  {
+   "id": "m_ShadyfollowerLongRange",
+   "name": "셰이디아 극성팬",
+   "role": "dealer",
+   "row": "back",
+   "damage": "magic",
+   "hp": 1.0,
+   "atk": 1.0,
+   "size": 0.9,
+   "tier": "squad"
+  },
+  {
+   "id": "m_CrayonTanker",
+   "name": "막을레용",
+   "role": "tank",
+   "row": "front",
+   "damage": "physical",
+   "hp": 1.0,
+   "atk": 1.0,
+   "size": 0.9,
+   "tier": "squad"
+  },
+  {
+   "id": "m_CrayonWarrior",
+   "name": "칠레용",
+   "role": "dealer",
+   "row": "front",
+   "damage": "physical",
+   "hp": 1.0,
+   "atk": 1.0,
+   "size": 0.9,
+   "tier": "squad"
+  },
+  {
+   "id": "m_CrayonArcher",
+   "name": "휠레용",
+   "role": "dealer",
+   "row": "back",
+   "damage": "physical",
+   "hp": 1.0,
+   "atk": 1.0,
+   "size": 0.9,
+   "tier": "squad"
+  },
+  {
+   "id": "m_CrayonWizard",
+   "name": "지원할레용",
+   "role": "support",
+   "row": "back",
+   "damage": "magic",
+   "hp": 1.0,
+   "atk": 1.0,
+   "size": 0.9,
+   "tier": "squad"
+  },
+  {
+   "id": "m_NururingWarrior",
+   "name": "누루링 - 요정 전사",
+   "role": "dealer",
+   "row": "front",
+   "damage": "physical",
+   "hp": 1.0,
+   "atk": 1.0,
+   "size": 0.9,
+   "tier": "squad"
+  },
+  {
+   "id": "m_NururingTanker",
+   "name": "누루링 - 요정 탱커",
+   "role": "tank",
+   "row": "front",
+   "damage": "physical",
+   "hp": 1.0,
+   "atk": 1.0,
+   "size": 0.9,
+   "tier": "squad"
+  },
+  {
+   "id": "m_NururingArcher",
+   "name": "누루링 - 요정 마법사",
+   "role": "dealer",
+   "row": "back",
+   "damage": "magic",
+   "hp": 1.0,
+   "atk": 1.0,
+   "size": 0.9,
+   "tier": "squad"
+  },
+  {
+   "id": "m_NururingSupporter",
+   "name": "누루링 - 요정 서포터",
+   "role": "support",
+   "row": "mid",
+   "damage": "magic",
+   "hp": 1.0,
+   "atk": 1.0,
+   "size": 0.9,
+   "tier": "squad"
+  },
+  {
+   "id": "m_DroneG",
+   "name": "드론 G형",
+   "role": "dealer",
+   "row": "mid",
+   "damage": "physical",
+   "hp": 1.0,
+   "atk": 1.0,
+   "size": 0.9,
+   "tier": "squad"
+  },
+  {
+   "id": "m_DroneS",
+   "name": "드론 S형",
+   "role": "dealer",
+   "row": "back",
+   "damage": "physical",
+   "hp": 1.0,
+   "atk": 1.0,
+   "size": 0.9,
+   "tier": "squad"
+  },
+  {
+   "id": "m_DroneU",
+   "name": "드론 U형",
+   "role": "support",
+   "row": "back",
+   "damage": "magic",
+   "hp": 1.0,
+   "atk": 1.0,
+   "size": 0.9,
+   "tier": "squad"
+  },
+  {
+   "id": "m_OldTree",
+   "name": "고모구지",
+   "role": "tank",
+   "row": "front",
+   "damage": "physical",
+   "hp": 9.0,
+   "atk": 3.0,
+   "size": 1.3,
+   "tier": "mid"
+  },
+  {
+   "id": "m_GluttonBear",
+   "name": "머곰",
+   "role": "tank",
+   "row": "front",
+   "damage": "physical",
+   "hp": 9.0,
+   "atk": 3.0,
+   "size": 1.3,
+   "tier": "mid"
+  },
+  {
+   "id": "m_Golem",
+   "name": "동석",
+   "role": "tank",
+   "row": "front",
+   "damage": "physical",
+   "hp": 9.0,
+   "atk": 3.0,
+   "size": 1.3,
+   "tier": "mid"
+  },
+  {
+   "id": "m_ProteinDragon",
+   "name": "근육인데용",
+   "role": "dealer",
+   "row": "front",
+   "damage": "physical",
+   "hp": 9.0,
+   "atk": 3.0,
+   "size": 1.3,
+   "tier": "mid"
+  },
+  {
+   "id": "m_Imoogi",
+   "name": "길어용",
+   "role": "dealer",
+   "row": "mid",
+   "damage": "magic",
+   "hp": 9.0,
+   "atk": 3.0,
+   "size": 1.3,
+   "tier": "mid"
+  },
+  {
+   "id": "m_FoodScavenger",
+   "name": "라쿤아치",
+   "role": "dealer",
+   "row": "front",
+   "damage": "physical",
+   "hp": 9.0,
+   "atk": 3.0,
+   "size": 1.3,
+   "tier": "mid"
+  },
+  {
+   "id": "m_MagicFork",
+   "name": "불효자손",
+   "role": "dealer",
+   "row": "mid",
+   "damage": "magic",
+   "hp": 9.0,
+   "atk": 3.0,
+   "size": 1.3,
+   "tier": "mid"
+  },
+  {
+   "id": "m_Mogmaekim",
+   "name": "목매킴",
+   "role": "dealer",
+   "row": "front",
+   "damage": "physical",
+   "hp": 9.0,
+   "atk": 3.0,
+   "size": 1.3,
+   "tier": "mid"
+  },
+  {
+   "id": "m_BlanketGhost",
+   "name": "이불령",
+   "role": "dealer",
+   "row": "mid",
+   "damage": "magic",
+   "hp": 9.0,
+   "atk": 3.0,
+   "size": 1.3,
+   "tier": "mid"
+  },
+  {
+   "id": "m_Cranker",
+   "name": "크랭커",
+   "role": "tank",
+   "row": "front",
+   "damage": "physical",
+   "hp": 9.0,
+   "atk": 3.0,
+   "size": 1.3,
+   "tier": "mid"
+  },
+  {
+   "id": "m_Atka",
+   "name": "아트카",
+   "role": "dealer",
+   "row": "mid",
+   "damage": "physical",
+   "hp": 9.0,
+   "atk": 3.0,
+   "size": 1.3,
+   "tier": "mid"
+  },
+  {
+   "id": "m_Octo",
+   "name": "옥토",
+   "role": "dealer",
+   "row": "mid",
+   "damage": "magic",
+   "hp": 9.0,
+   "atk": 3.0,
+   "size": 1.3,
+   "tier": "mid"
+  },
+  {
+   "id": "m_Soyer",
+   "name": "소이어",
+   "role": "dealer",
+   "row": "front",
+   "damage": "physical",
+   "hp": 9.0,
+   "atk": 3.0,
+   "size": 1.3,
+   "tier": "mid"
+  },
+  {
+   "id": "m_CursedDoll",
+   "name": "누루링",
+   "role": "dealer",
+   "row": "mid",
+   "damage": "magic",
+   "hp": 9.0,
+   "atk": 3.0,
+   "size": 1.3,
+   "tier": "mid"
+  },
+  {
+   "id": "m_E0_Uros",
+   "name": "우로스",
+   "role": "dealer",
+   "row": "front",
+   "damage": "magic",
+   "hp": 4.4,
+   "atk": 1.45,
+   "size": 1.45,
+   "tier": "boss"
+  },
+  {
+   "id": "m_MEOW",
+   "name": "M.E.O.W",
+   "role": "dealer",
+   "row": "front",
+   "damage": "magic",
+   "hp": 4.4,
+   "atk": 1.45,
+   "size": 1.45,
+   "tier": "boss"
+  },
+  {
+   "id": "m_Curburus",
+   "name": "크르브르스",
+   "role": "tank",
+   "row": "front",
+   "damage": "physical",
+   "hp": 4.4,
+   "atk": 1.45,
+   "size": 1.45,
+   "tier": "boss"
+  },
+  {
+   "id": "m_YC00",
+   "name": "흑화 영춘",
+   "role": "dealer",
+   "row": "front",
+   "damage": "physical",
+   "hp": 4.4,
+   "atk": 1.45,
+   "size": 1.45,
+   "tier": "boss"
+  },
+  {
+   "id": "m_Lil1li",
+   "name": "릴1리",
+   "role": "dealer",
+   "row": "mid",
+   "damage": "magic",
+   "hp": 4.4,
+   "atk": 1.45,
+   "size": 1.45,
+   "tier": "boss"
+  },
+  {
+   "id": "m_R41_Renewa",
+   "name": "리뉴아(R41)",
+   "role": "dealer",
+   "row": "mid",
+   "damage": "magic",
+   "hp": 4.4,
+   "atk": 1.45,
+   "size": 1.45,
+   "tier": "boss"
+  }
+ ],
+ "squads": [
+  [
+   "m_MarshmallowTanker",
+   "m_MarshmallowDealer",
+   "m_MarshmallowSupporter"
+  ],
+  [
+   "m_FairyMobCloseRange",
+   "m_FairyMobLongRange",
+   "m_FairyMobCloseRange"
+  ],
+  [
+   "m_FurryWarriorCloseRange",
+   "m_FurryWarriorLongRange",
+   "m_FurryWarriorCloseRange"
+  ],
+  [
+   "m_ElfSoldierCloseRange",
+   "m_ElfSoldierLongRange",
+   "m_ElfSoldierLongRange"
+  ],
+  [
+   "m_ShadyfollowerCloseRange",
+   "m_ShadyfollowerLongRange",
+   "m_ShadyfollowerCloseRange"
+  ],
+  [
+   "m_CrayonTanker",
+   "m_CrayonWarrior",
+   "m_CrayonArcher",
+   "m_CrayonWizard"
+  ],
+  [
+   "m_NururingWarrior",
+   "m_NururingTanker",
+   "m_NururingArcher",
+   "m_NururingSupporter"
+  ],
+  [
+   "m_DroneG",
+   "m_DroneS",
+   "m_DroneU"
+  ]
+ ],
+ "rounds": {
+  "1": {
+   "kind": "small",
+   "n": 2
+  },
+  "2": {
+   "kind": "squad"
+  },
+  "9": {
+   "kind": "mid",
+   "minions": 4,
+   "minion_tier": "squad"
+  },
+  "16": {
+   "kind": "boss",
+   "minions": 3
+  }
+ }
+}

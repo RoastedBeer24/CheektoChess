@@ -1,0 +1,1 @@
+{"size": 192, "fps": 15.0, "facing": "left", "feet": 0.9004, "anims": {"Idle": {"n": 25, "cols": 12}, "Move": {"n": 17, "cols": 12}, "Attack1_1": {"n": 32, "cols": 12}, "Skill1_1": {"n": 68, "cols": 12}, "Ultimate1_1": {"n": 47, "cols": 12}, "Die": {"n": 41, "cols": 12}, "Groggy": {"n": 21, "cols": 12}, "Victory": {"n": 72, "cols": 12, "fps": 7.297}}, "norm": [1.0, -1.0, 2.0]}

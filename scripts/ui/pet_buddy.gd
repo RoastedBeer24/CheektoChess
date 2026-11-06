@@ -45,7 +45,7 @@ func react(kind: String) -> void:
 	if _sp == null:
 		_bounce()
 		return
-	var anim: String = {"win": "Play", "lose": "Angry", "star3": "Act", "levelup": "Eat", "buy": "Play", "tap": "Play"}.get(kind, "Play")
+	var anim: String = {"win": "Play", "lose": "Angry", "star3": "Play", "levelup": "Play", "buy": "Play", "tap": "Play"}.get(kind, "Play")
 	if not _sp.has_anim(anim):
 		anim = "Play" if _sp.has_anim("Play") else "Idle"
 	_sp.play(anim, false, "Idle")

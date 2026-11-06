@@ -1,0 +1,1112 @@
+{
+ "_doc": "펫 (트릭컬 스파인 뷰어의 펫 모션). 프로필에서 골라 게임 중 보드 옆에 둔다. tools/make_pet_data.py 가 만든다.",
+ "list": [
+  {
+   "id": "pet_ASquidBSquid",
+   "name": "갑오징어을오징어",
+   "anims": [
+    "Angry",
+    "Idle",
+    "Move",
+    "Play",
+    "Sleep"
+   ]
+  },
+  {
+   "id": "pet_BallDragon",
+   "name": "공용",
+   "anims": [
+    "Angry",
+    "Idle",
+    "Move",
+    "Play",
+    "Sleep"
+   ]
+  },
+  {
+   "id": "pet_TheifWeasel",
+   "name": "괴도제비",
+   "anims": [
+    "Angry",
+    "Idle",
+    "Move",
+    "Play",
+    "Sleep"
+   ]
+  },
+  {
+   "id": "pet_blackDog",
+   "name": "까망이",
+   "anims": [
+    "Angry",
+    "Idle",
+    "Move",
+    "Play",
+    "Sleep"
+   ]
+  },
+  {
+   "id": "pet_PinkRat",
+   "name": "꼬끄",
+   "anims": [
+    "Angry",
+    "Idle",
+    "Move",
+    "Play",
+    "Sleep"
+   ]
+  },
+  {
+   "id": "pet_dillydallySeal",
+   "name": "꾸물범",
+   "anims": [
+    "Angry",
+    "Idle",
+    "Move",
+    "Play",
+    "Sleep"
+   ]
+  },
+  {
+   "id": "pet_Capybara",
+   "name": "꾸워바라",
+   "anims": [
+    "Angry",
+    "Idle",
+    "Move",
+    "Play",
+    "Sleep"
+   ]
+  },
+  {
+   "id": "pet_CanCat",
+   "name": "낀냥이",
+   "anims": [
+    "Angry",
+    "Idle",
+    "Move",
+    "Play",
+    "Sleep"
+   ]
+  },
+  {
+   "id": "pet_LatteCat",
+   "name": "냥푸치노",
+   "anims": [
+    "Angry",
+    "Idle",
+    "Move",
+    "Play",
+    "Sleep"
+   ]
+  },
+  {
+   "id": "pet_NeonSaurus",
+   "name": "네온 사우루스",
+   "anims": [
+    "Angry",
+    "Idle",
+    "Move",
+    "Play",
+    "Sleep"
+   ]
+  },
+  {
+   "id": "pet_FakeDonutLion",
+   "name": "도넛멍",
+   "anims": [
+    "Angry",
+    "Idle",
+    "Move",
+    "Play",
+    "Sleep"
+   ]
+  },
+  {
+   "id": "pet_BalloonPuppy",
+   "name": "둥실멍",
+   "anims": [
+    "Angry",
+    "Idle",
+    "Move",
+    "Play",
+    "Sleep"
+   ]
+  },
+  {
+   "id": "pet_Takoyaki",
+   "name": "따코무너",
+   "anims": [
+    "Angry",
+    "Idle",
+    "Move",
+    "Play",
+    "Sleep"
+   ]
+  },
+  {
+   "id": "pet_StrawberryMochi",
+   "name": "딸기 찹쌀냥",
+   "anims": [
+    "Angry",
+    "Idle",
+    "Move",
+    "Play",
+    "Sleep"
+   ]
+  },
+  {
+   "id": "pet_Kiwibird",
+   "name": "뚜따키위",
+   "anims": [
+    "Angry",
+    "Idle",
+    "Move",
+    "Play",
+    "Sleep"
+   ]
+  },
+  {
+   "id": "pet_BlueWhale",
+   "name": "뜬다고래",
+   "anims": [
+    "Angry",
+    "Idle",
+    "Move",
+    "Play",
+    "Sleep"
+   ]
+  },
+  {
+   "id": "pet_RufoCat",
+   "name": "루포냥",
+   "anims": [
+    "Angry",
+    "Idle",
+    "Move",
+    "Play",
+    "Sleep"
+   ]
+  },
+  {
+   "id": "pet_LionCat",
+   "name": "리온냥",
+   "anims": [
+    "Angry",
+    "Idle",
+    "Move",
+    "Play",
+    "Sleep"
+   ]
+  },
+  {
+   "id": "pet_CrownParrot",
+   "name": "리피트",
+   "anims": [
+    "Angry",
+    "Idle",
+    "Move",
+    "Play",
+    "Sleep"
+   ]
+  },
+  {
+   "id": "pet_Maragnima",
+   "name": "마라그니마",
+   "anims": [
+    "Angry",
+    "Idle",
+    "Move",
+    "Play",
+    "Sleep"
+   ]
+  },
+  {
+   "id": "pet_MatchaJellyCat",
+   "name": "말냥젤리",
+   "anims": [
+    "Angry",
+    "Idle",
+    "Move",
+    "Play",
+    "Sleep"
+   ]
+  },
+  {
+   "id": "pet_MeltCheekIceCream",
+   "name": "말랑콘",
+   "anims": [
+    "Angry",
+    "Idle",
+    "Move",
+    "Play",
+    "Sleep"
+   ]
+  },
+  {
+   "id": "pet_OctopusSausage",
+   "name": "먹물소시지",
+   "anims": [
+    "Angry",
+    "Idle",
+    "Move",
+    "Play",
+    "Sleep"
+   ]
+  },
+  {
+   "id": "pet_MomoCat",
+   "name": "모모냥",
+   "anims": [
+    "Angry",
+    "Idle",
+    "Move",
+    "Play",
+    "Sleep"
+   ]
+  },
+  {
+   "id": "pet_MongsilMonggeul",
+   "name": "몽실몽글",
+   "anims": [
+    "Angry",
+    "Idle",
+    "Move",
+    "Play",
+    "Sleep"
+   ]
+  },
+  {
+   "id": "pet_DumplingSeal",
+   "name": "물만두범",
+   "anims": [
+    "Angry",
+    "Idle",
+    "Move",
+    "Play",
+    "Sleep"
+   ]
+  },
+  {
+   "id": "pet_SpacecraftElena",
+   "name": "미니 시장님",
+   "anims": [
+    "Angry",
+    "Idle",
+    "Move",
+    "Play",
+    "Sleep"
+   ]
+  },
+  {
+   "id": "pet_BumperCarElena",
+   "name": "미니카 시장님",
+   "anims": [
+    "Angry",
+    "Idle",
+    "Move",
+    "Play",
+    "Sleep"
+   ]
+  },
+  {
+   "id": "pet_SweetDessertDuck",
+   "name": "바나덕",
+   "anims": [
+    "Angry",
+    "Idle",
+    "Move",
+    "Play",
+    "Sleep"
+   ]
+  },
+  {
+   "id": "pet_FriedSeal",
+   "name": "바삭범",
+   "anims": [
+    "Angry",
+    "Idle",
+    "Move",
+    "Play",
+    "Sleep"
+   ]
+  },
+  {
+   "id": "pet_ButterKommyCat",
+   "name": "버터 코미냥",
+   "anims": [
+    "Angry",
+    "Idle",
+    "Move",
+    "Play",
+    "Sleep"
+   ]
+  },
+  {
+   "id": "pet_BeniCat",
+   "name": "베니냥",
+   "anims": [
+    "Angry",
+    "Idle",
+    "Move",
+    "Play",
+    "Sleep"
+   ]
+  },
+  {
+   "id": "pet_HippoBaby",
+   "name": "베베하망",
+   "anims": [
+    "Angry",
+    "Idle",
+    "Move",
+    "Play",
+    "Sleep"
+   ]
+  },
+  {
+   "id": "pet_Flowerpot",
+   "name": "부농 진달래",
+   "anims": [
+    "Angry",
+    "Idle",
+    "Move",
+    "Play",
+    "Sleep"
+   ]
+  },
+  {
+   "id": "pet_PetEnvelopeCat",
+   "name": "뽀리냥",
+   "anims": [
+    "Angry",
+    "Idle",
+    "Move",
+    "Play",
+    "Sleep"
+   ]
+  },
+  {
+   "id": "pet_PetNata",
+   "name": "쁘띠 나타",
+   "anims": [
+    "Angry",
+    "Idle",
+    "Move",
+    "Play",
+    "Sleep"
+   ]
+  },
+  {
+   "id": "pet_Pet_MiniNer",
+   "name": "쁘띠 네르",
+   "anims": [
+    "Angry",
+    "Idle",
+    "Move",
+    "Play",
+    "Sleep"
+   ]
+  },
+  {
+   "id": "pet_Pet_MiniDianaYester",
+   "name": "쁘띠 디아나(왕년)",
+   "anims": [
+    "Angry",
+    "Idle",
+    "Move",
+    "Play",
+    "Sleep"
+   ]
+  },
+  {
+   "id": "pet_Pet_MiniRenewa",
+   "name": "쁘띠 리뉴아",
+   "anims": [
+    "Angry",
+    "Idle",
+    "Move",
+    "Play",
+    "Sleep"
+   ]
+  },
+  {
+   "id": "pet_Mini_Lil1li",
+   "name": "쁘띠 릴1리",
+   "anims": [
+    "Angry",
+    "Idle",
+    "Move",
+    "Play",
+    "Sleep"
+   ]
+  },
+  {
+   "id": "pet_Mini_MEOW",
+   "name": "쁘띠 먀오",
+   "anims": [
+    "Angry",
+    "Idle",
+    "Move",
+    "Play",
+    "Sleep"
+   ]
+  },
+  {
+   "id": "pet_Mini_Musk",
+   "name": "쁘띠 머스크",
+   "anims": [
+    "Angry",
+    "Idle",
+    "Move",
+    "Play",
+    "Sleep"
+   ]
+  },
+  {
+   "id": "pet_MakashaCompanionHouse",
+   "name": "쁘띠 바바",
+   "anims": [
+    "Angry",
+    "Idle",
+    "Move",
+    "Play",
+    "Sleep"
+   ]
+  },
+  {
+   "id": "pet_Pet_MiniButter",
+   "name": "쁘띠 버터",
+   "anims": [
+    "Angry",
+    "Idle",
+    "Move",
+    "Play",
+    "Sleep"
+   ]
+  },
+  {
+   "id": "pet_WaiterBird",
+   "name": "쁘띠 서버 파랑새",
+   "anims": [
+    "Angry",
+    "Idle",
+    "Move",
+    "Play",
+    "Sleep"
+   ]
+  },
+  {
+   "id": "pet_Pet_SunglassesLil1li",
+   "name": "쁘띠 선글라스 릴1리",
+   "anims": [
+    "Angry",
+    "Idle",
+    "Move",
+    "Play",
+    "Sleep"
+   ]
+  },
+  {
+   "id": "pet_Pet_MiniShoupan",
+   "name": "쁘띠 슈팡",
+   "anims": [
+    "Angry",
+    "Idle",
+    "Move",
+    "Play",
+    "Sleep"
+   ]
+  },
+  {
+   "id": "pet_Pet_MiniSpeaki",
+   "name": "쁘띠 스핔이",
+   "anims": [
+    "Angry",
+    "Idle",
+    "Move",
+    "Play",
+    "Sleep"
+   ]
+  },
+  {
+   "id": "pet_Pet_MinixXionx",
+   "name": "쁘띠 시온",
+   "anims": [
+    "Angry",
+    "Idle",
+    "Move",
+    "Play",
+    "Sleep"
+   ]
+  },
+  {
+   "id": "pet_Pet_MiniAmelia",
+   "name": "쁘띠 아멜리아",
+   "anims": [
+    "Angry",
+    "Idle",
+    "Move",
+    "Play",
+    "Sleep"
+   ]
+  },
+  {
+   "id": "pet_PetEru",
+   "name": "쁘띠 에루",
+   "anims": [
+    "Angry",
+    "Idle",
+    "Move",
+    "Play",
+    "Sleep"
+   ]
+  },
+  {
+   "id": "pet_Mini_Epicon",
+   "name": "쁘띠 에피콘",
+   "anims": [
+    "Angry",
+    "Idle",
+    "Move",
+    "Play",
+    "Sleep"
+   ]
+  },
+  {
+   "id": "pet_Pet_SilviaEgg",
+   "name": "쁘띠 은석 공",
+   "anims": [
+    "Angry",
+    "Idle",
+    "Move",
+    "Play",
+    "Sleep"
+   ]
+  },
+  {
+   "id": "pet_Mini_RagDoll",
+   "name": "쁘띠 재미의 왕",
+   "anims": [
+    "Angry",
+    "Idle",
+    "Move",
+    "Play",
+    "Sleep"
+   ]
+  },
+  {
+   "id": "pet_Pet_MiniJoanne",
+   "name": "쁘띠 죠안",
+   "anims": [
+    "Angry",
+    "Idle",
+    "Move",
+    "Play",
+    "Sleep"
+   ]
+  },
+  {
+   "id": "pet_CatAliceChair",
+   "name": "쁘띠 체어 캣",
+   "anims": [
+    "Angry",
+    "Idle",
+    "Move",
+    "Play",
+    "Sleep"
+   ]
+  },
+  {
+   "id": "pet_Pet_MiniKommy",
+   "name": "쁘띠 코미",
+   "anims": [
+    "Angry",
+    "Idle",
+    "Move",
+    "Play",
+    "Sleep"
+   ]
+  },
+  {
+   "id": "pet_Mini_CrayonKnight",
+   "name": "쁘띠 크레용사용",
+   "anims": [
+    "Angry",
+    "Idle",
+    "Move",
+    "Play",
+    "Sleep"
+   ]
+  },
+  {
+   "id": "pet_Mini_Curburus",
+   "name": "쁘띠 크르브르스",
+   "anims": [
+    "Angry",
+    "Idle",
+    "Move",
+    "Play",
+    "Sleep"
+   ]
+  },
+  {
+   "id": "pet_Pet_MiniTigHero",
+   "name": "쁘띠 티그(영웅)",
+   "anims": [
+    "Angry",
+    "Idle",
+    "Move",
+    "Play",
+    "Sleep"
+   ]
+  },
+  {
+   "id": "pet_AppleRabbit",
+   "name": "사토",
+   "anims": [
+    "Angry",
+    "Idle",
+    "Move",
+    "Play",
+    "Sleep"
+   ]
+  },
+  {
+   "id": "pet_PetMuscleCarrot",
+   "name": "삼두당근",
+   "anims": [
+    "Angry",
+    "Idle",
+    "Move",
+    "Play",
+    "Sleep"
+   ]
+  },
+  {
+   "id": "pet_NewyearMagpie",
+   "name": "설까치",
+   "anims": [
+    "Angry",
+    "Idle",
+    "Move",
+    "Play",
+    "Sleep"
+   ]
+  },
+  {
+   "id": "pet_SnowLeopard",
+   "name": "설표",
+   "anims": [
+    "Angry",
+    "Idle",
+    "Move",
+    "Play",
+    "Sleep"
+   ]
+  },
+  {
+   "id": "pet_PetAlpaca",
+   "name": "쉽파카",
+   "anims": [
+    "Angry",
+    "Idle",
+    "Move",
+    "Play",
+    "Sleep"
+   ]
+  },
+  {
+   "id": "pet_PlainBreadDuck",
+   "name": "식빵덕",
+   "anims": [
+    "Angry",
+    "Idle",
+    "Move",
+    "Play",
+    "Sleep"
+   ]
+  },
+  {
+   "id": "pet_Raccoon",
+   "name": "신나구리",
+   "anims": [
+    "Angry",
+    "Idle",
+    "Move",
+    "Play",
+    "Sleep"
+   ]
+  },
+  {
+   "id": "pet_PetFridge",
+   "name": "아야고",
+   "anims": [
+    "Angry",
+    "Idle",
+    "Move",
+    "Play",
+    "Sleep"
+   ]
+  },
+  {
+   "id": "pet_PetStone",
+   "name": "아이돌",
+   "anims": [
+    "Angry",
+    "Idle",
+    "Move",
+    "Play",
+    "Sleep"
+   ]
+  },
+  {
+   "id": "pet_Chick",
+   "name": "알뿅아리",
+   "anims": [
+    "Angry",
+    "Idle",
+    "Move",
+    "Play",
+    "Sleep"
+   ]
+  },
+  {
+   "id": "pet_VegetableDuo",
+   "name": "야채강 콤비",
+   "anims": [
+    "Angry",
+    "Idle",
+    "Move",
+    "Play",
+    "Sleep"
+   ]
+  },
+  {
+   "id": "pet_Pet_MiniErpin",
+   "name": "에르핀 더 돌잡러",
+   "anims": [
+    "Angry",
+    "Idle",
+    "Move",
+    "Play",
+    "Sleep"
+   ]
+  },
+  {
+   "id": "pet_Pet_MiniErpinCheer",
+   "name": "에르핀 더 치어리더",
+   "anims": [
+    "Angry",
+    "Idle",
+    "Move",
+    "Play",
+    "Sleep"
+   ]
+  },
+  {
+   "id": "pet_WizardCat",
+   "name": "완드냥",
+   "anims": [
+    "Angry",
+    "Idle",
+    "Move",
+    "Play",
+    "Sleep"
+   ]
+  },
+  {
+   "id": "pet_Mini_CopyMayoCool",
+   "name": "완전 또까틈",
+   "anims": [
+    "Angry",
+    "Idle",
+    "Move",
+    "Play",
+    "Sleep"
+   ]
+  },
+  {
+   "id": "pet_UroLong",
+   "name": "우로Long",
+   "anims": [
+    "Angry",
+    "Idle",
+    "Move",
+    "Play",
+    "Sleep"
+   ]
+  },
+  {
+   "id": "pet_LeafSnowRabbit",
+   "name": "잎눈토끼",
+   "anims": [
+    "Angry",
+    "Idle",
+    "Move",
+    "Play",
+    "Sleep"
+   ]
+  },
+  {
+   "id": "pet_Pet_MiniCallamori",
+   "name": "자가모리",
+   "anims": [
+    "Angry",
+    "Idle",
+    "Move",
+    "Play",
+    "Sleep"
+   ]
+  },
+  {
+   "id": "pet_Shibadog",
+   "name": "잠바",
+   "anims": [
+    "Angry",
+    "Idle",
+    "Move",
+    "Play",
+    "Sleep"
+   ]
+  },
+  {
+   "id": "pet_StarDreamSheep",
+   "name": "잠잠양",
+   "anims": [
+    "Angry",
+    "Idle",
+    "Move",
+    "Play",
+    "Sleep"
+   ]
+  },
+  {
+   "id": "pet_Jellyfish",
+   "name": "젤리링",
+   "anims": [
+    "Angry",
+    "Idle",
+    "Move",
+    "Play",
+    "Sleep"
+   ]
+  },
+  {
+   "id": "pet_BlueDragon",
+   "name": "청설용",
+   "anims": [
+    "Angry",
+    "Idle",
+    "Move",
+    "Play",
+    "Sleep"
+   ]
+  },
+  {
+   "id": "pet_MufflerFox",
+   "name": "청풍여우",
+   "anims": [
+    "Angry",
+    "Idle",
+    "Move",
+    "Play",
+    "Sleep"
+   ]
+  },
+  {
+   "id": "pet_MeltSnakeIceCream",
+   "name": "체리 달뱀이",
+   "anims": [
+    "Angry",
+    "Idle",
+    "Move",
+    "Play",
+    "Sleep"
+   ]
+  },
+  {
+   "id": "pet_CheeseCat",
+   "name": "치즈냥",
+   "anims": [
+    "Angry",
+    "Idle",
+    "Move",
+    "Play",
+    "Sleep"
+   ]
+  },
+  {
+   "id": "pet_Bubblegun_Penguin",
+   "name": "칙귄",
+   "anims": [
+    "Angry",
+    "Idle",
+    "Move",
+    "Play",
+    "Sleep"
+   ]
+  },
+  {
+   "id": "pet_TigCat",
+   "name": "티그냥",
+   "anims": [
+    "Angry",
+    "Idle",
+    "Move",
+    "Play",
+    "Sleep"
+   ]
+  },
+  {
+   "id": "pet_KindergartenChinchilla",
+   "name": "팔락칠라",
+   "anims": [
+    "Angry",
+    "Idle",
+    "Move",
+    "Play",
+    "Sleep"
+   ]
+  },
+  {
+   "id": "pet_Patjuk",
+   "name": "팥죽",
+   "anims": [
+    "Angry",
+    "Idle",
+    "Move",
+    "Play",
+    "Sleep"
+   ]
+  },
+  {
+   "id": "pet_Hoodlumbird",
+   "name": "팹새",
+   "anims": [
+    "Angry",
+    "Idle",
+    "Move",
+    "Play",
+    "Sleep"
+   ]
+  },
+  {
+   "id": "pet_FlowerAngel",
+   "name": "펜젤 큐",
+   "anims": [
+    "Act",
+    "Angry",
+    "Eat",
+    "Idle",
+    "Move",
+    "Play",
+    "Sleep"
+   ]
+  },
+  {
+   "id": "pet_Stagbeetle",
+   "name": "풍멍이",
+   "anims": [
+    "Act",
+    "Angry",
+    "Eat",
+    "Idle",
+    "Move",
+    "Play",
+    "Sleep"
+   ]
+  },
+  {
+   "id": "pet_PetHedgehog",
+   "name": "풍성땃치",
+   "anims": [
+    "Act",
+    "Angry",
+    "Eat",
+    "Idle",
+    "Move",
+    "Play",
+    "Sleep"
+   ]
+  },
+  {
+   "id": "pet_PancakeTurtle",
+   "name": "핫거부크",
+   "anims": [
+    "Act",
+    "Angry",
+    "Eat",
+    "Idle",
+    "Move",
+    "Play",
+    "Sleep"
+   ]
+  },
+  {
+   "id": "pet_PetDachshund",
+   "name": "핫도그마",
+   "anims": [
+    "Act",
+    "Angry",
+    "Eat",
+    "Idle",
+    "Move",
+    "Play",
+    "Sleep"
+   ]
+  },
+  {
+   "id": "pet_SeaOtter",
+   "name": "해달수",
+   "anims": [
+    "Act",
+    "Angry",
+    "Eat",
+    "Idle",
+    "Move",
+    "Play",
+    "Sleep"
+   ]
+  },
+  {
+   "id": "pet_JellyfishGabia",
+   "name": "해파리 가비아",
+   "anims": [
+    "Act",
+    "Angry",
+    "Eat",
+    "Idle",
+    "Move",
+    "Play",
+    "Sleep"
+   ]
+  },
+  {
+   "id": "pet_OmeletHamster",
+   "name": "햄마리",
+   "anims": [
+    "Act",
+    "Angry",
+    "Eat",
+    "Idle",
+    "Move",
+    "Play",
+    "Sleep"
+   ]
+  },
+  {
+   "id": "pet_PumpkinGhost",
+   "name": "호호바깅",
+   "anims": [
+    "Act",
+    "Angry",
+    "Eat",
+    "Idle",
+    "Move",
+    "Play",
+    "Sleep"
+   ]
+  }
+ ]
+}

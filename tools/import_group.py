@@ -164,6 +164,9 @@ EFFECT = {
 }
 
 
+COSTUME_FIX = {"캐럿 청소 버니": "캐럿 청소 바니"}   # 페이지 메모 오타 → 원작 표기
+
+
 def costume_id(aid, costume):
     import hashlib
     return aid + "__" + hashlib.md5(costume.encode("utf-8")).hexdigest()[:4]
@@ -322,7 +325,8 @@ def main():
                 continue
             names = [by_id[x]["name"].strip() for x in s.get("t", []) if x and x in by_id and by_id[x]["name"].strip()]
             if costume and s.get("m", "").strip():
-                units.append({"id": costume_id(s["a"], s["m"].strip()), "base": s["a"], "costume": s["m"].strip(), "cost": c, "traits": names})
+                cm = COSTUME_FIX.get(s["m"].strip(), s["m"].strip())   # 표기만 고침 (id 는 페이지 메모 그대로)
+                units.append({"id": costume_id(s["a"], s["m"].strip()), "base": s["a"], "costume": cm, "cost": c, "traits": names})
             else:
                 units.append({"id": s["a"], "cost": c, "traits": names})
             used.update(names)

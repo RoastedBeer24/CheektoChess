@@ -1,0 +1,1 @@
+{"size": 192, "fps": 15.0, "facing": "left", "feet": 0.9004, "anims": {"Idle": {"n": 17, "cols": 12}, "Move": {"n": 17, "cols": 12}, "Attack1_1": {"n": 26, "cols": 12}, "Die": {"n": 19, "cols": 12}}, "norm": [1.0, 1.0, 1.0]}

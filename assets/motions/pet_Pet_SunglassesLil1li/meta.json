@@ -1,0 +1,1 @@
+{"size": 192, "fps": 15.0, "facing": "left", "feet": 0.9004, "anims": {"Idle": {"n": 30, "cols": 12}, "Move": {"n": 13, "cols": 12}, "Angry": {"n": 11, "cols": 11}, "Play": {"n": 33, "cols": 12}, "Sleep": {"n": 46, "cols": 12}}, "norm": [1.0, -14.5, 43.0]}
