@@ -223,6 +223,7 @@ func _start_prep() -> void:
 			p["aug_st"]["debt_left"] = int(p["aug_st"]["debt_left"]) - 1
 		if has_aug(p, "u_mentor") and r > 1:
 			_mentor(p)
+		_compact_bench(p)
 		_refresh_shop(p)
 		if state["rules"].get("augments", false) and _in(GameData.augments.get("rounds", []), r):
 			p["aug_offer"] = {"options": _roll_augments(p, 3), "rerolled": false}
@@ -303,15 +304,9 @@ func _carousel_pick(pid: String, idx: int) -> void:
 		o["by"] = pid
 		var p := player(pid)
 		var u := {"uid": _uid(), "aid": o["aid"], "star": 1, "arts": [], "pers": ""}
-		var free: int = p["bench"].find(null)
-		if free >= 0:
-			p["bench"][free] = u
-			_try_merge(p, o["aid"], 1)
-		elif _count_copies(p, o["aid"], 1) >= 2:
-			_try_merge(p, o["aid"], 1, u)
-		else:
-			p["gold"] += GameData.cost_of.get(o["aid"], 1)   # 대기석이 가득 차면 골드로
 		state["pool"][o["aid"]] = maxi(0, int(state["pool"].get(o["aid"], 0)) - 1)
+		_receive_unit(p, u)
+		_compact_bench(p)
 		p["inv"].append({"uid": _uid(), "id": o["art"]})
 		_log("%s: 공유 선택 %s + %s" % [p["name"], GameData.apostle(o["aid"]).get("name", ""), GameData.artifact(o["art"]).get("name", "")])
 	car["turn"] += 1
@@ -974,6 +969,15 @@ func sell_value(u: Dictionary) -> int:
 
 ## 플레이어 명령. 성공하면 "" , 실패하면 사유 문자열을 돌려준다.
 func command(pid: String, cmd: Dictionary) -> String:
+	var err := _command(pid, cmd)
+	var pc := player(pid)
+	if not pc.is_empty() and pc["bench"].size() > int(B["bench_size"]):
+		_compact_bench(pc)
+		state_changed.emit()
+	return err
+
+
+func _command(pid: String, cmd: Dictionary) -> String:
 	var p := player(pid)
 	if p.is_empty() or not p["alive"]:
 		return "참가 중이 아님"
@@ -1669,8 +1673,7 @@ func _twin(p: Dictionary) -> void:
 	for u in _all_units(p):
 		if int(u["star"]) <= 2 and (best == null or GameData.cost_of.get(u["aid"], 1) * int(u["star"]) > GameData.cost_of.get(best["aid"], 1) * int(best["star"])):
 			best = u
-	var free: int = p["bench"].find(null)
-	if best == null or free < 0:
+	if best == null:
 		p["gold"] += 6
 		return
 	var need := int(pow(3, int(best["star"]) - 1))
@@ -1678,8 +1681,7 @@ func _twin(p: Dictionary) -> void:
 		p["gold"] += 6
 		return
 	state["pool"][best["aid"]] -= need
-	p["bench"][free] = {"uid": _uid(), "aid": best["aid"], "star": int(best["star"]), "arts": [], "pers": ""}
-	_try_merge(p, best["aid"], int(best["star"]))
+	_receive_unit(p, {"uid": _uid(), "aid": best["aid"], "star": int(best["star"]), "arts": [], "pers": ""})
 
 
 ## 멘토링: 라운드마다 보드에서 가장 싼 ★1 사도의 같은 사도 1장을 대기석에
@@ -1689,12 +1691,67 @@ func _mentor(p: Dictionary) -> void:
 		var u: Dictionary = p["board"][k]
 		if int(u["star"]) == 1 and (best == null or GameData.cost_of.get(u["aid"], 1) < GameData.cost_of.get(best["aid"], 1)):
 			best = u
-	var free: int = p["bench"].find(null)
-	if best == null or free < 0 or int(state["pool"].get(best["aid"], 0)) < 1 or is_banned(best["aid"]):
+	if best == null or int(state["pool"].get(best["aid"], 0)) < 1 or is_banned(best["aid"]):
 		return
 	state["pool"][best["aid"]] -= 1
-	p["bench"][free] = {"uid": _uid(), "aid": best["aid"], "star": 1, "arts": [], "pers": ""}
-	_try_merge(p, best["aid"], 1)
+	_receive_unit(p, {"uid": _uid(), "aid": best["aid"], "star": 1, "arts": [], "pers": ""})
+
+
+# ─────────────────────────────── 대기석 넘침 칸 ───────────────────────────────
+## 대기석이 가득 찬 상태에서 사도를 받으면(공유 선택·증강 등) 대기석 끝에 임시 칸을 최대 2개까지 붙인다.
+## 빈칸이 생기면 임시 칸의 사도가 그리로 옮겨지고 임시 칸은 없어진다.
+const BENCH_OVERFLOW := 2
+
+
+## 받은 사도를 대기석에 (빈칸 → 임시 칸). 못 넣으면 false
+func _bench_put(p: Dictionary, u: Dictionary) -> bool:
+	var size := int(B["bench_size"])
+	for i in mini(size, p["bench"].size()):
+		if p["bench"][i] == null:
+			p["bench"][i] = u
+			return true
+	if p["bench"].size() < size + BENCH_OVERFLOW:
+		p["bench"].append(u)
+		return true
+	return false
+
+
+## 임시 칸의 사도를 빈 대기석으로 옮기고, 빈 임시 칸은 없앤다
+func _compact_bench(p: Dictionary) -> void:
+	var size := int(B["bench_size"])
+	var b: Array = p["bench"]
+	if b.size() <= size:
+		return
+	for i in range(size, b.size()):
+		if b[i] == null:
+			continue
+		var free := b.find(null)
+		if free >= 0 and free < size:
+			b[free] = b[i]
+			b[i] = null
+	while b.size() > size and b[-1] == null:
+		b.pop_back()
+	# 가운데가 빈 임시 칸도 정리
+	var keep := b.slice(0, size)
+	for i in range(size, b.size()):
+		if b[i] != null:
+			keep.append(b[i])
+	p["bench"] = keep
+
+
+## 받은 사도를 넣는다: 대기석·임시 칸 → 바로 합성 → 그래도 안 되면 골드 (사도는 풀로 돌려놓음)
+func _receive_unit(p: Dictionary, u: Dictionary) -> void:
+	if _bench_put(p, u):
+		_try_merge(p, u["aid"], int(u["star"]))
+		return
+	if int(u["star"]) == 1 and _count_copies(p, u["aid"], 1) >= 2:
+		_try_merge(p, u["aid"], 1, u)
+		return
+	var g: int = GameData.cost_of.get(u["aid"], 1) * int(pow(3, int(u["star"]) - 1))
+	p["gold"] += g
+	_return_to_pool(u)
+	_log("%s: 대기석이 가득 차 %s 을(를) %d골드로 바꿈" % [p["name"], GameData.apostle(u["aid"]).get("name", ""), g])
+	p["notice"] = {"t": "대기석이 가득 차 %s 을(를) %d골드로 바꿨습니다" % [GameData.apostle(u["aid"]).get("name", ""), g], "n": int(p.get("notice", {}).get("n", 0)) + 1}
 
 
 ## 무작위 cost 코스트 사도 ★star 를 대기석에 (자리가 없으면 그 값만큼 골드)
@@ -1704,11 +1761,9 @@ func _give_unit(p: Dictionary, cost: int, star: int) -> void:
 		if GameData.cost_of.get(aid, 0) == cost and int(state["pool"][aid]) >= (3 if star == 2 else 1) and not is_banned(aid):
 			cands.append(aid)
 	cands.sort()
-	var free: int = p["bench"].find(null)
-	if cands.is_empty() or free < 0:
+	if cands.is_empty():
 		p["gold"] += cost * (3 if star == 2 else 1)
 		return
 	var aid: String = cands[rng.randi_range(0, cands.size() - 1)]
 	state["pool"][aid] -= 3 if star == 2 else 1
-	p["bench"][free] = {"uid": _uid(), "aid": aid, "star": star, "arts": [], "pers": ""}
-	_try_merge(p, aid, star)
+	_receive_unit(p, {"uid": _uid(), "aid": aid, "star": star, "arts": [], "pers": ""})

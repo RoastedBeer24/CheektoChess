@@ -27,6 +27,18 @@ func _ready() -> void:
 	await get_tree().create_timer(2.0).timeout
 	var gs = main.find_children("*", "GameScreen", true, false)[0]
 	await _check(gs, "준비")
+	# 대기석 가득 + 임시 칸 2개
+	var keep_bench: Array = p["bench"].duplicate()
+	for k in int(g.B["bench_size"]):
+		p["bench"][k] = {"uid": 8200 + k, "aid": GameData.roster[k], "star": 1, "arts": [], "pers": ""}
+	g._receive_unit(p, {"uid": 8300, "aid": GameData.roster[9], "star": 1, "arts": [], "pers": ""})
+	g._receive_unit(p, {"uid": 8301, "aid": GameData.roster[10], "star": 1, "arts": [], "pers": ""})
+	g.state_changed.emit()
+	await _wait(10)
+	await _check(gs, "대기석넘침")
+	p["bench"] = keep_bench
+	g.state_changed.emit()
+	await _wait(5)
 	gs.sel = {"unit": {"board": "0,1"}}
 	gs.refresh()
 	await _wait(5)

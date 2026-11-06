@@ -248,6 +248,23 @@ func _test_rules_augments() -> int:
 	pa["gold"] = 50
 	if Match.board_cap(pa) != int(pa["level"]) + 2 or m2.income(pa) > int(m2.B["base_income"]) + 4:
 		print("FAIL: 욕심쟁이 군단"); return 1
+	# 대기석이 가득 찼을 때 받은 사도: 임시 칸 → 빈칸이 생기면 대기석으로
+	var pb := m2.player("b")
+	var ids_ok: Array = GameData.roster.slice(0, 12)
+	for k in int(m2.B["bench_size"]):
+		pb["bench"][k] = {"uid": 9000 + k, "aid": ids_ok[k], "star": 1, "arts": [], "pers": ""}
+	m2._receive_unit(pb, {"uid": 9100, "aid": ids_ok[9], "star": 1, "arts": [], "pers": ""})
+	m2._receive_unit(pb, {"uid": 9101, "aid": ids_ok[10], "star": 1, "arts": [], "pers": ""})
+	if pb["bench"].size() != int(m2.B["bench_size"]) + 2:
+		print("FAIL: 임시 칸 %d" % pb["bench"].size()); return 1
+	var g_before := int(pb["gold"])
+	m2._receive_unit(pb, {"uid": 9102, "aid": ids_ok[11], "star": 1, "arts": [], "pers": ""})
+	if int(pb["gold"]) <= g_before:
+		print("FAIL: 임시 칸도 가득 → 골드"); return 1
+	pb["bench"][0] = null
+	m2._compact_bench(pb)
+	if pb["bench"].size() != int(m2.B["bench_size"]) + 1 or pb["bench"][0] == null:
+		print("FAIL: 임시 칸 정리"); return 1
 	# 방 코드
 	for ip in ["192.168.0.10", "192.168.255.254", "172.20.3.4", "10.1.2.3"]:
 		if NetNode.code_to_ip(NetNode.pretty_code(NetNode.room_code(ip))) != ip:

@@ -41,6 +41,7 @@ var _board_root: Control
 var _board_info: Label
 var _next_btn: Button
 var _pause_btn: Button
+var _notice_n := -1
 var _top_row: HBoxContainer
 var _next_holder: VBoxContainer
 var _board_corner: Array = []   # 보드 구석에 띄우는 글자 (보드 인원·적 방향)
@@ -542,7 +543,7 @@ func _build_bench() -> Control:
 	_bench_lbl = UI.label("대기석", 22, UI.SUB, HORIZONTAL_ALIGNMENT_CENTER)
 	_bench_lbl.custom_minimum_size.x = 110
 	bench.add_child(_bench_lbl)
-	for i in int(B()["bench_size"]):
+	for i in int(B()["bench_size"]) + Match.BENCH_OVERFLOW:
 		var t := UnitTile.new(Vector2(124, 124))
 		t.loc = {"bench": i}
 		var loc: Dictionary = t.loc
@@ -717,6 +718,13 @@ func refresh() -> void:
 	if phase != _last_phase or int(st["round"]) != _last_round:
 		_on_phase_changed(phase, int(st["round"]))
 	_round_lbl.text = "라운드 %d" % int(st["round"])
+	var nt: Dictionary = p.get("notice", {}) if not p.is_empty() else {}
+	var nn := int(nt.get("n", 0))
+	if _notice_n < 0:
+		_notice_n = nn   # 처음 화면을 열 때는 예전 알림을 다시 띄우지 않음
+	elif nn != _notice_n:
+		_notice_n = nn
+		_toast(String(nt.get("t", "")))
 	_refresh_pause()
 	_phase_pill.add_theme_stylebox_override("panel", UI.box(PHASE_COLOR.get(phase, UI.PANEL_LIGHT), 10))
 	if not p.is_empty():
@@ -1224,9 +1232,12 @@ func _refresh_bench_shop() -> void:
 	var prep: bool = App.session.state.get("phase", "") == "prep" and p.get("alive", false)
 	var bench: Array = p.get("bench", [])
 	var used := 0
+	var bsize := int(B()["bench_size"])
 	for i in _bench_tiles.size():
 		var t: UnitTile = _bench_tiles[i]
 		var u = bench[i] if i < bench.size() else null
+		# 임시 칸(대기석이 가득 찼을 때 받은 사도): 쓰일 때만 보이고 주황 테두리
+		t.visible = i < bsize or u != null
 		if u == null:
 			t.set_empty("")
 		else:
@@ -1236,7 +1247,9 @@ func _refresh_bench_shop() -> void:
 			if not _merge_pairs(u).is_empty():
 				t.set_corner("◆ 합성", Color("c9a7ff"))
 		t.set_selected(sel.get("unit", {}) == {"bench": i})
-	_bench_lbl.text = "대기석\n%d/%d" % [used, bench.size()]
+		if i >= bsize and u != null:
+			t.set_corner("임시", Color("ffb35c"))
+	_bench_lbl.text = "대기석\n%d/%d" % [used, bsize]
 	var su = _unit_at(sel["unit"]) if sel.has("unit") else null
 	_sell_btn.text = "판매\n+%d골드" % _sell_value(su) if su != null else "판매\n(끌어다 놓기)"
 	var shop: Array = p.get("shop", [])
