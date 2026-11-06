@@ -111,7 +111,7 @@ static func apostle(box: Control, u: Dictionary, on_art: Callable = Callable(), 
 		pages[key] = page
 		var title: String = TABS[key]
 		if key == "art":
-			title = "아티팩트 %d/%d" % [arts.size(), int(GameData.balance["artifact_slots"])]
+			title = "아티팩트 %d/%d" % [arts.size(), Match.art_slots(aid)]
 		var b := UI.button(title, 19, Vector2(0, 52))
 		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		btns[key] = b

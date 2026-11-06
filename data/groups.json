@@ -1589,6 +1589,1929 @@
      ]
     }
    ]
+  },
+  {
+   "id": "g2",
+   "name": "볼스패닉",
+   "pool_size": [
+    24,
+    20,
+    16,
+    12,
+    10
+   ],
+   "shop_odds": [
+    [
+     100,
+     0,
+     0,
+     0,
+     0
+    ],
+    [
+     100,
+     0,
+     0,
+     0,
+     0
+    ],
+    [
+     75,
+     25,
+     0,
+     0,
+     0
+    ],
+    [
+     55,
+     30,
+     15,
+     0,
+     0
+    ],
+    [
+     45,
+     33,
+     20,
+     2,
+     0
+    ],
+    [
+     30,
+     40,
+     25,
+     5,
+     0
+    ],
+    [
+     19,
+     35,
+     35,
+     10,
+     1
+    ],
+    [
+     15,
+     25,
+     35,
+     20,
+     5
+    ],
+    [
+     10,
+     15,
+     30,
+     30,
+     15
+    ]
+   ],
+   "units": [
+    {
+     "id": "amelia_r41__75e1",
+     "base": "amelia_r41",
+     "costume": "정체 분명 엘프",
+     "cost": 1,
+     "traits": [
+      "촛불 하나! 비명 속 괴담 파티!"
+     ]
+    },
+    {
+     "id": "amelia__d52d",
+     "base": "amelia",
+     "costume": "당신의 토끼 집사장",
+     "cost": 1,
+     "traits": [
+      "바니바니, 카페 대작전!"
+     ]
+    },
+    {
+     "id": "speaki_maid__656c",
+     "base": "speaki_maid",
+     "costume": "캐럿 청소 버니",
+     "cost": 1,
+     "traits": [
+      "제발 저희를 두고 가지 마세요!"
+     ]
+    },
+    {
+     "id": "epica__56a2",
+     "base": "epica",
+     "costume": "화살촉에 실려 온 이야기",
+     "cost": 1,
+     "traits": [
+      "퀘스트 완료! 판타지 모험단!"
+     ]
+    },
+    {
+     "id": "rollett__4caa",
+     "base": "rollett",
+     "costume": "롱 레인지 서비스",
+     "cost": 1,
+     "traits": [
+      "당신의 완벽한 메이드가 되기 위하여!"
+     ]
+    },
+    {
+     "id": "posher__d1d6",
+     "base": "posher",
+     "costume": "공포의 간호사",
+     "cost": 1,
+     "traits": [
+      "무정한 도시의 빌런"
+     ]
+    },
+    {
+     "id": "orr__d277",
+     "base": "orr",
+     "costume": "차원 개발 연구원",
+     "cost": 1,
+     "traits": [
+      "전투 준비! 차원이 다른 배틀로얄!"
+     ]
+    },
+    {
+     "id": "picora__9c49",
+     "base": "picora",
+     "costume": "트윙클 스윗 리본",
+     "cost": 1,
+     "traits": [
+      "깜짝 교단 파티"
+     ]
+    },
+    {
+     "id": "inkle__3806",
+     "base": "inkle",
+     "costume": "꿈 많은 사무적 세계관",
+     "cost": 1,
+     "traits": [
+      "오피스 브레이크! 칼퇴 프로젝트!"
+     ]
+    },
+    {
+     "id": "kommy__d196",
+     "base": "kommy",
+     "costume": "냥냥 메이드",
+     "cost": 1,
+     "traits": [
+      "당신의 완벽한 메이드가 되기 위하여!"
+     ]
+    },
+    {
+     "id": "nicole__dc4d",
+     "base": "nicole",
+     "costume": "파팝 터지는 손맛",
+     "cost": 1,
+     "traits": [
+      "오피스 브레이크! 칼퇴 프로젝트!"
+     ]
+    },
+    {
+     "id": "ui__d5d5",
+     "base": "ui",
+     "costume": "맑은 기도의 빗방울",
+     "cost": 1,
+     "traits": [
+      "퀘스트 완료! 판타지 모험단!"
+     ]
+    },
+    {
+     "id": "barong__c9fd",
+     "base": "barong",
+     "costume": "콩콩 점프의 왕",
+     "cost": 1,
+     "traits": [
+      "촛불 하나! 비명 속 괴담 파티!"
+     ]
+    },
+    {
+     "id": "mute__fc87",
+     "base": "mute",
+     "costume": "가장 은밀한 고양이",
+     "cost": 2,
+     "traits": [
+      "촛불 하나! 비명 속 괴담 파티!"
+     ]
+    },
+    {
+     "id": "selene__5add",
+     "base": "selene",
+     "costume": "오늘의 도발은 토끼",
+     "cost": 2,
+     "traits": [
+      "바니바니, 카페 대작전!"
+     ]
+    },
+    {
+     "id": "hilde__65de",
+     "base": "hilde",
+     "costume": "하얀 토끼의 용기",
+     "cost": 2,
+     "traits": [
+      "제발 저희를 두고 가지 마세요!"
+     ]
+    },
+    {
+     "id": "vivi__84d6",
+     "base": "vivi",
+     "costume": "스며드는 잿빛 장막",
+     "cost": 2,
+     "traits": [
+      "퀘스트 완료! 판타지 모험단!"
+     ]
+    },
+    {
+     "id": "butter__6c2d",
+     "base": "butter",
+     "costume": "에이프런 매그넘",
+     "cost": 2,
+     "traits": [
+      "당신의 완벽한 메이드가 되기 위하여!"
+     ]
+    },
+    {
+     "id": "beni_beni__93b8",
+     "base": "beni_beni",
+     "costume": "포레스트 빌런 베어",
+     "cost": 2,
+     "traits": [
+      "무정한 도시의 빌런"
+     ]
+    },
+    {
+     "id": "kathy__9c72",
+     "base": "kathy",
+     "costume": "차원이 다른 과학 유령",
+     "cost": 2,
+     "traits": [
+      "전투 준비! 차원이 다른 배틀로얄!"
+     ]
+    },
+    {
+     "id": "kyarot__fc42",
+     "base": "kyarot",
+     "costume": "순박한 사교 파티",
+     "cost": 2,
+     "traits": [
+      "깜짝 교단 파티"
+     ]
+    },
+    {
+     "id": "asana__04d3",
+     "base": "asana",
+     "costume": "유연한 팀장님의 자세",
+     "cost": 2,
+     "traits": [
+      "오피스 브레이크! 칼퇴 프로젝트!"
+     ]
+    },
+    {
+     "id": "gabia__bd8c",
+     "base": "gabia",
+     "costume": "대지의 대마법사",
+     "cost": 2,
+     "traits": [
+      "퀘스트 완료! 판타지 모험단!"
+     ]
+    },
+    {
+     "id": "rohne_mayor__49df",
+     "base": "rohne_mayor",
+     "costume": "미스 모나티엄 진",
+     "cost": 2,
+     "traits": [
+      "깜짝 교단 파티"
+     ]
+    },
+    {
+     "id": "sparrot__15d1",
+     "base": "sparrot",
+     "costume": "거침없는 앵아치",
+     "cost": 2,
+     "traits": [
+      "무정한 도시의 빌런"
+     ]
+    },
+    {
+     "id": "bigwood__c8ca",
+     "base": "bigwood",
+     "costume": "메이드 인 빅토리안",
+     "cost": 2,
+     "traits": [
+      "당신의 완벽한 메이드가 되기 위하여!"
+     ]
+    },
+    {
+     "id": "caesar__2dd4",
+     "base": "caesar",
+     "costume": "끝내주는 악당!",
+     "cost": 3,
+     "traits": [
+      "촛불 하나! 비명 속 괴담 파티!"
+     ]
+    },
+    {
+     "id": "alice__857a",
+     "base": "alice",
+     "costume": "주사위 잡이 토끼",
+     "cost": 3,
+     "traits": [
+      "바니바니, 카페 대작전!"
+     ]
+    },
+    {
+     "id": "annette__5a52",
+     "base": "annette",
+     "costume": "화끈한 바니의 매직",
+     "cost": 3,
+     "traits": [
+      "제발 저희를 두고 가지 마세요!"
+     ]
+    },
+    {
+     "id": "xxionx__cc14",
+     "base": "xxionx",
+     "costume": "다크스타 ★ 버스트",
+     "cost": 3,
+     "traits": [
+      "퀘스트 완료! 판타지 모험단!"
+     ]
+    },
+    {
+     "id": "fricle__5cd1",
+     "base": "fricle",
+     "costume": "크리미널 하우스키핑",
+     "cost": 3,
+     "traits": [
+      "당신의 완벽한 메이드가 되기 위하여!"
+     ]
+    },
+    {
+     "id": "alice__1ef3",
+     "base": "alice",
+     "costume": "치명적인 맹독 점괘",
+     "cost": 3,
+     "traits": [
+      "무정한 도시의 빌런"
+     ]
+    },
+    {
+     "id": "sylla__866a",
+     "base": "sylla",
+     "costume": "불어오는 정복의 바람",
+     "cost": 3,
+     "traits": [
+      "전투 준비! 차원이 다른 배틀로얄!"
+     ]
+    },
+    {
+     "id": "ner__e7d6",
+     "base": "ner",
+     "costume": "교단의 성찬 파티",
+     "cost": 3,
+     "traits": [
+      "깜짝 교단 파티"
+     ]
+    },
+    {
+     "id": "raika__0776",
+     "base": "raika",
+     "costume": "지니어스 라이트닝",
+     "cost": 3,
+     "traits": [
+      "오피스 브레이크! 칼퇴 프로젝트!"
+     ]
+    },
+    {
+     "id": "ifrit__c246",
+     "base": "ifrit",
+     "costume": "딥 다크 판타지아",
+     "cost": 3,
+     "traits": [
+      "무정한 도시의 빌런"
+     ]
+    },
+    {
+     "id": "ricotta__bdc0",
+     "base": "ricotta",
+     "costume": "사교계의 악역 영애",
+     "cost": 3,
+     "traits": [
+      "제발 저희를 두고 가지 마세요!"
+     ]
+    },
+    {
+     "id": "pira__dc81",
+     "base": "pira",
+     "costume": "껌 좀 씹어본 용족",
+     "cost": 3,
+     "traits": [
+      "전투 준비! 차원이 다른 배틀로얄!"
+     ]
+    },
+    {
+     "id": "vela__985b",
+     "base": "vela",
+     "costume": "존재감 넘치는 바니",
+     "cost": 3,
+     "traits": [
+      "바니바니, 카페 대작전!"
+     ]
+    },
+    {
+     "id": "leets__f1ed",
+     "base": "leets",
+     "costume": "망토 속 사냥꾼",
+     "cost": 4,
+     "traits": [
+      "촛불 하나! 비명 속 괴담 파티!"
+     ]
+    },
+    {
+     "id": "naia__e3e0",
+     "base": "naia",
+     "costume": "깡총 물장난",
+     "cost": 4,
+     "traits": [
+      "바니바니, 카페 대작전!"
+     ]
+    },
+    {
+     "id": "aragnia__c6e7",
+     "base": "aragnia",
+     "costume": "심해 속 바다토끼",
+     "cost": 4,
+     "traits": [
+      "제발 저희를 두고 가지 마세요!"
+     ]
+    },
+    {
+     "id": "chloe__04fd",
+     "base": "chloe",
+     "costume": "테디 더 나이트메어",
+     "cost": 4,
+     "traits": [
+      "퀘스트 완료! 판타지 모험단!"
+     ]
+    },
+    {
+     "id": "kidian__ab7e",
+     "base": "kidian",
+     "costume": "옵시디언 메이든",
+     "cost": 4,
+     "traits": [
+      "당신의 완벽한 메이드가 되기 위하여!"
+     ]
+    },
+    {
+     "id": "ayla__58d2",
+     "base": "ayla",
+     "costume": "버닝 다운 빌런",
+     "cost": 4,
+     "traits": [
+      "무정한 도시의 빌런"
+     ]
+    },
+    {
+     "id": "tig__d009",
+     "base": "tig",
+     "costume": "돌격! 정복대장",
+     "cost": 4,
+     "traits": [
+      "전투 준비! 차원이 다른 배틀로얄!"
+     ]
+    },
+    {
+     "id": "snorky__5450",
+     "base": "snorky",
+     "costume": "와일드 파티 비기너",
+     "cost": 4,
+     "traits": [
+      "깜짝 교단 파티"
+     ]
+    },
+    {
+     "id": "daya_pure_shine__dec6",
+     "base": "daya_pure_shine",
+     "costume": "샤이닝 비즈니스",
+     "cost": 4,
+     "traits": [
+      "오피스 브레이크! 칼퇴 프로젝트!"
+     ]
+    },
+    {
+     "id": "haley__05f9",
+     "base": "haley",
+     "costume": "가시 장미 수녀",
+     "cost": 4,
+     "traits": [
+      "촛불 하나! 비명 속 괴담 파티!"
+     ]
+    },
+    {
+     "id": "ed__aca7",
+     "base": "ed",
+     "costume": "잠든 별의 예지몽",
+     "cost": 4,
+     "traits": [
+      "퀘스트 완료! 판타지 모험단!"
+     ]
+    },
+    {
+     "id": "ran__1118",
+     "base": "ran",
+     "costume": "교단 행동대장",
+     "cost": 4,
+     "traits": [
+      "무정한 도시의 빌런"
+     ]
+    },
+    {
+     "id": "rim__fa54",
+     "base": "rim",
+     "costume": "차분한 파티 호스트",
+     "cost": 4,
+     "traits": [
+      "깜짝 교단 파티"
+     ]
+    },
+    {
+     "id": "rim_chaos__3c35",
+     "base": "rim_chaos",
+     "costume": "카오틱 에이프런",
+     "cost": 4,
+     "traits": [
+      "제발 저희를 두고 가지 마세요!"
+     ]
+    },
+    {
+     "id": "rudd__1675",
+     "base": "rudd",
+     "costume": "저주받은 붉은 백작",
+     "cost": 5,
+     "traits": [
+      "촛불 하나! 비명 속 괴담 파티!",
+      "근육으로 승부한다"
+     ]
+    },
+    {
+     "id": "blanchet__190c",
+     "base": "blanchet",
+     "costume": "도전! 액트리스 바니",
+     "cost": 5,
+     "traits": [
+      "바니바니, 카페 대작전!",
+      "무대 위의 푸른 장미"
+     ]
+    },
+    {
+     "id": "mayo_cool__10d1",
+     "base": "mayo_cool",
+     "costume": "바니의 신비한 마술쇼",
+     "cost": 5,
+     "traits": [
+      "제발 저희를 두고 가지 마세요!",
+      "컬렉터의 근본"
+     ]
+    },
+    {
+     "id": "aya__f6f4",
+     "base": "aya",
+     "costume": "첫 눈송이의 춤사위",
+     "cost": 5,
+     "traits": [
+      "퀘스트 완료! 판타지 모험단!",
+      "만년설의 현자"
+     ]
+    },
+    {
+     "id": "erpin__baa2",
+     "base": "erpin",
+     "costume": "풀오토 고딕",
+     "cost": 5,
+     "traits": [
+      "당신의 완벽한 메이드가 되기 위하여!",
+      "요정 여왕"
+     ]
+    },
+    {
+     "id": "canna__e8b3",
+     "base": "canna",
+     "costume": "석관의 엘프",
+     "cost": 5,
+     "traits": [
+      "무정한 도시의 빌런",
+      "오락실 패왕"
+     ]
+    },
+    {
+     "id": "shaydi__fc5a",
+     "base": "shaydi",
+     "costume": "차원 찬탈 고스트",
+     "cost": 5,
+     "traits": [
+      "전투 준비! 차원이 다른 배틀로얄!",
+      "못된 장난 전문"
+     ]
+    },
+    {
+     "id": "selene__8ce0",
+     "base": "selene",
+     "costume": "고품격 파트너",
+     "cost": 5,
+     "traits": [
+      "깜짝 교단 파티",
+      "도발의 여왕"
+     ]
+    },
+    {
+     "id": "shaydi_twisted__1f54",
+     "base": "shaydi_twisted",
+     "costume": "달콤한 나의 상사님",
+     "cost": 5,
+     "traits": [
+      "오피스 브레이크! 칼퇴 프로젝트!",
+      "유령늪의 새로운 질서"
+     ]
+    }
+   ],
+   "synergies": [
+    {
+     "id": "o1",
+     "name": "촛불 하나! 비명 속 괴담 파티!",
+     "short": "괴담 파티",
+     "kind": "origin",
+     "tiers": [
+      2,
+      4,
+      6
+     ],
+     "color": "b58cff",
+     "effect": "촛불이 꺼지면 — 공포로 적을 얼어붙게 하고, 쓰러진 괴담 사도는 원혼이 되어 잠시 남는다.\n2명: 괴담 사도 HP +8%, 전투 시작 시 적 전체 '공포' 6초 (공격력 -15%)\n4명: 공포 6초 (-18%), 괴담 사도가 쓰러지면 그 자리에 원혼이 3초 동안 남아 주변 적에게 매초 공격력 40% 피해\n6명: 공포 8초 (-25%), 원혼 5초, 원혼이 나타날 때 무작위 적 1명 기절 1초",
+     "levels": [
+      {
+       "mods": {
+        "hp": 8
+       },
+       "fx": [
+        {
+         "t": "start",
+         "do": [
+          {
+           "a": "debuff",
+           "to": "enemies",
+           "mods": {
+            "atk": -15
+           },
+           "dur": 6,
+           "key": "fear"
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "fx": [
+        {
+         "t": "start",
+         "do": [
+          {
+           "a": "debuff",
+           "to": "enemies",
+           "mods": {
+            "atk": -18
+           },
+           "dur": 6,
+           "key": "fear"
+          }
+         ]
+        },
+        {
+         "t": "death_self",
+         "do": [
+          {
+           "a": "summon",
+           "n": 1,
+           "hp_pct": 40,
+           "atk_pct": 60,
+           "dur": 3,
+           "name": "원혼",
+           "scale": 0.7
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "fx": [
+        {
+         "t": "start",
+         "do": [
+          {
+           "a": "debuff",
+           "to": "enemies",
+           "mods": {
+            "atk": -25
+           },
+           "dur": 8,
+           "key": "fear"
+          }
+         ]
+        },
+        {
+         "t": "death_self",
+         "do": [
+          {
+           "a": "summon",
+           "n": 1,
+           "hp_pct": 60,
+           "atk_pct": 90,
+           "dur": 5,
+           "name": "원혼",
+           "scale": 0.7
+          },
+          {
+           "a": "status",
+           "to": "random_enemy",
+           "s": "stun",
+           "dur": 1
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "id": "o2",
+     "name": "바니바니, 카페 대작전!",
+     "short": "바니 카페",
+     "kind": "origin",
+     "tiers": [
+      2,
+      4,
+      5
+     ],
+     "color": "ff9ecf",
+     "effect": "오늘의 영업 — 손님(승리)마다 팁을 받고, 단골이 늘수록 바니가 강해진다.\n2명: 바니 사도 공격 속도 +8%, 승리 시 팁 +1골드\n4명: 공격 속도 +20%, 승리 시 +2골드·패배 시 +1골드, 5초마다 HP가 가장 낮은 아군에게 디저트(최대 HP 6% 회복 + 3초 공격 속도 +15%)\n5명: 승리 +3골드·패배 +1골드, 디저트 3초마다, '단골 포인트': 이 시너지가 켜진 라운드마다 1점, 1점당 바니 사도 공격력 +1% (최대 +20%, 게임 내내 유지)",
+     "levels": [
+      {
+       "mods": {
+        "aspd": 8
+       },
+       "gold": {
+        "win": 1,
+        "lose": 0
+       }
+      },
+      {
+       "mods": {
+        "aspd": 20
+       },
+       "gold": {
+        "win": 2,
+        "lose": 1
+       },
+       "side_timer": {
+        "sec": 5,
+        "do": [
+         {
+          "a": "heal",
+          "to": "lowest",
+          "pct": 6
+         },
+         {
+          "a": "buff",
+          "to": "lowest",
+          "mods": {
+           "aspd": 15
+          },
+          "dur": 3,
+          "key": "dessert"
+         }
+        ]
+       }
+      },
+      {
+       "mods": {
+        "aspd": 20
+       },
+       "gold": {
+        "win": 3,
+        "lose": 1
+       },
+       "points_round": true,
+       "per_point": {
+        "atk": 1,
+        "max": 20
+       },
+       "side_timer": {
+        "sec": 3,
+        "do": [
+         {
+          "a": "heal",
+          "to": "lowest",
+          "pct": 6
+         },
+         {
+          "a": "buff",
+          "to": "lowest",
+          "mods": {
+           "aspd": 15
+          },
+          "dur": 3,
+          "key": "dessert"
+         }
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "id": "o3",
+     "name": "제발 저희를 두고 가지 마세요!",
+     "short": "두고 가지 마",
+     "kind": "origin",
+     "tiers": [
+      2,
+      4,
+      6
+     ],
+     "color": "a7c7ff",
+     "effect": "남겨진 아이들 — 대기석에 남겨진 동료가 많을수록 버티는 힘이 커지고, 혼자 남으면 울면서 싸운다.\n2명: 대기석 사도 1명당 이 시너지 사도 HP +4%, 공격력 +2%\n4명: 1명당 HP +6%, 공격력 +4%, 시너지 사도 HP가 처음 40% 아래가 되면 최대 HP 25% 보호막 (전투당 1회)\n6명: 1명당 HP +8%, 공격력 +6%, 아군이 시너지 사도만 남으면 그 사도들 공격 속도 +50%, 받는 피해 -30%",
+     "levels": [
+      {
+       "per_bench": {
+        "hp": 4,
+        "atk": 2
+       }
+      },
+      {
+       "per_bench": {
+        "hp": 6,
+        "atk": 4
+       },
+       "fx": [
+        {
+         "t": "hp_below",
+         "pct": 40,
+         "do": [
+          {
+           "a": "shield",
+           "to": "self",
+           "pct": 25,
+           "dur": 8
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "per_bench": {
+        "hp": 8,
+        "atk": 6
+       },
+       "fx": [
+        {
+         "t": "hp_below",
+         "pct": 40,
+         "do": [
+          {
+           "a": "shield",
+           "to": "self",
+           "pct": 25,
+           "dur": 8
+          }
+         ]
+        },
+        {
+         "t": "cond",
+         "cond": "only_trait:제발 저희를 두고 가지 마세요!",
+         "mods": {
+          "aspd": 50,
+          "dmg_taken": -30
+         }
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "id": "o4",
+     "name": "퀘스트 완료! 판타지 모험단!",
+     "short": "모험단",
+     "kind": "origin",
+     "tiers": [
+      2,
+      4,
+      6
+     ],
+     "color": "7fd88f",
+     "effect": "파티 구성 — 전열·중열·후열을 고루 갖출수록 강해지고, 모험 퀘스트를 깨면 보상 상자가 열린다.\n2명: 모험단 사도가 선 열 종류 1개당 모험단 사도 피해 +5%, 받는 피해 -3%\n4명: 열 1개당 피해 +8%, 받는 피해 -5%. 퀘스트: 모험단 사도가 적을 처치할 때마다 진행도 +1, 10·25·45에서 보상 상자 (골드 → 아티팩트 → 희귀 아티팩트)\n6명: 열 1개당 피해 +12%, 받는 피해 -8%, 퀘스트 진행도 2배",
+     "levels": [
+      {
+       "per_rowkind": {
+        "dmg": 5,
+        "dmg_taken": -3
+       }
+      },
+      {
+       "per_rowkind": {
+        "dmg": 8,
+        "dmg_taken": -5
+       },
+       "quest": {
+        "mult": 1,
+        "steps": [
+         10,
+         25,
+         45
+        ],
+        "rewards": [
+         "gold",
+         "art",
+         "rare"
+        ]
+       }
+      },
+      {
+       "per_rowkind": {
+        "dmg": 12,
+        "dmg_taken": -8
+       },
+       "quest": {
+        "mult": 2,
+        "steps": [
+         10,
+         25,
+         45
+        ],
+        "rewards": [
+         "gold",
+         "art",
+         "rare"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "id": "o5",
+     "name": "당신의 완벽한 메이드가 되기 위하여!",
+     "short": "메이드",
+     "kind": "origin",
+     "tiers": [
+      2,
+      4,
+      6
+     ],
+     "color": "f0d6a8",
+     "effect": "완벽한 서비스 — 메이드가 주기적으로 아군을 돌보고, 위기의 아군을 지킨다.\n2명: 3초마다 상태 이상에 걸린 아군 1명 정화 + 최대 HP 4% 회복\n4명: 2초마다 돌봄, 전투 시작 시 '차 대접'으로 아군 전체 공격력 +8%, 메이드 사도 받는 피해 -10%\n6명: 1.5초마다 돌봄, 차 대접 +15%, 아군이 처음 HP 30% 아래가 되면 최대 HP 20% 보호막 (아군마다 1회)",
+     "levels": [
+      {
+       "side_timer": {
+        "sec": 3,
+        "do": [
+         {
+          "a": "cleanse",
+          "to": "debuffed_ally"
+         },
+         {
+          "a": "heal",
+          "to": "debuffed_ally",
+          "pct": 4
+         }
+        ]
+       }
+      },
+      {
+       "mods": {
+        "dmg_taken": -10
+       },
+       "fx": [
+        {
+         "t": "start",
+         "do": [
+          {
+           "a": "buff",
+           "to": "allies",
+           "mods": {
+            "atk": 8
+           },
+           "dur": 999,
+           "key": "tea"
+          }
+         ]
+        }
+       ],
+       "side_timer": {
+        "sec": 2,
+        "do": [
+         {
+          "a": "cleanse",
+          "to": "debuffed_ally"
+         },
+         {
+          "a": "heal",
+          "to": "debuffed_ally",
+          "pct": 4
+         }
+        ]
+       }
+      },
+      {
+       "mods": {
+        "dmg_taken": -10
+       },
+       "fx": [
+        {
+         "t": "start",
+         "do": [
+          {
+           "a": "buff",
+           "to": "allies",
+           "mods": {
+            "atk": 15
+           },
+           "dur": 999,
+           "key": "tea"
+          }
+         ]
+        }
+       ],
+       "team_fx": [
+        {
+         "t": "hp_below",
+         "pct": 30,
+         "do": [
+          {
+           "a": "shield",
+           "to": "self",
+           "pct": 20,
+           "dur": 6
+          }
+         ]
+        }
+       ],
+       "side_timer": {
+        "sec": 1.5,
+        "do": [
+         {
+          "a": "cleanse",
+          "to": "debuffed_ally"
+         },
+         {
+          "a": "heal",
+          "to": "debuffed_ally",
+          "pct": 4
+         }
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "id": "o6",
+     "name": "무정한 도시의 빌런",
+     "short": "빌런",
+     "kind": "origin",
+     "tiers": [
+      2,
+      4,
+      6
+     ],
+     "color": "ff6f6f",
+     "effect": "현상수배 — 빌런은 사냥할수록 거칠어지고, 약탈로 주머니를 채운다.\n2명: 빌런 사도 공격력 +8%, 적을 처치하면 공격력 +10% (전투 중 중첩, 최대 3)\n4명: 처치 시 공격력 +10% (최대 4), 전투 승리 시 이번 전투에서 빌런이 처치한 적 2명당 1골드 (최대 3)\n6명: 처치 시 +12% (최대 5), 약탈 골드, 전투 시작 시 HP가 가장 낮은 적에게 '수배' 표식: 그 적에게 빌런 피해 +40%, 적을 처치한 빌런은 1초 무적",
+     "levels": [
+      {
+       "mods": {
+        "atk": 8
+       },
+       "fx": [
+        {
+         "t": "kill",
+         "do": [
+          {
+           "a": "buff",
+           "to": "self",
+           "mods": {
+            "atk": 10
+           },
+           "dur": 999,
+           "key": "villain",
+           "stack": 3
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "fx": [
+        {
+         "t": "kill",
+         "do": [
+          {
+           "a": "buff",
+           "to": "self",
+           "mods": {
+            "atk": 10
+           },
+           "dur": 999,
+           "key": "villain",
+           "stack": 4
+          }
+         ]
+        }
+       ],
+       "gold_kills": {
+        "per": 2,
+        "max": 3
+       }
+      },
+      {
+       "fx": [
+        {
+         "t": "kill",
+         "do": [
+          {
+           "a": "buff",
+           "to": "self",
+           "mods": {
+            "atk": 12
+           },
+           "dur": 999,
+           "key": "villain",
+           "stack": 5
+          },
+          {
+           "a": "invuln",
+           "dur": 1
+          }
+         ]
+        },
+        {
+         "t": "start",
+         "do": [
+          {
+           "a": "debuff",
+           "to": "lowest_enemy",
+           "mods": {
+            "dmg_taken": 40
+           },
+           "dur": 999,
+           "key": "wanted"
+          }
+         ]
+        }
+       ],
+       "gold_kills": {
+        "per": 2,
+        "max": 3
+       }
+      }
+     ]
+    },
+    {
+     "id": "o7",
+     "name": "전투 준비! 차원이 다른 배틀로얄!",
+     "short": "배틀로얄",
+     "kind": "origin",
+     "tiers": [
+      2,
+      4,
+      5
+     ],
+     "color": "ffb35c",
+     "effect": "자기장 축소 — 시간이 흐르고 전장에 사람이 줄수록 배틀로얄 사도가 날카로워진다.\n2명: 전투 6초 이후 4초마다 배틀로얄 사도 공격력 +9% (최대 5중첩)\n4명: 10초 이후부터 중첩, 쓰러진 사도(아군·적) 1명당 배틀로얄 사도 피해 +3%\n5명: 쓰러진 사도 1명당 +5%, 아군 중 마지막 남은 배틀로얄 사도는 HP 30% 회복 + 공격 속도 +40%. 승리하면 +1골드 (치킨!)",
+     "levels": [
+      {
+       "fx": [
+        {
+         "t": "interval",
+         "sec": 4,
+         "from": 6,
+         "do": [
+          {
+           "a": "buff",
+           "to": "self",
+           "mods": {
+            "atk": 9
+           },
+           "dur": 999,
+           "key": "zone",
+           "stack": 5
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "fx": [
+        {
+         "t": "interval",
+         "sec": 5,
+         "from": 10,
+         "do": [
+          {
+           "a": "buff",
+           "to": "self",
+           "mods": {
+            "atk": 6
+           },
+           "dur": 999,
+           "key": "zone",
+           "stack": 5
+          }
+         ]
+        },
+        {
+         "t": "any_death",
+         "do": [
+          {
+           "a": "buff",
+           "to": "self",
+           "mods": {
+            "dmg": 3
+           },
+           "dur": 999,
+           "key": "royale",
+           "stack": 15
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "fx": [
+        {
+         "t": "interval",
+         "sec": 5,
+         "from": 10,
+         "do": [
+          {
+           "a": "buff",
+           "to": "self",
+           "mods": {
+            "atk": 6
+           },
+           "dur": 999,
+           "key": "zone",
+           "stack": 5
+          }
+         ]
+        },
+        {
+         "t": "any_death",
+         "do": [
+          {
+           "a": "buff",
+           "to": "self",
+           "mods": {
+            "dmg": 5
+           },
+           "dur": 999,
+           "key": "royale",
+           "stack": 15
+          }
+         ]
+        },
+        {
+         "t": "last_of_trait",
+         "do": [
+          {
+           "a": "heal",
+           "to": "self",
+           "pct": 30
+          },
+          {
+           "a": "buff",
+           "to": "self",
+           "mods": {
+            "aspd": 40
+           },
+           "dur": 999,
+           "key": "chicken"
+          }
+         ]
+        }
+       ],
+       "gold_survive": 1
+      }
+     ]
+    },
+    {
+     "id": "o8",
+     "name": "깜짝 교단 파티",
+     "short": "교단 파티",
+     "kind": "origin",
+     "tiers": [
+      2,
+      4,
+      6
+     ],
+     "color": "ffd166",
+     "effect": "연회는 계속된다 — 시간이 갈수록 파티 음식이 쌓여 아군 전체가 들뜬다.\n2명: 5초마다 아군 전체에 파티 음식 1중첩: 공격력 +4% (최대 5)\n4명: 4초마다, 1중첩당 공격력 +4%, 공격 속도 +2%, 첫 음식 때 교단 사도 1명 SP 50% 충전\n6명: 3초마다, 1중첩당 공격력 +5%, 공격 속도 +3% (최대 6), 최대 중첩이 되면 피날레: 아군 전체 최대 HP 15% 회복",
+     "levels": [
+      {
+       "side_timer": {
+        "sec": 5,
+        "do": [
+         {
+          "a": "buff",
+          "to": "allies",
+          "mods": {
+           "atk": 4
+          },
+          "dur": 999,
+          "key": "feast",
+          "stack": 5
+         }
+        ]
+       }
+      },
+      {
+       "side_timer": {
+        "sec": 4,
+        "do": [
+         {
+          "a": "buff",
+          "to": "allies",
+          "mods": {
+           "atk": 4,
+           "aspd": 2
+          },
+          "dur": 999,
+          "key": "feast",
+          "stack": 5
+         }
+        ],
+        "first_do": [
+         {
+          "a": "sp_pct",
+          "pct": 50
+         }
+        ]
+       }
+      },
+      {
+       "side_timer": {
+        "sec": 3,
+        "do": [
+         {
+          "a": "buff",
+          "to": "allies",
+          "mods": {
+           "atk": 5,
+           "aspd": 3
+          },
+          "dur": 999,
+          "key": "feast",
+          "stack": 6
+         }
+        ],
+        "first_do": [
+         {
+          "a": "sp_pct",
+          "pct": 50
+         }
+        ],
+        "n_then": {
+         "n": 6,
+         "do": [
+          {
+           "a": "heal",
+           "to": "allies",
+           "pct": 15
+          }
+         ]
+        }
+       }
+      }
+     ]
+    },
+    {
+     "id": "u1",
+     "name": "근육으로 승부한다",
+     "short": "근육",
+     "kind": "unique",
+     "tiers": [
+      1
+     ],
+     "color": "ffb13b",
+     "effect": "루드는 마법을 근육으로 받아친다: 마법 방어력 +40%, 일반 공격에 최대 HP 3%만큼 추가 피해. 루드의 HP가 처음 50% 아래가 되면 '펌핑' — 5초 동안 공격 속도 +50%, 기절·빙결 면역.",
+     "levels": [
+      {
+       "mods": {
+        "mdef": 40
+       },
+       "fx": [
+        {
+         "t": "normal_hit",
+         "do": [
+          {
+           "a": "extra_maxhp",
+           "pct": 3
+          }
+         ]
+        },
+        {
+         "t": "hp_below",
+         "pct": 50,
+         "do": [
+          {
+           "a": "buff",
+           "to": "self",
+           "mods": {
+            "aspd": 50
+           },
+           "dur": 5,
+           "key": "pump"
+          },
+          {
+           "a": "cc_immune",
+           "dur": 5
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "id": "u2",
+     "name": "무대 위의 푸른 장미",
+     "short": "푸른 장미",
+     "kind": "unique",
+     "tiers": [
+      1
+     ],
+     "color": "ffb13b",
+     "effect": "블랑셰가 스킬을 쓸 때마다 관객의 박수 1중첩: 아군 전체 공격력 +3% (최대 5). 5중첩이 되면 앙코르 — 블랑셰 SP 즉시 가득 (전투당 1회).",
+     "levels": [
+      {
+       "fx": [
+        {
+         "t": "skill",
+         "which": "any",
+         "do": [
+          {
+           "a": "buff",
+           "to": "allies",
+           "mods": {
+            "atk": 3
+           },
+           "dur": 999,
+           "key": "applause",
+           "stack": 5
+          }
+         ]
+        },
+        {
+         "t": "skill_n",
+         "n": 5,
+         "once": true,
+         "do": [
+          {
+           "a": "sp_pct",
+           "pct": 100
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "id": "u3",
+     "name": "컬렉터의 근본",
+     "short": "컬렉터",
+     "kind": "unique",
+     "tiers": [
+      1
+     ],
+     "color": "ffb13b",
+     "effect": "마요의 아티팩트 칸 +1 (최대 4개). 마요가 장착한 아티팩트 1개당 아군 전체 피해 +3%. 전투 시작 시 마술쇼: 무작위 적 1명의 보호막·강화 효과를 지움.",
+     "levels": [
+      {
+       "art_slot_plus": 1,
+       "team_per_art": {
+        "dmg": 3
+       },
+       "fx": [
+        {
+         "t": "start",
+         "do": [
+          {
+           "a": "dispel",
+           "to": "random_enemy"
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "id": "o9",
+     "name": "오피스 브레이크! 칼퇴 프로젝트!",
+     "short": "칼퇴",
+     "kind": "origin",
+     "tiers": [
+      2,
+      4,
+      6
+     ],
+     "color": "8cc4ff",
+     "effect": "칼퇴 시간 — 처음엔 버티며 일하고, 퇴근 시간이 되면 폭주한다.\n2명: 전투 20초 이후 칼퇴 사도 공격 속도 +25%\n4명: 15초 이후 공격 속도 +40%, 스킬 피해 +20%. 그 전까지(업무 집중) 받는 피해 -15%\n6명: 10초 이후 공격 속도 +60%, 스킬 피해 +35%, 칼퇴 순간 SP 가득. 전투가 30초를 넘기면 승패와 관계없이 야근 수당 +1골드",
+     "levels": [
+      {
+       "fx": [
+        {
+         "t": "interval",
+         "sec": 999,
+         "from": 20,
+         "once": true,
+         "do": [
+          {
+           "a": "buff",
+           "to": "self",
+           "mods": {
+            "aspd": 25
+           },
+           "dur": 999,
+           "key": "offwork"
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "fx": [
+        {
+         "t": "interval",
+         "sec": 999,
+         "from": 15,
+         "once": true,
+         "do": [
+          {
+           "a": "buff",
+           "to": "self",
+           "mods": {
+            "aspd": 40,
+            "skill_dmg": 20
+           },
+           "dur": 999,
+           "key": "offwork"
+          }
+         ]
+        },
+        {
+         "t": "cond",
+         "cond": "time_lt:15",
+         "mods": {
+          "dmg_taken": -15
+         }
+        }
+       ]
+      },
+      {
+       "fx": [
+        {
+         "t": "interval",
+         "sec": 999,
+         "from": 10,
+         "once": true,
+         "do": [
+          {
+           "a": "buff",
+           "to": "self",
+           "mods": {
+            "aspd": 60,
+            "skill_dmg": 35
+           },
+           "dur": 999,
+           "key": "offwork"
+          },
+          {
+           "a": "sp_pct",
+           "pct": 100
+          }
+         ]
+        },
+        {
+         "t": "cond",
+         "cond": "time_lt:10",
+         "mods": {
+          "dmg_taken": -15
+         }
+        }
+       ],
+       "gold_overtime": {
+        "t": 30,
+        "g": 1
+       }
+      }
+     ]
+    },
+    {
+     "id": "u4",
+     "name": "만년설의 현자",
+     "short": "만년설",
+     "kind": "unique",
+     "tiers": [
+      1
+     ],
+     "color": "ffb13b",
+     "effect": "아야의 스킬에 맞은 적 1.5초 빙결, 빙결된 적이 받는 피해 +20%. 아야가 스킬을 3번 쓸 때마다 눈보라: 적 전체 공격 속도 -20% 3초.",
+     "levels": [
+      {
+       "fx": [
+        {
+         "t": "skill_hit",
+         "do": [
+          {
+           "a": "status",
+           "to": "target",
+           "s": "freeze",
+           "dur": 1.5
+          }
+         ]
+        },
+        {
+         "t": "cond",
+         "cond": "vs_status:freeze",
+         "mods": {
+          "dmg": 20
+         }
+        },
+        {
+         "t": "skill_n",
+         "n": 3,
+         "do": [
+          {
+           "a": "debuff",
+           "to": "enemies",
+           "mods": {
+            "aspd": -20
+           },
+           "dur": 3,
+           "key": "blizzard"
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "id": "u5",
+     "name": "요정 여왕",
+     "short": "요정 여왕",
+     "kind": "unique",
+     "tiers": [
+      1
+     ],
+     "color": "ffb13b",
+     "effect": "전투 시작 시 요정 2마리를 불러낸다 (에르핀 공격력 40%의 원거리 공격, HP 에르핀의 25%). 에르핀이 스킬을 쓰면 요정들 공격 속도 +50% 4초.",
+     "levels": [
+      {
+       "fx": [
+        {
+         "t": "start",
+         "do": [
+          {
+           "a": "summon",
+           "n": 2,
+           "hp_pct": 25,
+           "atk_pct": 40,
+           "dur": 999,
+           "name": "요정",
+           "scale": 0.45
+          }
+         ]
+        },
+        {
+         "t": "skill",
+         "which": "any",
+         "do": [
+          {
+           "a": "buff",
+           "to": "summons",
+           "mods": {
+            "aspd": 50
+           },
+           "dur": 4,
+           "key": "fairy"
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "id": "u6",
+     "name": "오락실 패왕",
+     "short": "오락실",
+     "kind": "unique",
+     "tiers": [
+      1
+     ],
+     "color": "ffb13b",
+     "effect": "오락실 콤보: 칸나의 일반 공격이 맞을 때마다 콤보 +1, 1콤보당 공격 속도 +2% (최대 25). 10콤보마다 필살기 — 대상에게 공격력 250% 피해 + 기절 1초.",
+     "levels": [
+      {
+       "fx": [
+        {
+         "t": "normal_hit",
+         "do": [
+          {
+           "a": "buff",
+           "to": "self",
+           "mods": {
+            "aspd": 2
+           },
+           "dur": 999,
+           "key": "combo",
+           "stack": 25
+          }
+         ]
+        },
+        {
+         "t": "normal_n",
+         "n": 10,
+         "do": [
+          {
+           "a": "extra",
+           "pct": 250
+          },
+          {
+           "a": "status",
+           "to": "target",
+           "s": "stun",
+           "dur": 1
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "id": "u7",
+     "name": "못된 장난 전문",
+     "short": "장난",
+     "kind": "unique",
+     "tiers": [
+      1
+     ],
+     "color": "ffb13b",
+     "effect": "5초마다 무작위 적 1명에게 장난: 2초 동안 혼란 (공격 대상이 무작위로 바뀜). 셰이디는 장난에 걸린 적에게 피해 +30%, 장난을 걸 때마다 셰이디 SP +15.",
+     "levels": [
+      {
+       "fx": [
+        {
+         "t": "interval",
+         "sec": 5,
+         "do": [
+          {
+           "a": "status",
+           "to": "random_enemy",
+           "s": "confuse",
+           "dur": 2
+          },
+          {
+           "a": "sp",
+           "amt": 15
+          }
+         ]
+        },
+        {
+         "t": "cond",
+         "cond": "vs_status:confuse",
+         "mods": {
+          "dmg": 30
+         }
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "id": "u8",
+     "name": "도발의 여왕",
+     "short": "도발",
+     "kind": "unique",
+     "tiers": [
+      1
+     ],
+     "color": "ffb13b",
+     "effect": "전투 시작과 8초마다 셀리네가 3초 동안 적 전체를 도발, 도발 중 받는 피해 -40%. 도발이 끝날 때 앞쪽 적에게 공격력 150% 반격.",
+     "levels": [
+      {
+       "fx": [
+        {
+         "t": "start",
+         "do": [
+          {
+           "a": "taunt",
+           "dur": 3
+          },
+          {
+           "a": "buff",
+           "to": "self",
+           "mods": {
+            "dmg_taken": -40
+           },
+           "dur": 3,
+           "key": "provoke"
+          }
+         ]
+        },
+        {
+         "t": "interval",
+         "sec": 8,
+         "do": [
+          {
+           "a": "taunt",
+           "dur": 3
+          },
+          {
+           "a": "buff",
+           "to": "self",
+           "mods": {
+            "dmg_taken": -40
+           },
+           "dur": 3,
+           "key": "provoke"
+          }
+         ]
+        },
+        {
+         "t": "interval",
+         "sec": 8,
+         "from": 3,
+         "do": [
+          {
+           "a": "strike",
+           "mode": "front",
+           "pct": 150
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "id": "u9",
+     "name": "유령늪의 새로운 질서",
+     "short": "새로운 질서",
+     "kind": "unique",
+     "tiers": [
+      1
+     ],
+     "color": "ffb13b",
+     "effect": "새로운 질서: 셰이디의 일반 공격이 적에게 '규칙' 표식을 남기고, 3개가 쌓이면 침묵 2초 + 공격력 120% 피해. 8초마다 공격력이 가장 높은 아군에게 업무 지시 — 4초 동안 공격 속도 +40%.",
+     "levels": [
+      {
+       "fx": [
+        {
+         "t": "normal_n",
+         "n": 3,
+         "do": [
+          {
+           "a": "status",
+           "to": "target",
+           "s": "silence",
+           "dur": 2
+          },
+          {
+           "a": "extra",
+           "pct": 120
+          }
+         ]
+        },
+        {
+         "t": "interval",
+         "sec": 8,
+         "do": [
+          {
+           "a": "buff",
+           "to": "high_atk_ally",
+           "mods": {
+            "aspd": 40
+           },
+           "dur": 4,
+           "key": "order"
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   ],
+   "costume": true
   }
  ]
 }

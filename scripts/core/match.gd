@@ -589,8 +589,10 @@ func _end_battle() -> void:
 				if not b.is_empty():
 					_lose(b, base_dmg)
 		_aug_after_battle(a, bt, 0)
+		_syn_after_battle(a, bt, 0)
 		if not b.is_empty():
 			_aug_after_battle(b, bt, 1)
+			_syn_after_battle(b, bt, 1)
 	# 탈락 처리 (체력 0, 또는 접속이 끊긴 채 라운드가 넘어간 플레이어)
 	var dead_now := []
 	for pid in alive_players():
@@ -680,6 +682,54 @@ func _synergy_reward(p: Dictionary, won: bool) -> void:
 					_log("%s: %s 보물 발견 (일반 아티팩트)" % [p["name"], name])
 
 
+## 플레이어 전투 뒤 시너지 보상 (볼스패닉): 처치 약탈 골드, 야근 수당, 끝까지 생존 골드, 퀘스트 진행, 단골 포인트
+func _syn_after_battle(p: Dictionary, bt: Dictionary, side: int) -> void:
+	var specs := []
+	for k in p["board"]:
+		specs.append(p["board"][k])
+	var tiers := Rules.active_tiers(Rules.apply_emblems(Rules.count_traits(specs), p.get("augs", [])))
+	var won := int(bt["winner"]) == side
+	var kills := int(bt.get("deaths", [0, 0])[1 - side])
+	for name in tiers:
+		var tier: int = tiers[name]
+		var levels: Array = GameData.synergies.get(name, {}).get("levels", [])
+		if tier <= 0 or tier - 1 >= levels.size():
+			continue
+		var spec: Dictionary = levels[tier - 1]
+		var g := 0
+		if spec.has("gold_kills") and won:
+			g += mini(kills / int(spec["gold_kills"]["per"]), int(spec["gold_kills"]["max"]))
+		if spec.has("gold_overtime") and float(bt.get("end_time", 0.0)) >= float(spec["gold_overtime"]["t"]):
+			g += int(spec["gold_overtime"]["g"])
+		if spec.has("gold_survive") and won:
+			g += int(spec["gold_survive"])
+		if g > 0:
+			p["gold"] += g
+			_log("%s: %s +%d골드" % [p["name"], name, g])
+		if spec.get("points_round", false):
+			if not p.has("syn_pts"):
+				p["syn_pts"] = {}
+			p["syn_pts"][name] = int(p["syn_pts"].get(name, 0)) + 1
+		if spec.has("quest"):
+			if not p.has("quest"):
+				p["quest"] = {}
+			var q: Dictionary = p["quest"].get(name, {"n": 0, "step": 0})
+			q["n"] = int(q["n"]) + kills * int(spec["quest"].get("mult", 1))
+			var steps: Array = spec["quest"]["steps"]
+			while int(q["step"]) < steps.size() and int(q["n"]) >= int(steps[q["step"]]):
+				var reward: String = spec["quest"]["rewards"][q["step"]]
+				q["step"] = int(q["step"]) + 1
+				match reward:
+					"gold":
+						p["gold"] += 6
+					"art":
+						p["inv"].append({"uid": _uid(), "id": _random_of_grade("advanced")})
+					"rare":
+						p["inv"].append({"uid": _uid(), "id": _random_of_grade("rare")})
+				_log("%s: %s 퀘스트 %d단계 완료!" % [p["name"], name, q["step"]])
+			p["quest"][name] = q
+
+
 func _eliminate(pid: String, remaining: int) -> void:
 	var p := player(pid)
 	p["alive"] = false
@@ -748,6 +798,16 @@ func army_of(pid: String) -> Array:
 		for a in u["arts"]:
 			arts.append(a["id"])
 		out.append({"aid": u["aid"], "star": u["star"], "row": rs[0], "slot": rs[1], "arts": arts, "pers": u["pers"]})
+	# 대기석 인원·시너지 포인트 (볼스패닉 시너지용 — 0 이면 넣지 않아 예전 기록과 같음)
+	var bench_n := 0
+	for b in p["bench"]:
+		if b != null:
+			bench_n += 1
+	for spec in out:
+		if bench_n > 0:
+			spec["bench_n"] = bench_n
+		if not p.get("syn_pts", {}).is_empty():
+			spec["syn_pts"] = p["syn_pts"].duplicate()
 	var augs := battle_augs(p)
 	if not augs.is_empty():
 		for spec in out:
@@ -1275,8 +1335,8 @@ func _cmd_equip(p: Dictionary, cmd: Dictionary) -> String:
 	var u = unit_at(p, cmd.get("loc", {}))
 	if u == null:
 		return "유닛 없음"
-	if u["arts"].size() >= int(B["artifact_slots"]):
-		return "장착 칸이 가득 참 (최대 %d개)" % int(B["artifact_slots"])
+	if u["arts"].size() >= art_slots(u["aid"]):
+		return "장착 칸이 가득 참 (최대 %d개)" % art_slots(u["aid"])
 	_remove_art(p, where)
 	u["arts"].append(where["art"])
 	return ""
@@ -1392,6 +1452,16 @@ static func has_aug(p: Dictionary, id: String) -> bool:
 		if a["id"] == id:
 			return true
 	return false
+
+
+## 사도 한 명의 아티팩트 칸 (기본 3, 고유 시너지 'art_slot_plus' 가 있으면 +1)
+static func art_slots(aid: String) -> int:
+	var n := int(GameData.balance["artifact_slots"])
+	for t in GameData.traits_of(aid):
+		var lv: Array = GameData.synergies.get(t, {}).get("levels", [])
+		if not lv.is_empty() and int(lv[0].get("art_slot_plus", 0)) > 0:
+			n += int(lv[0]["art_slot_plus"])
+	return n
 
 
 ## 보드 인원 = 레벨 (+ 확장 보드)

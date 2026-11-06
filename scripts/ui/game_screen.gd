@@ -2242,9 +2242,9 @@ func _check_art_drop(target: Dictionary) -> Dictionary:
 		return {"ok": false, "text": ""}
 	if not _drag["in_inv"]:
 		return {"ok": false, "text": "장착 중인 것은\n옮길 수 없음"}
-	if u["arts"].size() >= int(B()["artifact_slots"]):
-		return {"ok": false, "text": "장착 칸 가득\n(%d/%d)" % [u["arts"].size(), int(B()["artifact_slots"])]}
-	return {"ok": true, "text": "장착 (%d/%d)" % [u["arts"].size() + 1, int(B()["artifact_slots"])]}
+	if u["arts"].size() >= Match.art_slots(u["aid"]):
+		return {"ok": false, "text": "장착 칸 가득\n(%d/%d)" % [u["arts"].size(), Match.art_slots(u["aid"])]}
+	return {"ok": true, "text": "장착 (%d/%d)" % [u["arts"].size() + 1, Match.art_slots(u["aid"])]}
 
 
 func _paint_drag() -> void:

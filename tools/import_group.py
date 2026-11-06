@@ -169,6 +169,132 @@ def costume_id(aid, costume):
     return aid + "__" + hashlib.md5(costume.encode("utf-8")).hexdigest()[:4]
 
 
+
+# ─────────────────────────────── 볼스패닉 (g2) ───────────────────────────────
+def buff(to, mods, dur=999, key="", stack=1):
+    d = {"a": "buff", "to": to, "mods": mods, "dur": dur}
+    if key:
+        d["key"] = key
+    if stack > 1:
+        d["stack"] = stack
+    return d
+
+
+G2 = {
+    "촛불 하나! 비명 속 괴담 파티!": [
+        {"mods": {"hp": 8}, "fx": [{"t": "start", "do": [{"a": "debuff", "to": "enemies", "mods": {"atk": -15}, "dur": 6, "key": "fear"}]}]},
+        {"fx": [{"t": "start", "do": [{"a": "debuff", "to": "enemies", "mods": {"atk": -18}, "dur": 6, "key": "fear"}]},
+                {"t": "death_self", "do": [{"a": "summon", "n": 1, "hp_pct": 40, "atk_pct": 60, "dur": 3, "name": "원혼", "scale": 0.7}]}]},
+        {"fx": [{"t": "start", "do": [{"a": "debuff", "to": "enemies", "mods": {"atk": -25}, "dur": 8, "key": "fear"}]},
+                {"t": "death_self", "do": [{"a": "summon", "n": 1, "hp_pct": 60, "atk_pct": 90, "dur": 5, "name": "원혼", "scale": 0.7},
+                                           {"a": "status", "to": "random_enemy", "s": "stun", "dur": 1}]}]},
+    ],
+    "바니바니, 카페 대작전!": [
+        {"mods": {"aspd": 8}, "gold": {"win": 1, "lose": 0}},
+        {"mods": {"aspd": 20}, "gold": {"win": 2, "lose": 1},
+         "side_timer": {"sec": 5, "do": [{"a": "heal", "to": "lowest", "pct": 6}, buff("lowest", {"aspd": 15}, 3, "dessert")]}},
+        {"mods": {"aspd": 20}, "gold": {"win": 3, "lose": 1}, "points_round": True, "per_point": {"atk": 1, "max": 20},
+         "side_timer": {"sec": 3, "do": [{"a": "heal", "to": "lowest", "pct": 6}, buff("lowest", {"aspd": 15}, 3, "dessert")]}},
+    ],
+    "제발 저희를 두고 가지 마세요!": [
+        {"per_bench": {"hp": 4, "atk": 2}},
+        {"per_bench": {"hp": 6, "atk": 4}, "fx": [{"t": "hp_below", "pct": 40, "do": [{"a": "shield", "to": "self", "pct": 25, "dur": 8}]}]},
+        {"per_bench": {"hp": 8, "atk": 6}, "fx": [{"t": "hp_below", "pct": 40, "do": [{"a": "shield", "to": "self", "pct": 25, "dur": 8}]},
+                                                  {"t": "cond", "cond": "only_trait:제발 저희를 두고 가지 마세요!", "mods": {"aspd": 50, "dmg_taken": -30}}]},
+    ],
+    "퀘스트 완료! 판타지 모험단!": [
+        {"per_rowkind": {"dmg": 5, "dmg_taken": -3}},
+        {"per_rowkind": {"dmg": 8, "dmg_taken": -5}, "quest": {"mult": 1, "steps": [10, 25, 45], "rewards": ["gold", "art", "rare"]}},
+        {"per_rowkind": {"dmg": 12, "dmg_taken": -8}, "quest": {"mult": 2, "steps": [10, 25, 45], "rewards": ["gold", "art", "rare"]}},
+    ],
+    "당신의 완벽한 메이드가 되기 위하여!": [
+        {"side_timer": {"sec": 3, "do": [{"a": "cleanse", "to": "debuffed_ally"}, {"a": "heal", "to": "debuffed_ally", "pct": 4}]}},
+        {"mods": {"dmg_taken": -10}, "fx": [{"t": "start", "do": [buff("allies", {"atk": 8}, 999, "tea")]}],
+         "side_timer": {"sec": 2, "do": [{"a": "cleanse", "to": "debuffed_ally"}, {"a": "heal", "to": "debuffed_ally", "pct": 4}]}},
+        {"mods": {"dmg_taken": -10}, "fx": [{"t": "start", "do": [buff("allies", {"atk": 15}, 999, "tea")]}],
+         "team_fx": [{"t": "hp_below", "pct": 30, "do": [{"a": "shield", "to": "self", "pct": 20, "dur": 6}]}],
+         "side_timer": {"sec": 1.5, "do": [{"a": "cleanse", "to": "debuffed_ally"}, {"a": "heal", "to": "debuffed_ally", "pct": 4}]}},
+    ],
+    "무정한 도시의 빌런": [
+        {"mods": {"atk": 8}, "fx": [{"t": "kill", "do": [buff("self", {"atk": 10}, 999, "villain", 3)]}]},
+        {"fx": [{"t": "kill", "do": [buff("self", {"atk": 10}, 999, "villain", 4)]}], "gold_kills": {"per": 2, "max": 3}},
+        {"fx": [{"t": "kill", "do": [buff("self", {"atk": 12}, 999, "villain", 5), {"a": "invuln", "dur": 1}]},
+                {"t": "start", "do": [{"a": "debuff", "to": "lowest_enemy", "mods": {"dmg_taken": 40}, "dur": 999, "key": "wanted"}]}],
+         "gold_kills": {"per": 2, "max": 3}},
+    ],
+    "전투 준비! 차원이 다른 배틀로얄!": [
+        {"fx": [{"t": "interval", "sec": 4, "from": 6, "do": [buff("self", {"atk": 9}, 999, "zone", 5)]}]},
+        {"fx": [{"t": "interval", "sec": 5, "from": 10, "do": [buff("self", {"atk": 6}, 999, "zone", 5)]},
+                {"t": "any_death", "do": [buff("self", {"dmg": 3}, 999, "royale", 15)]}]},
+        {"fx": [{"t": "interval", "sec": 5, "from": 10, "do": [buff("self", {"atk": 6}, 999, "zone", 5)]},
+                {"t": "any_death", "do": [buff("self", {"dmg": 5}, 999, "royale", 15)]},
+                {"t": "last_of_trait", "do": [{"a": "heal", "to": "self", "pct": 30}, buff("self", {"aspd": 40}, 999, "chicken")]}],
+         "gold_survive": 1},
+    ],
+    "깜짝 교단 파티": [
+        {"side_timer": {"sec": 5, "do": [buff("allies", {"atk": 4}, 999, "feast", 5)]}},
+        {"side_timer": {"sec": 4, "do": [buff("allies", {"atk": 4, "aspd": 2}, 999, "feast", 5)], "first_do": [{"a": "sp_pct", "pct": 50}]}},
+        {"side_timer": {"sec": 3, "do": [buff("allies", {"atk": 5, "aspd": 3}, 999, "feast", 6)], "first_do": [{"a": "sp_pct", "pct": 50}],
+                        "n_then": {"n": 6, "do": [{"a": "heal", "to": "allies", "pct": 15}]}}},
+    ],
+    "오피스 브레이크! 칼퇴 프로젝트!": [
+        {"fx": [{"t": "interval", "sec": 999, "from": 20, "once": True, "do": [buff("self", {"aspd": 25}, 999, "offwork")]}]},
+        {"fx": [{"t": "interval", "sec": 999, "from": 15, "once": True, "do": [buff("self", {"aspd": 40, "skill_dmg": 20}, 999, "offwork")]},
+                {"t": "cond", "cond": "time_lt:15", "mods": {"dmg_taken": -15}}]},
+        {"fx": [{"t": "interval", "sec": 999, "from": 10, "once": True, "do": [buff("self", {"aspd": 60, "skill_dmg": 35}, 999, "offwork"), {"a": "sp_pct", "pct": 100}]},
+                {"t": "cond", "cond": "time_lt:10", "mods": {"dmg_taken": -15}}],
+         "gold_overtime": {"t": 30, "g": 1}},
+    ],
+    # 5코 고유
+    "근육으로 승부한다": [
+        {"mods": {"mdef": 40}, "fx": [{"t": "normal_hit", "do": [{"a": "extra_maxhp", "pct": 3}]},
+                                       {"t": "hp_below", "pct": 50, "do": [buff("self", {"aspd": 50}, 5, "pump"), {"a": "cc_immune", "dur": 5}]}]},
+    ],
+    "무대 위의 푸른 장미": [
+        {"fx": [{"t": "skill", "which": "any", "do": [buff("allies", {"atk": 3}, 999, "applause", 5)]},
+                {"t": "skill_n", "n": 5, "once": True, "do": [{"a": "sp_pct", "pct": 100}]}]},
+    ],
+    "컬렉터의 근본": [
+        {"art_slot_plus": 1, "team_per_art": {"dmg": 3}, "fx": [{"t": "start", "do": [{"a": "dispel", "to": "random_enemy"}]}]},
+    ],
+    "만년설의 현자": [
+        {"fx": [{"t": "skill_hit", "do": [{"a": "status", "to": "target", "s": "freeze", "dur": 1.5}]},
+                {"t": "cond", "cond": "vs_status:freeze", "mods": {"dmg": 20}},
+                {"t": "skill_n", "n": 3, "do": [{"a": "debuff", "to": "enemies", "mods": {"aspd": -20}, "dur": 3, "key": "blizzard"}]}]},
+    ],
+    "요정 여왕": [
+        {"fx": [{"t": "start", "do": [{"a": "summon", "n": 2, "hp_pct": 25, "atk_pct": 40, "dur": 999, "name": "요정", "scale": 0.45}]},
+                {"t": "skill", "which": "any", "do": [buff("summons", {"aspd": 50}, 4, "fairy")]}]},
+    ],
+    "오락실 패왕": [
+        {"fx": [{"t": "normal_hit", "do": [buff("self", {"aspd": 2}, 999, "combo", 25)]},
+                {"t": "normal_n", "n": 10, "do": [{"a": "extra", "pct": 250}, {"a": "status", "to": "target", "s": "stun", "dur": 1}]}]},
+    ],
+    "못된 장난 전문": [
+        {"fx": [{"t": "interval", "sec": 5, "do": [{"a": "status", "to": "random_enemy", "s": "confuse", "dur": 2}, {"a": "sp", "amt": 15}]},
+                {"t": "cond", "cond": "vs_status:confuse", "mods": {"dmg": 30}}]},
+    ],
+    "도발의 여왕": [
+        {"fx": [{"t": "start", "do": [{"a": "taunt", "dur": 3}, buff("self", {"dmg_taken": -40}, 3, "provoke")]},
+                {"t": "interval", "sec": 8, "do": [{"a": "taunt", "dur": 3}, buff("self", {"dmg_taken": -40}, 3, "provoke")]},
+                {"t": "interval", "sec": 8, "from": 3, "do": [{"a": "strike", "mode": "front", "pct": 150}]}]},
+    ],
+    "유령늪의 새로운 질서": [
+        {"fx": [{"t": "normal_n", "n": 3, "do": [{"a": "status", "to": "target", "s": "silence", "dur": 2}, {"a": "extra", "pct": 120}]},
+                {"t": "interval", "sec": 8, "do": [buff("high_atk_ally", {"aspd": 40}, 4, "order")]}]},
+    ],
+}
+LEVELS.update(G2)
+COLORS.update({"촛불 하나! 비명 속 괴담 파티!": "b58cff", "바니바니, 카페 대작전!": "ff9ecf", "제발 저희를 두고 가지 마세요!": "a7c7ff",
+               "퀘스트 완료! 판타지 모험단!": "7fd88f", "당신의 완벽한 메이드가 되기 위하여!": "f0d6a8", "무정한 도시의 빌런": "ff6f6f",
+               "전투 준비! 차원이 다른 배틀로얄!": "ffb35c", "깜짝 교단 파티": "ffd166", "오피스 브레이크! 칼퇴 프로젝트!": "8cc4ff"})
+SHORT.update({"촛불 하나! 비명 속 괴담 파티!": "괴담 파티", "바니바니, 카페 대작전!": "바니 카페", "제발 저희를 두고 가지 마세요!": "두고 가지 마",
+              "퀘스트 완료! 판타지 모험단!": "모험단", "당신의 완벽한 메이드가 되기 위하여!": "메이드", "무정한 도시의 빌런": "빌런",
+              "전투 준비! 차원이 다른 배틀로얄!": "배틀로얄", "깜짝 교단 파티": "교단 파티", "오피스 브레이크! 칼퇴 프로젝트!": "칼퇴",
+              "근육으로 승부한다": "근육", "무대 위의 푸른 장미": "푸른 장미", "컬렉터의 근본": "컬렉터", "만년설의 현자": "만년설",
+              "요정 여왕": "요정 여왕", "오락실 패왕": "오락실", "못된 장난 전문": "장난", "도발의 여왕": "도발", "유령늪의 새로운 질서": "새로운 질서"})
+
+
 def main():
     costume = "--costume" in sys.argv
     args = [a for a in sys.argv[1:] if not a.startswith("--")]

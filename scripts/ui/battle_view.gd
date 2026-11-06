@@ -681,13 +681,13 @@ func _apply(e: Array) -> void:
 				_tiles[dst].modulate = Color.WHITE
 			_float(dst, "부활!", Color("d9b3ff"), 30, -30, true)
 		"status":
-			var names := {"stun": "기절", "burn": "화상", "bitter": "쓰라림", "shock": "감전", "blind": "눈가림", "freeze": "빙결", "poison": "중독", "silence": "침묵"}
+			var names := {"stun": "기절", "burn": "화상", "bitter": "쓰라림", "shock": "감전", "blind": "눈가림", "freeze": "빙결", "poison": "중독", "silence": "침묵", "confuse": "혼란"}
 			if (String(e[5]) == "stun" or String(e[5]) == "freeze") and _sprites.has(dst) and not _anim[dst]["dead"]:
 				_sprites[dst].play("Groggy", true, "Idle", false, float(e[4]))
 				if String(e[5]) == "freeze":
 					_sprites[dst].tint = Color(0.7, 0.85, 1.0)
 			var st := String(e[5])
-			var scol := {"stun": Color("ffd166"), "freeze": Color("9fd8ff"), "burn": Color("ff9a6b"), "shock": Color("e6e07a"), "bitter": Color("c9a7ff"), "blind": Color("b8b8c8"), "poison": Color("9be564"), "silence": Color("8f9bb3")}
+			var scol := {"stun": Color("ffd166"), "freeze": Color("9fd8ff"), "burn": Color("ff9a6b"), "shock": Color("e6e07a"), "bitter": Color("c9a7ff"), "blind": Color("b8b8c8"), "poison": Color("9be564"), "silence": Color("8f9bb3"), "confuse": Color("ff9ecf")}
 			if _plates.has(dst) and typeof(e[4]) in [TYPE_FLOAT, TYPE_INT] and float(e[4]) > 0.0:
 				_plates[dst].set_status(names.get(st, st), scol.get(st, Color("ffb3e6")))
 				_status_until[dst] = _t + float(e[4])

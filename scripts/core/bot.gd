@@ -287,7 +287,7 @@ static func _equip(m: Match, pid: String) -> void:
 		var best_v := -1.0
 		for k in p["board"]:
 			var u: Dictionary = p["board"][k]
-			if u["arts"].size() >= int(m.B["artifact_slots"]):
+			if u["arts"].size() >= Match.art_slots(u["aid"]):
 				continue
 			var v: float = _value(u) - u["arts"].size() * 3.0
 			if v > best_v:
