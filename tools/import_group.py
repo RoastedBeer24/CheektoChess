@@ -164,6 +164,127 @@ EFFECT = {
 }
 
 
+
+# ─────────────────────────────── 차원 대충돌 (g3) ───────────────────────────────
+def buff(to, mods, dur=999, key="", stack=1):
+    d = {"a": "buff", "to": to, "mods": mods, "dur": dur}
+    if key:
+        d["key"] = key
+    if stack > 1:
+        d["stack"] = stack
+    return d
+
+
+SHOW = [{"atk": 12}, {"aspd": 12}, {"crit": 40}, {"dmg_taken": -12}, {"sp_regen": 40}]
+G3 = {
+    "그런데 갑자기 닌자가 나타났다": [
+        {"fx": [{"t": "start", "do": [{"a": "untarget", "dur": 2}, {"a": "crit_now"}]}]},
+        {"mods": {"critdmg": 20}, "fx": [{"t": "start", "do": [{"a": "untarget", "dur": 3}, {"a": "crit_now"}]}]},
+        {"mods": {"critdmg": 35}, "fx": [{"t": "start", "do": [{"a": "untarget", "dur": 4}, {"a": "crit_now"}]},
+                                         {"t": "kill", "do": [{"a": "untarget", "dur": 1.5}]}]},
+    ],
+    "푸른 하늘 위 타임어택!": [
+        {"mods": {"aspd": 15}},
+        {"mods": {"aspd": 20}, "gold_fast": {"t": 15, "g": 1}},
+        {"mods": {"aspd": 30}, "gold_fast": {"t": 15, "g": 2},
+         "fx": [{"t": "start", "do": [buff("allies", {"aspd": 15}, 4, "takeoff")]}]},
+    ],
+    "두근두근 대환장쇼!": [
+        {"fx": [{"t": "start", "do": [{"a": "buff_rand", "choices": SHOW, "n": 1, "mult": 1.0}]}]},
+        {"fx": [{"t": "start", "do": [{"a": "buff_rand", "choices": SHOW, "n": 2, "mult": 1.5}]}]},
+        {"fx": [{"t": "start", "do": [{"a": "buff_rand", "choices": SHOW, "n": 3, "mult": 2.0}]},
+                {"t": "interval", "sec": 3, "do": [{"a": "sp", "amt": 10}]}]},
+    ],
+    "당신을 위한 응원!": [
+        {"others_mods": {"atk": 6}},
+        {"others_mods": {"atk": 12}, "mods": {"dmg_taken": -10}},
+        {"others_mods": {"atk": 18, "aspd": 8}, "mods": {"dmg_taken": -10},
+         "side_timer": {"sec": 3, "do": [{"a": "heal", "to": "trait", "pct": 3}]}},
+    ],
+    "새로운 겨울": [
+        {"fx": [{"t": "normal_hit", "do": [{"a": "debuff", "to": "target", "mods": {"aspd": -6}, "dur": 4, "key": "chill", "stack": 3}]}]},
+        {"fx": [{"t": "normal_hit", "do": [{"a": "debuff", "to": "target", "mods": {"aspd": -6}, "dur": 4, "key": "chill", "stack": 3}]},
+                {"t": "normal_hit", "chance": 20, "do": [{"a": "status", "to": "target", "s": "freeze", "dur": 1}]}]},
+        {"enemy_mods": {"aspd": -10},
+         "fx": [{"t": "normal_hit", "do": [{"a": "debuff", "to": "target", "mods": {"aspd": -6}, "dur": 4, "key": "chill", "stack": 3}]},
+                {"t": "normal_hit", "chance": 25, "do": [{"a": "status", "to": "target", "s": "freeze", "dur": 1}]},
+                {"t": "cond", "cond": "vs_status:freeze", "mods": {"dmg": 25}}]},
+    ],
+    "즐겁고 힘든 온천기행!": [
+        {"mods": {"regen": 1.5, "hp": 8}},
+        {"mods": {"regen": 2, "heal_in": 20}},
+        {"mods": {"regen": 3, "heal_in": 20}, "team_mods": {"regen": 1}, "player_heal_win": 2},
+    ],
+    "쉬어가세요! 칠링 바캉스!": [
+        {"fx": [{"t": "cond", "cond": "time_lt:3", "mods": {"dmg_taken": -40}}, {"t": "cond", "cond": "time_ge:3", "mods": {"aspd": 15}}]},
+        {"fx": [{"t": "cond", "cond": "time_lt:3", "mods": {"dmg_taken": -40}}, {"t": "cond", "cond": "time_ge:3", "mods": {"aspd": 25, "skill_dmg": 10}}]},
+        {"fx": [{"t": "cond", "cond": "time_lt:3", "mods": {"dmg_taken": -40}}, {"t": "cond", "cond": "time_ge:3", "mods": {"aspd": 35, "skill_dmg": 20}}],
+         "interest_plus": 2},
+    ],
+    "너무 시원한 여름 휴가": [
+        {"mods": {"splash": 20}},
+        {"mods": {"splash": 30}, "enemy_mods": {"aspd": -6}},
+        {"mods": {"splash": 45, "atk": 10}, "enemy_mods": {"aspd": -12}},
+    ],
+    "스트레스는 파도에! 볼따구는 튜브에!": [
+        {"side_timer": {"sec": 6, "do": [{"a": "wave", "pct": 30}]}},
+        {"side_timer": {"sec": 5, "do": [{"a": "wave", "pct": 60}]}, "fx": [{"t": "hp_below", "pct": 40, "do": [{"a": "shield", "to": "self", "pct": 20, "dur": 8}]}]},
+        {"side_timer": {"sec": 4, "do": [{"a": "wave", "pct": 80}]}, "fx": [{"t": "hp_below", "pct": 40, "do": [{"a": "shield", "to": "self", "pct": 30, "dur": 8}]}]},
+    ],
+    # 5코 고유
+    "고독한 늑대": [
+        {"fx": [{"t": "ally_death", "do": [buff("self", {"atk": 15, "aspd": 8}, 999, "lone", 4)]},
+                {"t": "cond", "cond": "only_trait:고독한 늑대", "mods": {"dmg_taken": -30}}]},
+    ],
+    "어둠 속의 요리사": [
+        {"fx": [{"t": "interval", "sec": 6, "do": [{"a": "heal", "to": "lowest", "pct": 10}, buff("lowest", {"atk": 10}, 5, "meal")]},
+                {"t": "start", "do": [{"a": "status", "to": "random_enemy", "s": "blind", "dur": 3}]}]},
+    ],
+    "대체된 혼돈": [
+        {"fx": [{"t": "interval", "sec": 5, "do": [{"a": "status_rand", "to": "random_enemy", "s": ["confuse", "stun", "silence"], "dur": 1.5}, {"a": "sp", "amt": 20}]}]},
+    ],
+    "무대 위의 푸른 장미 (응원)": [],
+    "최고위 마녀": [
+        {"mods": {"skill_dmg": 30}, "fx": [{"t": "skill_hit", "do": [{"a": "debuff", "to": "target", "mods": {"mdef": -25}, "dur": 4, "key": "queen"}]},
+                                            {"t": "kill", "assist": True, "do": [{"a": "sp", "amt": 25}]}]},
+    ],
+    "배후에 숨은 전략가": [
+        {"team_mods": {"crit": 15}, "fx": [{"t": "start", "do": [{"a": "untarget", "dur": 3}]},
+                                            {"t": "interval", "sec": 10, "do": [buff("high_atk_ally", {"sp_regen": 100}, 4, "plan")]}]},
+    ],
+    "번개의 고위 정령": [
+        {"fx": [{"t": "normal_hit", "chance": 30, "do": [{"a": "status", "to": "target", "s": "shock", "dur": 2}]},
+                {"t": "normal_n", "n": 4, "do": [{"a": "strike", "mode": "front", "pct": 100}, {"a": "strike", "mode": "back", "pct": 100}]}]},
+    ],
+    "용족의 수장": [
+        {"mods": {"dmg_taken": -20}, "team_fx": [{"t": "hp_below", "pct": 30, "do": [{"a": "shield", "to": "self", "pct": 25, "dur": 6}]}],
+         "fx": [{"t": "interval", "sec": 10, "do": [{"a": "taunt", "dur": 2}]}]},
+    ],
+    "정신을 차린 지휘관": [
+        {"team_mods": {"atk": 10, "dmg_taken": -8}, "fx": [{"t": "interval", "sec": 8, "do": [buff("allies", {"aspd": 20}, 3, "charge")]}]},
+    ],
+}
+# 같은 이름이 1·2그룹에 있는 고유 시너지는 그룹마다 다른 효과 (스킨 콘셉트) — 그룹별로 따로
+G3_SAME_NAME = {
+    "무대 위의 푸른 장미": [
+        {"team_mods": {"aspd": 12}, "fx": [{"t": "hp_below", "pct": 50, "do": [{"a": "shield", "to": "allies", "pct": 15, "dur": 8}]}]},
+    ],
+    "만년설의 현자": [
+        {"fx": [{"t": "start", "do": [{"a": "debuff", "to": "enemies", "mods": {"aspd": -15}, "dur": 6, "key": "winter"}]},
+                {"t": "skill_n", "n": 2, "do": [{"a": "status", "to": "enemies", "s": "freeze", "dur": 1}]}]},
+    ],
+}
+del G3["무대 위의 푸른 장미 (응원)"]
+COLORS.update({"그런데 갑자기 닌자가 나타났다": "8f9bb3", "푸른 하늘 위 타임어택!": "7fc8ff", "두근두근 대환장쇼!": "ff8ad8",
+               "당신을 위한 응원!": "ffd166", "새로운 겨울": "bfe8ff", "즐겁고 힘든 온천기행!": "ff9a7a",
+               "쉬어가세요! 칠링 바캉스!": "6fe0d0", "너무 시원한 여름 휴가": "5ec8ff", "스트레스는 파도에! 볼따구는 튜브에!": "4f9dff"})
+SHORT.update({"그런데 갑자기 닌자가 나타났다": "닌자", "푸른 하늘 위 타임어택!": "타임어택", "두근두근 대환장쇼!": "대환장쇼",
+              "당신을 위한 응원!": "응원", "새로운 겨울": "새로운 겨울", "즐겁고 힘든 온천기행!": "온천기행",
+              "쉬어가세요! 칠링 바캉스!": "칠링 바캉스", "너무 시원한 여름 휴가": "여름 휴가", "스트레스는 파도에! 볼따구는 튜브에!": "튜브",
+              "고독한 늑대": "고독한 늑대", "어둠 속의 요리사": "요리사", "대체된 혼돈": "혼돈", "최고위 마녀": "최고위 마녀",
+              "배후에 숨은 전략가": "전략가", "번개의 고위 정령": "번개 정령", "용족의 수장": "용족 수장", "정신을 차린 지휘관": "지휘관"})
+
+
 COSTUME_FIX = {"캐럿 청소 버니": "캐럿 청소 바니"}   # 페이지 메모 오타 → 원작 표기
 
 
@@ -336,7 +457,7 @@ def main():
         if not nm or nm not in used:
             continue
         tiers = [int(x) for x in str(t["tiers"]).replace(",", "/").split("/") if x.strip().isdigit()]
-        lv = LEVELS.get(nm)
+        lv = (G3_SAME_NAME.get(nm) if gid == "g3" and nm in G3_SAME_NAME else None) or (G3.get(nm) if gid == "g3" else None) or LEVELS.get(nm)
         if lv is None:
             print("경고: 동작이 정의되지 않은 시너지:", nm)
             lv = [{} for _ in tiers]

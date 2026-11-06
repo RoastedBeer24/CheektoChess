@@ -326,7 +326,7 @@ func is_artifact_round(r: int) -> bool:
 
 func income(p: Dictionary) -> int:
 	var g := int(B["base_income"])
-	var imax := int(B["interest_max"]) + (3 if has_aug(p, "interest_cap") else 0)
+	var imax := int(B["interest_max"]) + (3 if has_aug(p, "interest_cap") else 0) + _syn_value(p, "interest_plus")
 	if not has_aug(p, "r_hunger"):
 		g += mini(int(p["gold"]) / int(B["interest_per"]), imax)
 	var s: int = abs(int(p["streak"]))
@@ -678,6 +678,21 @@ func _synergy_reward(p: Dictionary, won: bool) -> void:
 
 
 ## 플레이어 전투 뒤 시너지 보상 (볼스패닉): 처치 약탈 골드, 야근 수당, 끝까지 생존 골드, 퀘스트 진행, 단골 포인트
+## 지금 보드에서 발동한 시너지 단계들의 key 값 합 (예: 이자 최대치 +2)
+func _syn_value(p: Dictionary, key: String) -> int:
+	var specs := []
+	for k in p.get("board", {}):
+		specs.append(p["board"][k])
+	var tiers := Rules.active_tiers(Rules.apply_emblems(Rules.count_traits(specs), p.get("augs", [])))
+	var v := 0
+	for name in tiers:
+		var tier: int = tiers[name]
+		var levels: Array = GameData.synergies.get(name, {}).get("levels", [])
+		if tier > 0 and tier - 1 < levels.size():
+			v += int(levels[tier - 1].get(key, 0))
+	return v
+
+
 func _syn_after_battle(p: Dictionary, bt: Dictionary, side: int) -> void:
 	var specs := []
 	for k in p["board"]:
@@ -698,6 +713,10 @@ func _syn_after_battle(p: Dictionary, bt: Dictionary, side: int) -> void:
 			g += int(spec["gold_overtime"]["g"])
 		if spec.has("gold_survive") and won:
 			g += int(spec["gold_survive"])
+		if spec.has("gold_fast") and won and float(bt.get("end_time", 99.0)) <= float(spec["gold_fast"]["t"]):
+			g += int(spec["gold_fast"]["g"])
+		if spec.has("player_heal_win") and won:
+			p["hp"] = mini(int(B["player_hp"]), int(p["hp"]) + int(spec["player_heal_win"]))
 		if g > 0:
 			p["gold"] += g
 			_log("%s: %s +%d골드" % [p["name"], name, g])

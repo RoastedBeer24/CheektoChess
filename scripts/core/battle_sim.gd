@@ -291,6 +291,8 @@ func _apply_synergy(side: int, name: String, spec: Dictionary, members: Array, a
 				u["fx"].append(f)
 	for u in allies:
 		_add_static(u, spec.get("team_mods", {}))
+		if spec.has("others_mods") and not members.has(u):
+			_add_static(u, spec["others_mods"])   # 시너지 사도가 아닌 아군만 (응원)
 		# 아군 전체에 붙는 발동 효과 (예: 위기 때 보호막)
 		for fx in spec.get("team_fx", []):
 			var tf: Dictionary = fx.duplicate(true)
@@ -1411,6 +1413,23 @@ func _run_actions(u: Dictionary, actions: Array, target, ctx: Dictionary) -> voi
 				var t = _pick_target(u, act.get("mode", "back"))
 				if t != null:
 					deal(u, t, float(act["pct"]), "extra", {})
+			"buff_rand":
+				# 무작위 버프 n개 (같은 것은 겹치지 않게): choices 중에서 골라 mult 배
+				var ch: Array = act["choices"].duplicate()
+				var mult := float(act.get("mult", 1.0))
+				for k in mini(int(act.get("n", 1)), ch.size()):
+					var pick: Dictionary = ch[rng.randi() % ch.size()]
+					ch.erase(pick)
+					var mm := {}
+					for key in pick:
+						mm[key] = float(pick[key]) * mult
+					for d in _resolve_to(u, act.get("to", "self"), target, act.get("trait", "")):
+						_add_buff(u, d, mm, float(act.get("dur", 999)), "show_%d" % k, 1, false)
+			"wave":
+				# 적 전체에 시전자 공격력의 pct% 피해 (파도)
+				for e in units.duplicate():
+					if e["side"] != u["side"] and e["alive"]:
+						deal(u, e, float(act["pct"]), "extra", {})
 			"extra_maxhp":
 				if target != null and target["alive"]:
 					_apply_damage(u, target, maxf(1.0, round(max_hp(u) * float(act["pct"]) / 100.0)), "extra", false)

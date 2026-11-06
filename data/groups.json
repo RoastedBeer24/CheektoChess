@@ -3512,6 +3512,1707 @@
     }
    ],
    "costume": true
+  },
+  {
+   "id": "g3",
+   "name": "차원 대충돌",
+   "pool_size": [
+    24,
+    20,
+    16,
+    12,
+    10
+   ],
+   "shop_odds": [
+    [
+     100,
+     0,
+     0,
+     0,
+     0
+    ],
+    [
+     100,
+     0,
+     0,
+     0,
+     0
+    ],
+    [
+     75,
+     25,
+     0,
+     0,
+     0
+    ],
+    [
+     55,
+     30,
+     15,
+     0,
+     0
+    ],
+    [
+     45,
+     33,
+     20,
+     2,
+     0
+    ],
+    [
+     30,
+     40,
+     25,
+     5,
+     0
+    ],
+    [
+     19,
+     35,
+     35,
+     10,
+     1
+    ],
+    [
+     15,
+     25,
+     35,
+     20,
+     5
+    ],
+    [
+     10,
+     15,
+     30,
+     30,
+     15
+    ]
+   ],
+   "units": [
+    {
+     "id": "pira",
+     "cost": 1,
+     "traits": [
+      "그런데 갑자기 닌자가 나타났다"
+     ]
+    },
+    {
+     "id": "opal__107b",
+     "base": "opal",
+     "costume": "하늘 위의 서프라이즈",
+     "cost": 1,
+     "traits": [
+      "푸른 하늘 위 타임어택!"
+     ]
+    },
+    {
+     "id": "sherum__59ed",
+     "base": "sherum",
+     "costume": "픽션 앤 노벨리스트",
+     "cost": 1,
+     "traits": [
+      "두근두근 대환장쇼!"
+     ]
+    },
+    {
+     "id": "sist__d305",
+     "base": "sist",
+     "costume": "응원 대행 서비스",
+     "cost": 1,
+     "traits": [
+      "당신을 위한 응원!"
+     ]
+    },
+    {
+     "id": "swimsuit_kommy__6eaa",
+     "base": "swimsuit_kommy",
+     "costume": "호호 불어 냥구마",
+     "cost": 1,
+     "traits": [
+      "새로운 겨울"
+     ]
+    },
+    {
+     "id": "ashur__b6f9",
+     "base": "ashur",
+     "costume": "평온한 온천 여행",
+     "cost": 1,
+     "traits": [
+      "즐겁고 힘든 온천기행!"
+     ]
+    },
+    {
+     "id": "barong__cb9a",
+     "base": "barong",
+     "costume": "바캉스의 왕",
+     "cost": 1,
+     "traits": [
+      "쉬어가세요! 칠링 바캉스!"
+     ]
+    },
+    {
+     "id": "canna__2e91",
+     "base": "canna",
+     "costume": "한여름의 서퍼",
+     "cost": 1,
+     "traits": [
+      "너무 시원한 여름 휴가"
+     ]
+    },
+    {
+     "id": "delia__2c3b",
+     "base": "delia",
+     "costume": "모두와 함께 바다로",
+     "cost": 1,
+     "traits": [
+      "스트레스는 파도에! 볼따구는 튜브에!"
+     ]
+    },
+    {
+     "id": "xxionx__1387",
+     "base": "xxionx",
+     "costume": "어둠의 알바생",
+     "cost": 1,
+     "traits": [
+      "두근두근 대환장쇼!"
+     ]
+    },
+    {
+     "id": "neti__b3c7",
+     "base": "neti",
+     "costume": "포크레인 드래곤",
+     "cost": 1,
+     "traits": [
+      "너무 시원한 여름 휴가"
+     ]
+    },
+    {
+     "id": "picora__7641",
+     "base": "picora",
+     "costume": "천재 영재 마녀",
+     "cost": 1,
+     "traits": [
+      "푸른 하늘 위 타임어택!"
+     ]
+    },
+    {
+     "id": "levi__f796",
+     "base": "levi",
+     "costume": "마녀 왕국 극장 알바",
+     "cost": 1,
+     "traits": [
+      "쉬어가세요! 칠링 바캉스!"
+     ]
+    },
+    {
+     "id": "rufo__ccb3",
+     "base": "rufo",
+     "costume": "고독한 천재 닌자",
+     "cost": 2,
+     "traits": [
+      "그런데 갑자기 닌자가 나타났다"
+     ]
+    },
+    {
+     "id": "shoupan__1e78",
+     "base": "shoupan",
+     "costume": "스카이 로지스틱스",
+     "cost": 2,
+     "traits": [
+      "푸른 하늘 위 타임어택!"
+     ]
+    },
+    {
+     "id": "asia__741c",
+     "base": "asia",
+     "costume": "방구석 프로 게이머",
+     "cost": 2,
+     "traits": [
+      "두근두근 대환장쇼!"
+     ]
+    },
+    {
+     "id": "rufo__60cd",
+     "base": "rufo",
+     "costume": "치어 앤 플로우",
+     "cost": 2,
+     "traits": [
+      "당신을 위한 응원!"
+     ]
+    },
+    {
+     "id": "haley__9645",
+     "base": "haley",
+     "costume": "한겨울의 평화 사절",
+     "cost": 2,
+     "traits": [
+      "새로운 겨울"
+     ]
+    },
+    {
+     "id": "guin__4195",
+     "base": "guin",
+     "costume": "설국의 노천탕",
+     "cost": 2,
+     "traits": [
+      "즐겁고 힘든 온천기행!"
+     ]
+    },
+    {
+     "id": "hilde__42fd",
+     "base": "hilde",
+     "costume": "릴렉스 테라피스트",
+     "cost": 2,
+     "traits": [
+      "쉬어가세요! 칠링 바캉스!"
+     ]
+    },
+    {
+     "id": "sylla__844f",
+     "base": "sylla",
+     "costume": "해변의 하늬바람",
+     "cost": 2,
+     "traits": [
+      "너무 시원한 여름 휴가"
+     ]
+    },
+    {
+     "id": "guin__78fb",
+     "base": "guin",
+     "costume": "바다로 떠나는 모험",
+     "cost": 2,
+     "traits": [
+      "스트레스는 파도에! 볼따구는 튜브에!"
+     ]
+    },
+    {
+     "id": "levi_graduate__80ce",
+     "base": "levi_graduate",
+     "costume": "정식 마녀의 휴식",
+     "cost": 2,
+     "traits": [
+      "너무 시원한 여름 휴가"
+     ]
+    },
+    {
+     "id": "posher__30ff",
+     "base": "posher",
+     "costume": "묘약의 랩실 연구원",
+     "cost": 2,
+     "traits": [
+      "당신을 위한 응원!"
+     ]
+    },
+    {
+     "id": "snorky__69f2",
+     "base": "snorky",
+     "costume": "쇼핑 파탈 갱스터",
+     "cost": 2,
+     "traits": [
+      "새로운 겨울"
+     ]
+    },
+    {
+     "id": "selene__8517",
+     "base": "selene",
+     "costume": "무미호의 전설",
+     "cost": 2,
+     "traits": [
+      "그런데 갑자기 닌자가 나타났다"
+     ]
+    },
+    {
+     "id": "annette__2dd7",
+     "base": "annette",
+     "costume": "하루의 마무리",
+     "cost": 2,
+     "traits": [
+      "즐겁고 힘든 온천기행!"
+     ]
+    },
+    {
+     "id": "tig__66b5",
+     "base": "tig",
+     "costume": "유랑 호랑 검성",
+     "cost": 3,
+     "traits": [
+      "그런데 갑자기 닌자가 나타났다"
+     ]
+    },
+    {
+     "id": "shasha__bada",
+     "base": "shasha",
+     "costume": "에어라인 레스큐",
+     "cost": 3,
+     "traits": [
+      "푸른 하늘 위 타임어택!"
+     ]
+    },
+    {
+     "id": "miro__2f04",
+     "base": "miro",
+     "costume": "검은 머리의 대마법사",
+     "cost": 3,
+     "traits": [
+      "두근두근 대환장쇼!"
+     ]
+    },
+    {
+     "id": "velvet__5af2",
+     "base": "velvet",
+     "costume": "스윙 앤 치어",
+     "cost": 3,
+     "traits": [
+      "당신을 위한 응원!"
+     ]
+    },
+    {
+     "id": "momo__f4be",
+     "base": "momo",
+     "costume": "스위트 닌자 스노우",
+     "cost": 3,
+     "traits": [
+      "새로운 겨울"
+     ]
+    },
+    {
+     "id": "makasha__6df0",
+     "base": "makasha",
+     "costume": "온수통의 마녀",
+     "cost": 3,
+     "traits": [
+      "즐겁고 힘든 온천기행!"
+     ]
+    },
+    {
+     "id": "rollett__4829",
+     "base": "rollett",
+     "costume": "봉봉한 바캉스",
+     "cost": 3,
+     "traits": [
+      "쉬어가세요! 칠링 바캉스!"
+     ]
+    },
+    {
+     "id": "shasha__aa1f",
+     "base": "shasha",
+     "costume": "핑크 산호초의 요정",
+     "cost": 3,
+     "traits": [
+      "너무 시원한 여름 휴가"
+     ]
+    },
+    {
+     "id": "leone__ef9b",
+     "base": "leone",
+     "costume": "히어로의 여름 바캉스",
+     "cost": 3,
+     "traits": [
+      "스트레스는 파도에! 볼따구는 튜브에!"
+     ]
+    },
+    {
+     "id": "miro__380a",
+     "base": "miro",
+     "costume": "수면에 비친 동심",
+     "cost": 3,
+     "traits": [
+      "당신을 위한 응원!"
+     ]
+    },
+    {
+     "id": "rudd__a456",
+     "base": "rudd",
+     "costume": "헬씨 레드",
+     "cost": 3,
+     "traits": [
+      "스트레스는 파도에! 볼따구는 튜브에!"
+     ]
+    },
+    {
+     "id": "kidian__e272",
+     "base": "kidian",
+     "costume": "친구따라 지상간다",
+     "cost": 3,
+     "traits": [
+      "쉬어가세요! 칠링 바캉스!"
+     ]
+    },
+    {
+     "id": "leets__de95",
+     "base": "leets",
+     "costume": "방구석 강철",
+     "cost": 3,
+     "traits": [
+      "두근두근 대환장쇼!"
+     ]
+    },
+    {
+     "id": "aurora",
+     "cost": 3,
+     "traits": [
+      "새로운 겨울"
+     ]
+    },
+    {
+     "id": "momo__1258",
+     "base": "momo",
+     "costume": "카게닌자 모모",
+     "cost": 4,
+     "traits": [
+      "그런데 갑자기 닌자가 나타났다"
+     ]
+    },
+    {
+     "id": "polan__9a2b",
+     "base": "polan",
+     "costume": "창공의 오퍼레이터",
+     "cost": 4,
+     "traits": [
+      "푸른 하늘 위 타임어택!"
+     ]
+    },
+    {
+     "id": "risty__243a",
+     "base": "risty",
+     "costume": "오! 나의 회장님",
+     "cost": 4,
+     "traits": [
+      "두근두근 대환장쇼!"
+     ]
+    },
+    {
+     "id": "naia__4651",
+     "base": "naia",
+     "costume": "템포 업! 응원 루키!",
+     "cost": 4,
+     "traits": [
+      "당신을 위한 응원!"
+     ]
+    },
+    {
+     "id": "rim__5312",
+     "base": "rim",
+     "costume": "나랑 둘이 나들이",
+     "cost": 4,
+     "traits": [
+      "새로운 겨울"
+     ]
+    },
+    {
+     "id": "diana__5388",
+     "base": "diana",
+     "costume": "야산의 온천 마실",
+     "cost": 4,
+     "traits": [
+      "즐겁고 힘든 온천기행!"
+     ]
+    },
+    {
+     "id": "arco__a69c",
+     "base": "arco",
+     "costume": "베이케이션 스윙",
+     "cost": 4,
+     "traits": [
+      "쉬어가세요! 칠링 바캉스!"
+     ]
+    },
+    {
+     "id": "rim_chaos__3300",
+     "base": "rim_chaos",
+     "costume": "야시장의 습격자",
+     "cost": 4,
+     "traits": [
+      "너무 시원한 여름 휴가"
+     ]
+    },
+    {
+     "id": "shuro__f47a",
+     "base": "shuro",
+     "costume": "태양 빛 아래의 뱀",
+     "cost": 4,
+     "traits": [
+      "스트레스는 파도에! 볼따구는 튜브에!"
+     ]
+    },
+    {
+     "id": "aya__b3be",
+     "base": "aya",
+     "costume": "추억과 피안화",
+     "cost": 4,
+     "traits": [
+      "그런데 갑자기 닌자가 나타났다"
+     ]
+    },
+    {
+     "id": "fricle__870d",
+     "base": "fricle",
+     "costume": "오늘의 날씨는 맑음",
+     "cost": 4,
+     "traits": [
+      "푸른 하늘 위 타임어택!"
+     ]
+    },
+    {
+     "id": "ui__1b82",
+     "base": "ui",
+     "costume": "개운한 행복",
+     "cost": 4,
+     "traits": [
+      "즐겁고 힘든 온천기행!"
+     ]
+    },
+    {
+     "id": "vela__856f",
+     "base": "vela",
+     "costume": "존재감 넘치는 인어",
+     "cost": 4,
+     "traits": [
+      "스트레스는 파도에! 볼따구는 튜브에!"
+     ]
+    },
+    {
+     "id": "ran__0612",
+     "base": "ran",
+     "costume": "백사당의 무녀",
+     "cost": 5,
+     "traits": [
+      "그런데 갑자기 닌자가 나타났다",
+      "고독한 늑대"
+     ]
+    },
+    {
+     "id": "ricotta__1b00",
+     "base": "ricotta",
+     "costume": "기내식 준비 완료",
+     "cost": 5,
+     "traits": [
+      "푸른 하늘 위 타임어택!",
+      "어둠 속의 요리사"
+     ]
+    },
+    {
+     "id": "rim_chaos__030e",
+     "base": "rim_chaos",
+     "costume": "유령 늪의 인기쟁이",
+     "cost": 5,
+     "traits": [
+      "두근두근 대환장쇼!",
+      "대체된 혼돈"
+     ]
+    },
+    {
+     "id": "blanchet__740a",
+     "base": "blanchet",
+     "costume": "스타디움의 푸른 장미",
+     "cost": 5,
+     "traits": [
+      "당신을 위한 응원!",
+      "무대 위의 푸른 장미"
+     ]
+    },
+    {
+     "id": "belita__76a9",
+     "base": "belita",
+     "costume": "차가운 도시 여왕님",
+     "cost": 5,
+     "traits": [
+      "새로운 겨울",
+      "최고위 마녀"
+     ]
+    },
+    {
+     "id": "mute__4d7d",
+     "base": "mute",
+     "costume": "수온 측정의 여운",
+     "cost": 5,
+     "traits": [
+      "즐겁고 힘든 온천기행!",
+      "배후에 숨은 전략가"
+     ]
+    },
+    {
+     "id": "raika__de19",
+     "base": "raika",
+     "costume": "코스탈 라이트닝",
+     "cost": 5,
+     "traits": [
+      "쉬어가세요! 칠링 바캉스!",
+      "번개의 고위 정령"
+     ]
+    },
+    {
+     "id": "daya__c304",
+     "base": "daya",
+     "costume": "초강력 안전요원",
+     "cost": 5,
+     "traits": [
+      "너무 시원한 여름 휴가",
+      "용족의 수장"
+     ]
+    },
+    {
+     "id": "haley_sane__d7ad",
+     "base": "haley_sane",
+     "costume": "거친 파도 속으로",
+     "cost": 5,
+     "traits": [
+      "스트레스는 파도에! 볼따구는 튜브에!",
+      "정신을 차린 지휘관"
+     ]
+    },
+    {
+     "id": "aya__625b",
+     "base": "aya",
+     "costume": "겨울의 마녀",
+     "cost": 5,
+     "traits": [
+      "새로운 겨울",
+      "만년설의 현자"
+     ]
+    }
+   ],
+   "synergies": [
+    {
+     "id": "o1",
+     "name": "그런데 갑자기 닌자가 나타났다",
+     "short": "닌자",
+     "kind": "origin",
+     "tiers": [
+      2,
+      4,
+      6
+     ],
+     "color": "8f9bb3",
+     "effect": "그림자 속으로 — 닌자는 숨어서 시작해 첫 일격을 확실히 꽂는다.\n2명: 전투 시작 시 닌자 사도 2초 대상 지정 불가, 첫 공격 치명타\n4명: 3초 대상 지정 불가, 첫 공격 치명타, 닌자 사도 치명 피해 +20%\n6명: 4초 대상 지정 불가, 치명 피해 +35%, 닌자가 적을 처치하면 1.5초 다시 은신",
+     "levels": [
+      {
+       "fx": [
+        {
+         "t": "start",
+         "do": [
+          {
+           "a": "untarget",
+           "dur": 2
+          },
+          {
+           "a": "crit_now"
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "mods": {
+        "critdmg": 20
+       },
+       "fx": [
+        {
+         "t": "start",
+         "do": [
+          {
+           "a": "untarget",
+           "dur": 3
+          },
+          {
+           "a": "crit_now"
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "mods": {
+        "critdmg": 35
+       },
+       "fx": [
+        {
+         "t": "start",
+         "do": [
+          {
+           "a": "untarget",
+           "dur": 4
+          },
+          {
+           "a": "crit_now"
+          }
+         ]
+        },
+        {
+         "t": "kill",
+         "do": [
+          {
+           "a": "untarget",
+           "dur": 1.5
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "id": "o2",
+     "name": "푸른 하늘 위 타임어택!",
+     "short": "타임어택",
+     "kind": "origin",
+     "tiers": [
+      2,
+      4,
+      5
+     ],
+     "color": "7fc8ff",
+     "effect": "정시 운항 — 빠르게 싸우고 빨리 끝낼수록 보너스.\n2명: 타임어택 사도 공격 속도 +15%\n4명: 공격 속도 +20%, 전투가 15초 안에 끝나 승리하면 +1골드\n5명: 공격 속도 +30%, 15초 안에 승리하면 +2골드, 전투 시작 4초 동안 아군 전체 공격 속도 +15%",
+     "levels": [
+      {
+       "mods": {
+        "aspd": 15
+       }
+      },
+      {
+       "mods": {
+        "aspd": 20
+       },
+       "gold_fast": {
+        "t": 15,
+        "g": 1
+       }
+      },
+      {
+       "mods": {
+        "aspd": 30
+       },
+       "gold_fast": {
+        "t": 15,
+        "g": 2
+       },
+       "fx": [
+        {
+         "t": "start",
+         "do": [
+          {
+           "a": "buff",
+           "to": "allies",
+           "mods": {
+            "aspd": 15
+           },
+           "dur": 4,
+           "key": "takeoff"
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "id": "o3",
+     "name": "두근두근 대환장쇼!",
+     "short": "대환장쇼",
+     "kind": "origin",
+     "tiers": [
+      2,
+      4,
+      6
+     ],
+     "color": "ff8ad8",
+     "effect": "오늘의 쇼는? — 전투마다 무대 룰렛이 돌아 무작위 버프가 걸린다 (공격력·공격 속도·치명타·받는 피해 감소·SP 회복 중).\n2명: 대환장쇼 사도에게 무작위 버프 1개\n4명: 무작위 버프 2개, 효과 1.5배\n6명: 무작위 버프 3개, 효과 2배, 대환장쇼 사도 3초마다 SP +10",
+     "levels": [
+      {
+       "fx": [
+        {
+         "t": "start",
+         "do": [
+          {
+           "a": "buff_rand",
+           "choices": [
+            {
+             "atk": 12
+            },
+            {
+             "aspd": 12
+            },
+            {
+             "crit": 40
+            },
+            {
+             "dmg_taken": -12
+            },
+            {
+             "sp_regen": 40
+            }
+           ],
+           "n": 1,
+           "mult": 1.0
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "fx": [
+        {
+         "t": "start",
+         "do": [
+          {
+           "a": "buff_rand",
+           "choices": [
+            {
+             "atk": 12
+            },
+            {
+             "aspd": 12
+            },
+            {
+             "crit": 40
+            },
+            {
+             "dmg_taken": -12
+            },
+            {
+             "sp_regen": 40
+            }
+           ],
+           "n": 2,
+           "mult": 1.5
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "fx": [
+        {
+         "t": "start",
+         "do": [
+          {
+           "a": "buff_rand",
+           "choices": [
+            {
+             "atk": 12
+            },
+            {
+             "aspd": 12
+            },
+            {
+             "crit": 40
+            },
+            {
+             "dmg_taken": -12
+            },
+            {
+             "sp_regen": 40
+            }
+           ],
+           "n": 3,
+           "mult": 2.0
+          }
+         ]
+        },
+        {
+         "t": "interval",
+         "sec": 3,
+         "do": [
+          {
+           "a": "sp",
+           "amt": 10
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "id": "o4",
+     "name": "당신을 위한 응원!",
+     "short": "응원",
+     "kind": "origin",
+     "tiers": [
+      2,
+      4,
+      6
+     ],
+     "color": "ffd166",
+     "effect": "치어리딩 — 응원 사도는 자신보다 동료를 강하게 만든다.\n2명: 응원 사도가 아닌 아군 공격력 +6%\n4명: 응원 사도가 아닌 아군 공격력 +12%, 응원 사도 받는 피해 -10%\n6명: 다른 아군 공격력 +18%, 공격 속도 +8%, 3초마다 응원 사도 전원 최대 HP 3% 회복",
+     "levels": [
+      {
+       "others_mods": {
+        "atk": 6
+       }
+      },
+      {
+       "others_mods": {
+        "atk": 12
+       },
+       "mods": {
+        "dmg_taken": -10
+       }
+      },
+      {
+       "others_mods": {
+        "atk": 18,
+        "aspd": 8
+       },
+       "mods": {
+        "dmg_taken": -10
+       },
+       "side_timer": {
+        "sec": 3,
+        "do": [
+         {
+          "a": "heal",
+          "to": "trait",
+          "pct": 3
+         }
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "id": "o5",
+     "name": "새로운 겨울",
+     "short": "새로운 겨울",
+     "kind": "origin",
+     "tiers": [
+      2,
+      4,
+      6
+     ],
+     "color": "bfe8ff",
+     "effect": "한기 — 겨울 사도의 공격이 적을 얼려 느리게 만든다.\n2명: 일반 공격에 맞은 적 공격 속도 -6% (최대 3중첩, 4초)\n4명: 한기 + 일반 공격 20% 확률로 빙결 1초\n6명: 한기 + 빙결 25%, 빙결된 적에게 주는 피해 +25%, 적 전체 공격 속도 -10%",
+     "levels": [
+      {
+       "fx": [
+        {
+         "t": "normal_hit",
+         "do": [
+          {
+           "a": "debuff",
+           "to": "target",
+           "mods": {
+            "aspd": -6
+           },
+           "dur": 4,
+           "key": "chill",
+           "stack": 3
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "fx": [
+        {
+         "t": "normal_hit",
+         "do": [
+          {
+           "a": "debuff",
+           "to": "target",
+           "mods": {
+            "aspd": -6
+           },
+           "dur": 4,
+           "key": "chill",
+           "stack": 3
+          }
+         ]
+        },
+        {
+         "t": "normal_hit",
+         "chance": 20,
+         "do": [
+          {
+           "a": "status",
+           "to": "target",
+           "s": "freeze",
+           "dur": 1
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "enemy_mods": {
+        "aspd": -10
+       },
+       "fx": [
+        {
+         "t": "normal_hit",
+         "do": [
+          {
+           "a": "debuff",
+           "to": "target",
+           "mods": {
+            "aspd": -6
+           },
+           "dur": 4,
+           "key": "chill",
+           "stack": 3
+          }
+         ]
+        },
+        {
+         "t": "normal_hit",
+         "chance": 25,
+         "do": [
+          {
+           "a": "status",
+           "to": "target",
+           "s": "freeze",
+           "dur": 1
+          }
+         ]
+        },
+        {
+         "t": "cond",
+         "cond": "vs_status:freeze",
+         "mods": {
+          "dmg": 25
+         }
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "id": "o6",
+     "name": "즐겁고 힘든 온천기행!",
+     "short": "온천기행",
+     "kind": "origin",
+     "tiers": [
+      2,
+      4,
+      6
+     ],
+     "color": "ff9a7a",
+     "effect": "뜨끈한 온천 — 싸우는 동안 몸이 풀리며 계속 회복한다.\n2명: 온천 사도 HP +8%, 초당 최대 HP 1.5% 회복\n4명: 초당 2% 회복, 받는 회복 +20%\n6명: 초당 3% 회복, 아군 전체 초당 1% 회복, 플레이어 전투에서 이기면 플레이어 체력 +2 (최대 체력까지)",
+     "levels": [
+      {
+       "mods": {
+        "regen": 1.5,
+        "hp": 8
+       }
+      },
+      {
+       "mods": {
+        "regen": 2,
+        "heal_in": 20
+       }
+      },
+      {
+       "mods": {
+        "regen": 3,
+        "heal_in": 20
+       },
+       "team_mods": {
+        "regen": 1
+       },
+       "player_heal_win": 2
+      }
+     ]
+    },
+    {
+     "id": "o7",
+     "name": "쉬어가세요! 칠링 바캉스!",
+     "short": "칠링 바캉스",
+     "kind": "origin",
+     "tiers": [
+      2,
+      4,
+      5
+     ],
+     "color": "6fe0d0",
+     "effect": "쉬었다 가요 — 처음엔 느긋하게 버티고, 몸이 풀리면 본격적으로.\n2명: 전투 시작 3초 동안 바캉스 사도 받는 피해 -40%, 이후 공격 속도 +15%\n4명: 3초 동안 받는 피해 -40%, 이후 공격 속도 +25%, 스킬 피해 +10%\n5명: 이후 공격 속도 +35%, 스킬 피해 +20%, 이자 최대치 +2",
+     "levels": [
+      {
+       "fx": [
+        {
+         "t": "cond",
+         "cond": "time_lt:3",
+         "mods": {
+          "dmg_taken": -40
+         }
+        },
+        {
+         "t": "cond",
+         "cond": "time_ge:3",
+         "mods": {
+          "aspd": 15
+         }
+        }
+       ]
+      },
+      {
+       "fx": [
+        {
+         "t": "cond",
+         "cond": "time_lt:3",
+         "mods": {
+          "dmg_taken": -40
+         }
+        },
+        {
+         "t": "cond",
+         "cond": "time_ge:3",
+         "mods": {
+          "aspd": 25,
+          "skill_dmg": 10
+         }
+        }
+       ]
+      },
+      {
+       "fx": [
+        {
+         "t": "cond",
+         "cond": "time_lt:3",
+         "mods": {
+          "dmg_taken": -40
+         }
+        },
+        {
+         "t": "cond",
+         "cond": "time_ge:3",
+         "mods": {
+          "aspd": 35,
+          "skill_dmg": 20
+         }
+        }
+       ],
+       "interest_plus": 2
+      }
+     ]
+    },
+    {
+     "id": "o8",
+     "name": "너무 시원한 여름 휴가",
+     "short": "여름 휴가",
+     "kind": "origin",
+     "tiers": [
+      2,
+      4,
+      6
+     ],
+     "color": "5ec8ff",
+     "effect": "물보라 — 시원하게 튀는 공격으로 여럿을 한꺼번에.\n2명: 여름 휴가 사도의 일반 공격 피해 20%가 주변 적에게 튐\n4명: 30%가 튀고, 적 전체 공격 속도 -6% (나른한 여름)\n6명: 45%가 튀고, 적 전체 공격 속도 -12%, 여름 휴가 사도 공격력 +10%",
+     "levels": [
+      {
+       "mods": {
+        "splash": 20
+       }
+      },
+      {
+       "mods": {
+        "splash": 30
+       },
+       "enemy_mods": {
+        "aspd": -6
+       }
+      },
+      {
+       "mods": {
+        "splash": 45,
+        "atk": 10
+       },
+       "enemy_mods": {
+        "aspd": -12
+       }
+      }
+     ]
+    },
+    {
+     "id": "u1",
+     "name": "고독한 늑대",
+     "short": "고독한 늑대",
+     "kind": "unique",
+     "tiers": [
+      1
+     ],
+     "color": "ffb13b",
+     "effect": "란은 혼자일수록 강해진다: 아군이 쓰러질 때마다 공격력 +15%, 공격 속도 +8% (최대 4). 아군이 란 혼자 남으면 받는 피해 -30%.",
+     "levels": [
+      {
+       "fx": [
+        {
+         "t": "ally_death",
+         "do": [
+          {
+           "a": "buff",
+           "to": "self",
+           "mods": {
+            "atk": 15,
+            "aspd": 8
+           },
+           "dur": 999,
+           "key": "lone",
+           "stack": 4
+          }
+         ]
+        },
+        {
+         "t": "cond",
+         "cond": "only_trait:고독한 늑대",
+         "mods": {
+          "dmg_taken": -30
+         }
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "id": "u2",
+     "name": "어둠 속의 요리사",
+     "short": "요리사",
+     "kind": "unique",
+     "tiers": [
+      1
+     ],
+     "color": "ffb13b",
+     "effect": "어둠 속의 기내식: 6초마다 HP가 가장 낮은 아군에게 최대 HP 10% 회복 + 5초 동안 공격력 +10%. 전투 시작 시 무작위 적 1명 눈가림 3초.",
+     "levels": [
+      {
+       "fx": [
+        {
+         "t": "interval",
+         "sec": 6,
+         "do": [
+          {
+           "a": "heal",
+           "to": "lowest",
+           "pct": 10
+          },
+          {
+           "a": "buff",
+           "to": "lowest",
+           "mods": {
+            "atk": 10
+           },
+           "dur": 5,
+           "key": "meal"
+          }
+         ]
+        },
+        {
+         "t": "start",
+         "do": [
+          {
+           "a": "status",
+           "to": "random_enemy",
+           "s": "blind",
+           "dur": 3
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "id": "u3",
+     "name": "대체된 혼돈",
+     "short": "혼돈",
+     "kind": "unique",
+     "tiers": [
+      1
+     ],
+     "color": "ffb13b",
+     "effect": "대체된 혼돈: 5초마다 무작위 적 1명에게 혼란·기절·침묵 중 하나 (1.5초), 그때마다 림 SP +20.",
+     "levels": [
+      {
+       "fx": [
+        {
+         "t": "interval",
+         "sec": 5,
+         "do": [
+          {
+           "a": "status_rand",
+           "to": "random_enemy",
+           "s": [
+            "confuse",
+            "stun",
+            "silence"
+           ],
+           "dur": 1.5
+          },
+          {
+           "a": "sp",
+           "amt": 20
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "id": "o9",
+     "name": "스트레스는 파도에! 볼따구는 튜브에!",
+     "short": "튜브",
+     "kind": "origin",
+     "tiers": [
+      2,
+      4,
+      6
+     ],
+     "color": "4f9dff",
+     "effect": "파도와 튜브 — 주기적으로 파도가 몰아치고, 위험할 땐 튜브가 받쳐 준다.\n2명: 6초마다 파도: 적 전체에 공격력 30% 피해\n4명: 5초마다 파도 (60%), 튜브 사도 HP가 처음 40% 아래가 되면 최대 HP 20% 보호막\n6명: 4초마다 파도 (80%), 튜브 보호막 30%",
+     "levels": [
+      {
+       "side_timer": {
+        "sec": 6,
+        "do": [
+         {
+          "a": "wave",
+          "pct": 30
+         }
+        ]
+       }
+      },
+      {
+       "side_timer": {
+        "sec": 5,
+        "do": [
+         {
+          "a": "wave",
+          "pct": 60
+         }
+        ]
+       },
+       "fx": [
+        {
+         "t": "hp_below",
+         "pct": 40,
+         "do": [
+          {
+           "a": "shield",
+           "to": "self",
+           "pct": 20,
+           "dur": 8
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "side_timer": {
+        "sec": 4,
+        "do": [
+         {
+          "a": "wave",
+          "pct": 80
+         }
+        ]
+       },
+       "fx": [
+        {
+         "t": "hp_below",
+         "pct": 40,
+         "do": [
+          {
+           "a": "shield",
+           "to": "self",
+           "pct": 30,
+           "dur": 8
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "id": "u4",
+     "name": "무대 위의 푸른 장미",
+     "short": "푸른 장미",
+     "kind": "unique",
+     "tiers": [
+      1
+     ],
+     "color": "ffb13b",
+     "effect": "스타디움의 푸른 장미: 전투 시작 시 아군 전체 공격 속도 +12% (전투 내내). 블랑셰의 HP가 처음 50% 아래가 되면 앙코르 — 아군 전체 최대 HP 15% 보호막.",
+     "levels": [
+      {
+       "team_mods": {
+        "aspd": 12
+       },
+       "fx": [
+        {
+         "t": "hp_below",
+         "pct": 50,
+         "do": [
+          {
+           "a": "shield",
+           "to": "allies",
+           "pct": 15,
+           "dur": 8
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "id": "u5",
+     "name": "최고위 마녀",
+     "short": "최고위 마녀",
+     "kind": "unique",
+     "tiers": [
+      1
+     ],
+     "color": "ffb13b",
+     "effect": "차가운 도시의 여왕님: 벨리타 스킬 피해 +30%, 스킬에 맞은 적 마법 방어력 -25% (4초). 벨리타가 처치(또는 도움)할 때마다 SP +25.",
+     "levels": [
+      {
+       "mods": {
+        "skill_dmg": 30
+       },
+       "fx": [
+        {
+         "t": "skill_hit",
+         "do": [
+          {
+           "a": "debuff",
+           "to": "target",
+           "mods": {
+            "mdef": -25
+           },
+           "dur": 4,
+           "key": "queen"
+          }
+         ]
+        },
+        {
+         "t": "kill",
+         "assist": true,
+         "do": [
+          {
+           "a": "sp",
+           "amt": 25
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "id": "u6",
+     "name": "배후에 숨은 전략가",
+     "short": "전략가",
+     "kind": "unique",
+     "tiers": [
+      1
+     ],
+     "color": "ffb13b",
+     "effect": "배후의 전략가: 전투 시작 3초 동안 뮤트 대상 지정 불가, 아군 전체 치명타 +15%. 10초마다 공격력이 가장 높은 아군의 SP 회복 +100% (4초).",
+     "levels": [
+      {
+       "team_mods": {
+        "crit": 15
+       },
+       "fx": [
+        {
+         "t": "start",
+         "do": [
+          {
+           "a": "untarget",
+           "dur": 3
+          }
+         ]
+        },
+        {
+         "t": "interval",
+         "sec": 10,
+         "do": [
+          {
+           "a": "buff",
+           "to": "high_atk_ally",
+           "mods": {
+            "sp_regen": 100
+           },
+           "dur": 4,
+           "key": "plan"
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "id": "u7",
+     "name": "번개의 고위 정령",
+     "short": "번개 정령",
+     "kind": "unique",
+     "tiers": [
+      1
+     ],
+     "color": "ffb13b",
+     "effect": "해안의 번개: 일반 공격 30% 확률로 감전 2초. 4번째 공격마다 연쇄 번개 — 가장 앞과 가장 뒤의 적에게 공격력 100% 피해.",
+     "levels": [
+      {
+       "fx": [
+        {
+         "t": "normal_hit",
+         "chance": 30,
+         "do": [
+          {
+           "a": "status",
+           "to": "target",
+           "s": "shock",
+           "dur": 2
+          }
+         ]
+        },
+        {
+         "t": "normal_n",
+         "n": 4,
+         "do": [
+          {
+           "a": "strike",
+           "mode": "front",
+           "pct": 100
+          },
+          {
+           "a": "strike",
+           "mode": "back",
+           "pct": 100
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "id": "u8",
+     "name": "용족의 수장",
+     "short": "용족 수장",
+     "kind": "unique",
+     "tiers": [
+      1
+     ],
+     "color": "ffb13b",
+     "effect": "초강력 안전요원: 다야 받는 피해 -20%, 10초마다 2초 도발. 아군이 처음 HP 30% 아래가 되면 최대 HP 25% 보호막 (아군마다 1회).",
+     "levels": [
+      {
+       "mods": {
+        "dmg_taken": -20
+       },
+       "team_fx": [
+        {
+         "t": "hp_below",
+         "pct": 30,
+         "do": [
+          {
+           "a": "shield",
+           "to": "self",
+           "pct": 25,
+           "dur": 6
+          }
+         ]
+        }
+       ],
+       "fx": [
+        {
+         "t": "interval",
+         "sec": 10,
+         "do": [
+          {
+           "a": "taunt",
+           "dur": 2
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "id": "u9",
+     "name": "정신을 차린 지휘관",
+     "short": "지휘관",
+     "kind": "unique",
+     "tiers": [
+      1
+     ],
+     "color": "ffb13b",
+     "effect": "지휘관 복귀: 전투 시작 시 아군 전체 공격력 +10%, 받는 피해 -8%. 8초마다 돌격 명령 — 아군 전체 공격 속도 +20% (3초).",
+     "levels": [
+      {
+       "team_mods": {
+        "atk": 10,
+        "dmg_taken": -8
+       },
+       "fx": [
+        {
+         "t": "interval",
+         "sec": 8,
+         "do": [
+          {
+           "a": "buff",
+           "to": "allies",
+           "mods": {
+            "aspd": 20
+           },
+           "dur": 3,
+           "key": "charge"
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "id": "u10",
+     "name": "만년설의 현자",
+     "short": "만년설",
+     "kind": "unique",
+     "tiers": [
+      1
+     ],
+     "color": "ffb13b",
+     "effect": "겨울의 마녀: 전투 시작 시 적 전체 공격 속도 -15% (6초). 아야가 스킬을 2번 쓸 때마다 적 전체 빙결 1초.",
+     "levels": [
+      {
+       "fx": [
+        {
+         "t": "start",
+         "do": [
+          {
+           "a": "debuff",
+           "to": "enemies",
+           "mods": {
+            "aspd": -15
+           },
+           "dur": 6,
+           "key": "winter"
+          }
+         ]
+        },
+        {
+         "t": "skill_n",
+         "n": 2,
+         "do": [
+          {
+           "a": "status",
+           "to": "enemies",
+           "s": "freeze",
+           "dur": 1
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   ],
+   "costume": true
   }
  ]
 }
