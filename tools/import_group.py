@@ -186,8 +186,8 @@ G3 = {
     "푸른 하늘 위 타임어택!": [
         {"mods": {"aspd": 15}},
         {"mods": {"aspd": 20}, "gold_fast": {"t": 15, "g": 1}},
-        {"mods": {"aspd": 30}, "gold_fast": {"t": 15, "g": 2},
-         "fx": [{"t": "start", "do": [buff("allies", {"aspd": 15}, 4, "takeoff")]}]},
+        {"mods": {"aspd": 35}, "gold_fast": {"t": 15, "g": 2},
+         "fx": [{"t": "start", "do": [buff("allies", {"aspd": 20}, 4, "takeoff")]}]},
     ],
     "두근두근 대환장쇼!": [
         {"fx": [{"t": "start", "do": [{"a": "buff_rand", "choices": SHOW, "n": 1, "mult": 1.0}]}]},
@@ -218,7 +218,7 @@ G3 = {
     "쉬어가세요! 칠링 바캉스!": [
         {"fx": [{"t": "cond", "cond": "time_lt:3", "mods": {"dmg_taken": -40}}, {"t": "cond", "cond": "time_ge:3", "mods": {"aspd": 15}}]},
         {"fx": [{"t": "cond", "cond": "time_lt:3", "mods": {"dmg_taken": -40}}, {"t": "cond", "cond": "time_ge:3", "mods": {"aspd": 25, "skill_dmg": 10}}]},
-        {"fx": [{"t": "cond", "cond": "time_lt:3", "mods": {"dmg_taken": -40}}, {"t": "cond", "cond": "time_ge:3", "mods": {"aspd": 35, "skill_dmg": 20}}],
+        {"fx": [{"t": "cond", "cond": "time_lt:3", "mods": {"dmg_taken": -40}}, {"t": "cond", "cond": "time_ge:3", "mods": {"aspd": 40, "skill_dmg": 25}}],
          "interest_plus": 2},
     ],
     "너무 시원한 여름 휴가": [
