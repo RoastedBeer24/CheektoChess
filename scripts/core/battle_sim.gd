@@ -53,7 +53,7 @@ func _build_side(army: Array, side: int) -> void:
 			"pending_normal": [], "force_crit": false, "invuln": 0.0, "untarget": 0.0,
 			"taunt": 0.0, "regens": [], "damaged_by": {}, "power": 1.0, "arts": spec.get("arts", []),
 			"monster": spec.get("monster", false), "augs": spec.get("augs", []),
-			"bench_n": int(spec.get("bench_n", 0)), "syn_pts": spec.get("syn_pts", {}), "n_skills": 0,
+			"grow": int(spec.get("grow", 0)), "bench_n": int(spec.get("bench_n", 0)), "syn_pts": spec.get("syn_pts", {}), "n_skills": 0,
 		}
 		# 위치·사거리 (이동하며 싸우기): 배치 칸 → 전장 좌표
 		var mv: Dictionary = B["move"]
@@ -72,6 +72,9 @@ func _build_side(army: Array, side: int) -> void:
 			u["scale"] = float(spec.get("scale", 1.0))
 			if spec.get("shadow", false):
 				u["name"] = "그림자 " + String(u["name"])
+		# 실전 경험 증강: 전투를 치른 만큼 공격력·체력
+		if int(u["grow"]) > 0:
+			Rules.add_mods(u["mods"], {"atk": float(u["grow"]), "hp": float(u["grow"])})
 		# 어사이드 1성 (기본 적용)
 		Rules.add_mods(u["mods"], Rules.aside1_mods(aid))
 		# 사도별 스킬 데이터 (원작 스킬·패시브·어사이드 2/3성·애착)
@@ -144,6 +147,8 @@ func _apply_team_effects() -> void:
 		for a in side_augs:
 			if a.has("emblem"):
 				emblems.append({"id": "emblem", "trait": a["emblem"]})
+			elif a.get("id", "") in ["syn_top", "syn_double"]:
+				emblems.append({"id": a["id"]})
 		Rules.apply_emblems(counts, emblems)
 		var tiers := Rules.active_tiers(counts)
 		var names: Array = tiers.keys()
@@ -176,6 +181,30 @@ func _apply_team_effects() -> void:
 				for u in allies:
 					if int(GameData.cost_of.get(u["aid"], 9)) <= int(aspec["cost_mods"]["max"]):
 						_add_static(u, aspec["cost_mods"]["mods"])
+			if aspec.has("cost_min_mods"):
+				for u in allies:
+					if int(GameData.cost_of.get(u["aid"], 0)) >= int(aspec["cost_min_mods"]["min"]):
+						_add_static(u, aspec["cost_min_mods"]["mods"])
+			if aspec.has("row_start_shield"):
+				for u in allies:
+					if int(u["row"]) == int(aspec["row_start_shield"]["row"]):
+						u["start_shield"] = float(u.get("start_shield", 0.0)) + float(aspec["row_start_shield"]["pct"])
+			if aspec.has("row_aug"):
+				for u in allies:
+					if int(u["row"]) == int(aspec["row_aug"]["row"]):
+						u["range"] = float(u["range"]) + float(aspec["row_aug"].get("range", 0.0))
+						_add_static(u, aspec["row_aug"].get("mods", {}))
+			if aspec.has("full_row_mods"):
+				var per_row := {}
+				for u in allies:
+					per_row[u["row"]] = int(per_row.get(u["row"], 0)) + 1
+				for u in allies:
+					if int(per_row[u["row"]]) >= int(aspec["full_row_mods"]["n"]):
+						_add_static(u, aspec["full_row_mods"]["mods"])
+			if aspec.has("kit_mods"):
+				for u in allies:
+					if u["arts"].size() >= int(aspec["kit_mods"]["n"]):
+						_add_static(u, aspec["kit_mods"]["mods"])
 			if aspec.has("ace_mods") and not allies.is_empty():
 				var ace: Dictionary = allies[0]
 				for u in allies:
@@ -1034,7 +1063,7 @@ func _after_cast(u: Dictionary, which: String, hit_targets: Array) -> void:
 
 ## 피해 계산 후 적용. kind: normal / enh / fresh / senior / extra / status / reflect
 func deal(src: Dictionary, dst: Dictionary, mult_pct: float, kind: String, opts: Dictionary) -> float:
-	if not dst["alive"] or not src["alive"] and kind != "status":
+	if not dst["alive"] or not src["alive"] and kind != "status" and not opts.get("dead_ok", false):
 		return 0.0
 	var raw := atk(src) * mult_pct / 100.0
 	var dm := mod(src, "dmg", dst) + mod(src, "dmg_out", dst)
@@ -1150,6 +1179,8 @@ func _kill(src: Dictionary, dst: Dictionary) -> void:
 	# 쓰러질 때 효과 / 아군이 쓰러졌을 때 효과
 	for f in dst["fx"]:
 		if f["t"] == "death_self":
+			if f.get("first_only", false) and int(deaths[dst["side"]]) != 1:
+				continue   # 그 진영에서 처음 쓰러진 사도만 (마지막 불꽃)
 			_run_actions(dst, f["do"], src, {"dead_ok": true})
 	for u in units:
 		if u["alive"] and u["side"] == dst["side"]:
@@ -1429,7 +1460,7 @@ func _run_actions(u: Dictionary, actions: Array, target, ctx: Dictionary) -> voi
 				# 적 전체에 시전자 공격력의 pct% 피해 (파도)
 				for e in units.duplicate():
 					if e["side"] != u["side"] and e["alive"]:
-						deal(u, e, float(act["pct"]), "extra", {})
+						deal(u, e, float(act["pct"]), "extra", {"dead_ok": ctx.get("dead_ok", false)})
 			"extra_maxhp":
 				if target != null and target["alive"]:
 					_apply_damage(u, target, maxf(1.0, round(max_hp(u) * float(act["pct"]) / 100.0)), "extra", false)

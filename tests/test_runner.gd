@@ -208,12 +208,9 @@ func _test_rules_augments() -> int:
 	var m2 := Match.new([{"id": "a", "name": "a", "bot": false}, {"id": "b", "name": "b", "bot": true}], 7, {"augments": true})
 	m2.start()
 	var pa := m2.player("a")
-	pa["augs"] = [{"id": "board_plus"}, {"id": "free_row"}, {"id": "interest_cap"}]
+	pa["augs"] = [{"id": "board_plus"}, {"id": "free_row"}]
 	if Match.board_cap(pa) != int(pa["level"]) + 1 or not Match.can_place_p(pa, "rohne", 2):
 		print("FAIL: 확장 보드·자유 배치"); return 1
-	pa["gold"] = 80
-	if m2.income(pa) < int(m2.B["base_income"]) + 8:
-		print("FAIL: 복리 이자"); return 1
 	pa["augs"].append({"id": "b_shield"})
 	pa["board"] = {"0,1": {"uid": 1, "aid": "rohne", "star": 1, "arts": [], "pers": ""}}
 	var army := m2.army_of("a")
@@ -244,10 +241,29 @@ func _test_rules_augments() -> int:
 			twins += 1
 	if twins != 1:
 		print("FAIL: 쌍둥이"); return 1
-	pa["augs"].append({"id": "r_hunger"})
-	pa["gold"] = 50
-	if Match.board_cap(pa) != int(pa["level"]) + 2 or m2.income(pa) > int(m2.B["base_income"]) + 4:
-		print("FAIL: 욕심쟁이 군단"); return 1
+	# 주력 시너지: 가장 많은 일반 시너지 +1
+	var cnt := {}
+	var tr0: String = ""
+	for n in GameData.synergies:
+		if GameData.synergies[n].get("kind", "") != "unique":
+			tr0 = n
+			break
+	cnt[tr0] = 3
+	Rules.apply_emblems(cnt, [{"id": "syn_top"}])
+	if int(cnt[tr0]) != 4:
+		print("FAIL: 주력 시너지"); return 1
+	# 마지막 불꽃·철벽 전열 (전투 증강)
+	var arm_a := [{"aid": GameData.roster[0], "star": 1, "row": 0, "slot": 0, "arts": [], "pers": "", "augs": [{"id": "front_shield", "spec": GameData.augment("front_shield")["spec"]}, {"id": "death_blast", "spec": GameData.augment("death_blast")["spec"]}]}]
+	var sim2 := BattleSim.new(arm_a, [{"aid": GameData.roster[1], "star": 3, "row": 0, "slot": 0, "arts": [], "pers": ""}], 5)
+	if float(sim2.units[0].get("start_shield", 0.0)) < 25.0:
+		print("FAIL: 철벽 전열"); return 1
+	var r2 := sim2.run()
+	var blast := false
+	for e in r2["events"]:
+		if e[1] == "dmg" and int(e[2]) == 0 and String(e[5]).begins_with("extra"):
+			blast = true
+	if not blast:
+		print("FAIL: 마지막 불꽃"); return 1
 	# 대기석이 가득 찼을 때 받은 사도: 임시 칸 → 빈칸이 생기면 대기석으로
 	var pb := m2.player("b")
 	var ids_ok: Array = GameData.roster.slice(0, 12)

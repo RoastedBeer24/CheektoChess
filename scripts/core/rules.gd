@@ -22,9 +22,20 @@ static func count_traits(units: Array) -> Dictionary:
 
 ## 상징 증강: 그 시너지 사도가 1명 이상이면 인원 +1
 static func apply_emblems(counts: Dictionary, augs: Array) -> Dictionary:
+	var boost := 0
 	for a in augs:
 		if a.get("id", "") == "emblem" and counts.get(a.get("trait", ""), 0) > 0:
 			counts[a["trait"]] += 1
+		elif a.get("id", "") == "syn_top":
+			boost = maxi(boost, 1)
+		elif a.get("id", "") == "syn_double":
+			boost = maxi(boost, 2)
+	if boost > 0:
+		# 주력 시너지: 인원이 가장 많은 일반 시너지 (같으면 이름 순) 1~2개에 +1
+		var names := counts.keys().filter(func(n): return GameData.synergies.get(n, {}).get("kind", "") != "unique" and int(counts[n]) > 0)
+		names.sort_custom(func(x, y): return int(counts[x]) > int(counts[y]) or (int(counts[x]) == int(counts[y]) and String(x) < String(y)))
+		for k in mini(boost, names.size()):
+			counts[names[k]] += 1
 	return counts
 
 

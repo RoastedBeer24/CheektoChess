@@ -1124,7 +1124,13 @@ func _show_aug_offer(offer: Dictionary) -> void:
 		var cv := VBoxContainer.new()
 		cv.add_theme_constant_override("separation", 10)
 		card.add_child(cv)
-		cv.add_child(UI.chip(kd[0], col, 18))
+		var tagrow := HBoxContainer.new()
+		tagrow.add_theme_constant_override("separation", 6)
+		cv.add_child(tagrow)
+		tagrow.add_child(UI.chip(kd[0], col, 18))
+		var when := String(GameData.augment(a["id"]).get("when", ""))
+		if when != "":
+			tagrow.add_child(UI.chip(when, Color("c0c4d6"), 16))
 		var nl := UI.outlined(GameData.augment_name(a), 30, col.lightened(0.25), 6, HORIZONTAL_ALIGNMENT_LEFT)
 		nl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		cv.add_child(nl)

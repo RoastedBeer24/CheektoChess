@@ -122,6 +122,7 @@ func _ready() -> void:
 	body.add_child(dpanel)
 	var dscroll := DragScroll.new(UI.PANEL)
 	dscroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	dpanel.clip_contents = true
 	dpanel.add_child(dscroll)
 	_detail = VBoxContainer.new()
 	_detail.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -358,7 +359,7 @@ func _show_apostle(aid: String) -> void:
 		var art_id: String = id
 		b.pressed.connect(func(): _show_artifact(art_id))
 		_detail.add_child(b)
-	_detail.add_child(UI.label("※ 도감에서는 3성 기준(어사이드 전부 표시)", 15, UI.SUB))
+	_detail.add_child(UI.wrap_label("※ 도감에서는 3성 기준(어사이드 전부 표시)", 15, UI.SUB))
 
 
 func _list_artifacts() -> void:

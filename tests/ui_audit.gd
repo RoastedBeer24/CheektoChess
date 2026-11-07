@@ -10,6 +10,10 @@ var shot_dir := ""
 func _ready() -> void:
 	App.start(get_tree().root)
 	await get_tree().process_frame
+	var ts := OS.get_environment("CHEEKTO_TEXT_SCALE")
+	if ts != "":
+		Settings._data["text_scale"] = float(ts)
+		UI.text_scale = float(ts)
 	shot_dir = OS.get_cmdline_user_args()[0] if OS.get_cmdline_user_args().size() > 0 else ""
 	var main = load("res://scenes/main.tscn").instantiate()
 	add_child(main)
@@ -105,6 +109,12 @@ func _ready() -> void:
 	gs.add_child(cx)
 	await _wait(5)
 	await _check(cx, "도감")
+	cx._show_apostle(GameData.roster[3])
+	await _wait(5)
+	await _check(cx, "도감상세")
+	cx._set_tab("synergy")
+	await _wait(5)
+	await _check(cx, "도감시너지")
 	cx.queue_free()
 	# 게임 종료
 	App.session.game = null
@@ -156,6 +166,15 @@ func _check(root: Node, label: String) -> void:
 				print("AUDIT [%s] %s '%s' %s @%s %s" % [label, c.get_class(), _txt(c), why, r.position.round(), r.size.round()])
 		if c is Button and c.mouse_filter != Control.MOUSE_FILTER_IGNORE:
 			btns.append(c)
+	# 세로 스크롤 목록의 내용이 목록보다 넓어 오른쪽이 잘리는 것
+	for sc in root.find_children("*", "ScrollContainer", true, false):
+		if not sc.is_visible_in_tree() or sc.horizontal_scroll_mode != ScrollContainer.SCROLL_MODE_DISABLED or sc.get_child_count() == 0:
+			continue
+		var inner = sc.get_child(0)
+		if inner is Control and inner.size.x > sc.size.x + 2.0:
+			bad += 1
+			if bad <= 12:
+				print("AUDIT [%s] 스크롤 내용 넘침 %s > %s" % [label, round(inner.size.x), round(sc.size.x)])
 	# 겹친 버튼 (서로 조상이 아니고, 작은 쪽 넓이의 30% 이상 겹침)
 	for i in btns.size():
 		for j in range(i + 1, btns.size()):

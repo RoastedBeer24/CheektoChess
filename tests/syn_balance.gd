@@ -5,6 +5,9 @@ extends Node
 func _ready() -> void:
 	App.start(get_tree().root)
 	await get_tree().process_frame
+	var _ga := OS.get_cmdline_user_args()
+	if _ga.size() > 0:
+		GameData.set_group(_ga[0])
 	var teams := {}
 	var fillers := []
 	for aid in GameData.roster:

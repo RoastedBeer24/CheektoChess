@@ -326,9 +326,8 @@ func is_artifact_round(r: int) -> bool:
 
 func income(p: Dictionary) -> int:
 	var g := int(B["base_income"])
-	var imax := int(B["interest_max"]) + (3 if has_aug(p, "interest_cap") else 0) + _syn_value(p, "interest_plus")
-	if not has_aug(p, "r_hunger"):
-		g += mini(int(p["gold"]) / int(B["interest_per"]), imax)
+	var imax := int(B["interest_max"])
+	g += mini(int(p["gold"]) / int(B["interest_per"]), imax)
 	var s: int = abs(int(p["streak"]))
 	var bonus := 0
 	for pair in B["streak_bonus"]:
@@ -678,7 +677,7 @@ func _synergy_reward(p: Dictionary, won: bool) -> void:
 
 
 ## 플레이어 전투 뒤 시너지 보상 (볼스패닉): 처치 약탈 골드, 야근 수당, 끝까지 생존 골드, 퀘스트 진행, 단골 포인트
-## 지금 보드에서 발동한 시너지 단계들의 key 값 합 (예: 이자 최대치 +2)
+## 지금 보드에서 발동한 시너지 단계들의 key 값 합 (예: 시너지 수치 합계)
 func _syn_value(p: Dictionary, key: String) -> int:
 	var specs := []
 	for k in p.get("board", {}):
@@ -811,7 +810,10 @@ func army_of(pid: String) -> Array:
 		var arts := []
 		for a in u["arts"]:
 			arts.append(a["id"])
-		out.append({"aid": u["aid"], "star": u["star"], "row": rs[0], "slot": rs[1], "arts": arts, "pers": u["pers"]})
+		var spec := {"aid": u["aid"], "star": u["star"], "row": rs[0], "slot": rs[1], "arts": arts, "pers": u["pers"]}
+		if int(u.get("grow", 0)) > 0:
+			spec["grow"] = int(u["grow"])
+		out.append(spec)
 	# 대기석 인원·시너지 포인트 (볼스패닉 시너지용 — 0 이면 넣지 않아 예전 기록과 같음)
 	var bench_n := 0
 	for b in p["bench"]:
@@ -836,6 +838,9 @@ func battle_augs(p: Dictionary) -> Array:
 		var id: String = a["id"]
 		if id == "emblem":
 			out.append({"id": id, "emblem": a.get("trait", "")})
+			continue
+		if id == "syn_top" or id == "syn_double":
+			out.append({"id": id})
 			continue
 		if id == "b_underdog" and int(p["hp"]) > 50:
 			continue
@@ -1153,6 +1158,13 @@ func _try_merge(p: Dictionary, aid: String, star: int, extra = null) -> void:
 	_log("%s %s %d성 합성" % [p["name"], GameData.apostle(aid).get("name", aid), star + 1])
 	if has_aug(p, "merge_gold"):
 		p["gold"] += 2
+	if has_aug(p, "merge_art") and rng.randf() < 0.3:
+		p["inv"].append({"uid": _uid(), "id": _random_of_grade("common")})
+		_log("%s 합성 부산물: 일반 아티팩트" % p["name"])
+	if has_aug(p, "q_unique") and not p["aug_st"].get("q_unique", false) and star + 1 == 2 and int(GameData.cost_of.get(aid, 1)) >= 5:
+		p["aug_st"]["q_unique"] = true
+		p["inv"].append({"uid": _uid(), "id": _random_of_grade("legend")})
+		_log("%s 전설의 시작 달성! 전설 아티팩트" % p["name"])
 	_try_merge(p, aid, star + 1)
 
 
@@ -1303,7 +1315,7 @@ func _cmd_art_reroll(p: Dictionary, cmd: Dictionary) -> String:
 	var i := int(cmd.get("i", -1))
 	if i < 0 or i >= off["options"].size():
 		return "잘못된 칸"
-	if off["rerolled"][i]:
+	if off["rerolled"][i] and not has_aug(p, "art_reroll"):
 		return "이미 다시 뽑은 칸"
 	off["rerolled"][i] = true
 	var others: Array = off["options"].duplicate()
@@ -1489,7 +1501,7 @@ static func art_slots(aid: String) -> int:
 
 ## 보드 인원 = 레벨 (+ 확장 보드)
 static func board_cap(p: Dictionary) -> int:
-	return int(p["level"]) + (1 if has_aug(p, "board_plus") else 0) + (1 if has_aug(p, "r_hunger") else 0)
+	return int(p["level"]) + (1 if has_aug(p, "board_plus") else 0)
 
 
 ## 열 제한 (자유 배치 증강이면 아무 열)
@@ -1575,6 +1587,8 @@ func _apply_aug_now(p: Dictionary, a: Dictionary) -> void:
 			p["aug_st"]["insurance"] = true
 		"r_glass":
 			p["hp"] = maxi(1, int(p["hp"]) - 15)
+		"syn_double":
+			p["hp"] = maxi(1, int(p["hp"]) - 10)
 		"r_cursed":
 			p["hp"] = maxi(1, int(p["hp"]) - 12)
 			p["inv"].append({"uid": _uid(), "id": _random_of_grade("legend")})
@@ -1623,6 +1637,16 @@ func _aug_after_battle(p: Dictionary, bt: Dictionary, side: int) -> void:
 			st["q_star2"] = true
 			_give_unit(p, 4, 2)
 			_log("%s 합성 장인 달성! 4코스트 ★2 사도" % p["name"])
+	if has_aug(p, "q_lose3") and not st.get("q_lose3", false) and int(p["streak"]) <= -3:
+		st["q_lose3"] = true
+		p["gold"] += 10
+		p["inv"].append({"uid": _uid(), "id": _random_of_grade("rare")})
+		_log("%s 칠전팔기 달성! 희귀 아티팩트 + 10골드" % p["name"])
+	if has_aug(p, "star2_grow"):
+		for k in p["board"]:
+			var bu: Dictionary = p["board"][k]
+			if int(bu["star"]) >= 2:
+				bu["grow"] = mini(20, int(bu.get("grow", 0)) + 1)
 	if st.has("allin"):
 		var bet := int(st["allin"])
 		st.erase("allin")

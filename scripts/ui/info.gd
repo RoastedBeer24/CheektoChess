@@ -35,8 +35,9 @@ static func apostle(box: Control, u: Dictionary, on_art: Callable = Callable(), 
 	var aid: String = u["aid"]
 	var a := GameData.apostle(aid)
 	var star := int(u.get("star", 1))
-	var head := HBoxContainer.new()
-	head.add_theme_constant_override("separation", 12)
+	var head := HFlowContainer.new()   # 좁으면 이름·시너지 칸이 초상화 아래로 내려감
+	head.add_theme_constant_override("h_separation", 12)
+	head.add_theme_constant_override("v_separation", 8)
 	box.add_child(head)
 	var pf := UI.panel(UI.pers_color(aid, u.get("pers", "")).darkened(0.55), 12, UI.pers_color(aid, u.get("pers", "")), 3)
 	pf.add_child(UI.tex_rect(UI.portrait(aid), Vector2(96, 96), true))
@@ -65,8 +66,8 @@ static func apostle(box: Control, u: Dictionary, on_art: Callable = Callable(), 
 	var hv := VBoxContainer.new()
 	hv.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	head.add_child(hv)
-	var nh := HBoxContainer.new()
-	nh.add_theme_constant_override("separation", 12)
+	var nh := HFlowContainer.new()   # 이름·의상·별이 길면 줄바꿈 (좁은 패널·큰 글자에서 넘치지 않게)
+	nh.add_theme_constant_override("h_separation", 12)
 	hv.add_child(nh)
 	nh.add_child(UI.label(a["name"], 28, UI.TEXT))
 	if String(a.get("costume", "")) != "":
@@ -114,6 +115,8 @@ static func apostle(box: Control, u: Dictionary, on_art: Callable = Callable(), 
 			title = "아티팩트 %d/%d" % [arts.size(), Match.art_slots(aid)]
 		var b := UI.button(title, 19, Vector2(0, 52))
 		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		b.clip_text = true
+		b.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 		btns[key] = b
 		tabs.add_child(b)
 	var show := func(k: String) -> void:
