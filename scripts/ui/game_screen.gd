@@ -400,6 +400,13 @@ func _build_left() -> Control:
 	lv.add_child(_next_holder)
 	if _next_btn != null and _next_btn.get_parent() == null:
 		_next_holder.add_child(_next_btn)
+	# 앞으로의 라운드 (대전·몬스터·공동 선택·아티팩트·증강)
+	_rounds_box = HFlowContainer.new()
+	_rounds_box.add_theme_constant_override("h_separation", 4)
+	_rounds_box.add_theme_constant_override("v_separation", 4)
+	_rounds_box.mouse_filter = Control.MOUSE_FILTER_STOP
+	Tips.set_tip(_rounds_box, _rounds_tip)
+	lv.add_child(_rounds_box)
 	lv.add_child(UI.label("시너지", 26, UI.ACCENT))
 	_syn_box = VBoxContainer.new()
 	_syn_box.add_theme_constant_override("separation", 6)
@@ -1181,6 +1188,66 @@ func _refresh_board() -> void:
 	_board_info.text = "보드 %d/%d" % [p.get("board", {}).size(), Match.board_cap(p)]
 	_board_info.add_theme_color_override("font_color", UI.GOOD if p.get("board", {}).size() >= Match.board_cap(p) else UI.ACCENT)
 	_refresh_next_opp()
+	_refresh_rounds()
+
+
+var _rounds_box: HFlowContainer
+var _rounds_key := ""
+
+
+## 라운드 r 에 일어나는 일 (짧은 이름, 색)
+func _round_events(r: int) -> Array:
+	var out := []
+	var b := B()
+	var st: Dictionary = App.session.state
+	if Match._in(b.get("carousel_rounds", []), r):
+		out.append(["공유 선택", Color("ffb3e6")])
+	if Match._in(b.get("monster_rounds", []), r):
+		out.append(["몬스터", Color("c9a7ff")])
+	else:
+		out.append(["대전", Color("ff8a8a")])
+	if Match._in(b.get("artifact_rounds", []), r):
+		out.append(["아티팩트", Color("ffd25e")])
+	if st.get("rules", {}).get("augments", false) and Match._in(GameData.augments.get("rounds", []), r):
+		out.append(["증강", Color("7fd8ff")])
+	return out
+
+
+func _refresh_rounds() -> void:
+	if _rounds_box == null:
+		return
+	var r := int(App.session.state.get("round", 1))
+	var ph := String(App.session.state.get("phase", ""))
+	var key := "%d/%s" % [r, ph]
+	if key == _rounds_key:
+		return
+	_rounds_key = key
+	UI.clear(_rounds_box)
+	_rounds_box.add_child(UI.label("다음", 16, UI.SUB))
+	for k in range(1, 5):
+		var ev := _round_events(r + k)
+		var main: Array = ev[0]
+		for e in ev:
+			if e[0] in ["공유 선택", "몬스터"]:
+				main = e
+				break
+		var extra := ""
+		for e in ev:
+			if e != main and e[0] != "대전":
+				extra += "·" + String(e[0])
+		_rounds_box.add_child(UI.chip("%d %s%s" % [r + k, main[0], extra], main[1], 14))
+
+
+func _rounds_tip() -> String:
+	var r := int(App.session.state.get("round", 1))
+	var out := "[b]앞으로의 라운드[/b]"
+	for k in range(1, 7):
+		var names := []
+		for e in _round_events(r + k):
+			names.append("[color=#%s]%s[/color]" % [Color(e[1]).to_html(false), e[0]])
+		out += "\n라운드 %d: %s" % [r + k, " + ".join(names)]
+	out += "\n\n[color=#8a8fa6]몬스터: 체력·연승 변화 없이 처치 골드와 보상 · 공유 선택: 체력 낮은 순서로 사도를 하나씩 고름[/color]"
+	return out
 
 
 ## 사도 칸 아래 작은 글씨 (성격·종족은 아이콘으로 표시하므로 공명/이면 선택만)
@@ -1282,9 +1349,13 @@ func _refresh_bench_shop() -> void:
 		if owned >= 2:
 			t.set_corner("★ 합성!", Color("ffe066"))
 		elif owned > 0:
-			t.set_corner("보유 %d/3" % owned, UI.ACCENT)
+			t.set_corner("★2까지 %d장" % (3 - owned), UI.ACCENT)
 		elif not up.is_empty():
 			t.set_corner("▲ " + UI.syn_short(up[0]), Color("7fffd4"))
+		var pool: Dictionary = App.session.state.get("pool", {})
+		if pool.has(aid):
+			var left := int(pool[aid])
+			t.set_pool("남은 %d" % left, Color("ff8a7a") if left <= 2 else UI.SUB)
 		var locks: Array = p.get("locks", [])
 		t.set_locked(i < locks.size() and locks[i] == true)
 		t.set_dim(gold < cost)
@@ -2597,6 +2668,7 @@ func _show_carousel(car: Dictionary) -> void:
 		nl.clip_text = true
 		nl.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 		cv.add_child(nl)
+		cv.add_child(_carousel_traits(o["aid"], card_w - 24.0))
 		var ab := UI.artifact_button(o["art"], Vector2(card_w - 24.0, 46), 17)
 		ab.disabled = true
 		cv.add_child(ab)
@@ -2608,6 +2680,46 @@ func _show_carousel(car: Dictionary) -> void:
 			b.pressed.connect(func(): App.session.submit({"t": "carousel_pick", "i": k}))
 			cv.add_child(b)
 		grid.add_child(card)
+
+
+## 공유 선택 카드의 시너지 줄: 시너지마다 [이름 지금→데려오면] (단계가 오르면 ▲·밝게). 누르면(꾹 누르면) 효과 설명.
+func _carousel_traits(aid: String, w: float) -> Control:
+	var flow := HFlowContainer.new()
+	flow.custom_minimum_size.x = w
+	flow.alignment = FlowContainer.ALIGNMENT_CENTER
+	flow.add_theme_constant_override("h_separation", 4)
+	flow.add_theme_constant_override("v_separation", 4)
+	var p := me()
+	var specs := []
+	for k in p.get("board", {}):
+		specs.append(p["board"][k])
+	var now := Rules.apply_emblems(Rules.count_traits(specs), p.get("augs", []))
+	var up: Array = _tier_up_traits(p, aid)
+	var on_board := false
+	for sp in specs:
+		if sp["aid"] == aid:
+			on_board = true
+	for tr in GameData.traits_of(aid):
+		var syn: Dictionary = GameData.synergies.get(tr, {})
+		var col := UI.syn_color(tr)
+		var n := int(now.get(tr, 0))
+		var txt := UI.syn_short(tr)
+		if syn.get("kind", "") == "unique":
+			txt = "고유 " + txt
+		else:
+			txt += "  %d→%d" % [n, n if on_board else n + 1]
+		var lift := up.has(tr)
+		var chip := UI.chip(("▲ " if lift else "") + txt, col.lightened(0.35) if lift else col, 15)
+		if not lift and syn.get("kind", "") != "unique":
+			chip.modulate = Color(1, 1, 1, 0.8)
+		chip.mouse_filter = Control.MOUSE_FILTER_STOP
+		var nm: String = tr
+		Tips.set_tip(chip, func():
+			var sy: Dictionary = GameData.synergies.get(nm, {})
+			var tiers: Array = sy.get("tiers", [])
+			return "[b][color=#%s]%s[/color][/b]  %s\n%s" % [UI.syn_color(nm).to_html(false), nm, "/".join(tiers.map(func(x): return str(x))), String(sy.get("effect", ""))])
+		flow.add_child(chip)
+	return flow
 
 
 func _show_offer(offer: Dictionary) -> void:

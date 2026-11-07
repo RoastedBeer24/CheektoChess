@@ -9,7 +9,9 @@ const GAP := 12.0
 var _tiles := {}          # 유닛 index -> UnitTile (모션이 없거나 모션을 끈 경우의 카드)
 var _sprites := {}        # 유닛 index -> MotionSprite (모션 파일이 있는 사도만)
 var _plates := {}         # 유닛 index -> BattlePlate (발밑 이름표·체력, 맨 위 레이어)
-var _plate_layer: Control
+var _plate_layer: Control   # 떠오르는 글자·말풍선 (맨 위)
+var _bar_layer: Control     # 이름표·체력·SP (사도 그림 뒤)
+var _dmg_acc := {}          # 유닛 index -> {"l": Label, "v": 합계, "until": 시각, "col": 색} 짧은 간격 피해 숫자 합치기
 var _box := 200.0         # 모션 그림 크기(px)
 var _card_k := 1.0        # 카드 크기 배율
 var _ppu_v := Vector2(60, 80)   # 전장 1칸 → 화면 px
@@ -66,6 +68,10 @@ func _ready() -> void:
 	add_child(_left_tag)
 	_right_tag = UI.label("상대", 22, UI.BAD, HORIZONTAL_ALIGNMENT_CENTER)
 	add_child(_right_tag)
+	_bar_layer = Control.new()
+	_bar_layer.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_bar_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_bar_layer)
 	_field = Control.new()
 	_field.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_field.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -162,6 +168,8 @@ func setup(bt: Dictionary, my_side: int, name_a: String, name_b: String) -> void
 	_my_side = my_side
 	UI.clear(_field)
 	UI.clear(_plate_layer)
+	UI.clear(_bar_layer)
+	_dmg_acc.clear()
 	_tiles.clear()
 	_sprites.clear()
 	_plates.clear()
@@ -173,6 +181,9 @@ func setup(bt: Dictionary, my_side: int, name_a: String, name_b: String) -> void
 	if _stats_panel and is_instance_valid(_stats_panel):
 		_stats_panel.queue_free()
 	_stats_panel = null
+	if _mvp_panel and is_instance_valid(_mvp_panel):
+		_mvp_panel.queue_free()
+	_mvp_panel = null
 	_hp.clear()
 	_sh.clear()
 	_udata.clear()
@@ -242,7 +253,7 @@ func _add_unit(u: Dictionary) -> void:
 	pl.star = int(u["star"]) if not u.get("summon", false) else 1
 	pl.mine = int(u["side"]) == my_side
 	pl.show_sp = Settings.flag("sp_bar") and not u.get("summon", false)
-	_plate_layer.add_child(pl)
+	_bar_layer.add_child(pl)
 	_plates[i] = pl
 	_dtype[i] = GameData.apostle(u["aid"]).get("damage", "physical")
 	_anim[i] = {"lunge": 0.0, "dir": Vector2.ZERO, "flash": 0.0, "pulse": 0.0, "dead": false}
@@ -326,7 +337,7 @@ func _place(i: int, off: Vector2) -> void:
 	if _tiles.has(i):
 		_tiles[i].position = f - Vector2(TILE.x * _card_k / 2.0, TILE.y * _card_k)
 	if _plates.has(i):
-		_plates[i].position = _foot(i) + Vector2(-BattlePlate.W * _plates[i].scale.x / 2.0, 6.0)
+		_plates[i].position = _foot(i) + Vector2(-BattlePlate.W * _plates[i].scale.x / 2.0, 3.0)
 
 
 func _update_bars() -> void:
@@ -394,6 +405,84 @@ func _tick_end() -> void:
 		_stats_btn.visible = true
 		_banner_band.visible = true
 		_playing = false
+		if not _skipping:
+			_mvp_card()
+
+
+## 전투가 끝나면 우리 편 MVP 카드를 잠깐 띄운다 (누르면 통계 창: 준 피해·받은 피해·막은 피해·회복 막대)
+var _mvp_panel: Control
+
+
+func _mvp_card() -> void:
+	if _mvp_panel and is_instance_valid(_mvp_panel):
+		_mvp_panel.queue_free()
+	var best := {}
+	var best_v := -1.0
+	for u in _units:
+		if int(u["side"]) != _my_side or u.get("summon", false):
+			continue
+		var st: Dictionary = _stats.get(u["i"], {})
+		var v: float = st.get("dealt", 0.0) + st.get("heal", 0.0) + st.get("blocked", 0.0) * 0.8 + st.get("taken", 0.0) * 0.3
+		if v > best_v:
+			best_v = v
+			best = u
+	if best.is_empty() or best_v <= 0.0:
+		return
+	var st: Dictionary = _stats.get(best["i"], {})
+	var top := 1.0
+	for k in ["dealt", "taken", "heal", "blocked"]:
+		top = maxf(top, st.get(k, 0.0))
+	var panel := UI.panel(Color(0.07, 0.07, 0.12, 0.96), 14, UI.ACCENT, 3)
+	panel.mouse_filter = Control.MOUSE_FILTER_STOP
+	var h := HBoxContainer.new()
+	h.add_theme_constant_override("separation", 12)
+	panel.add_child(h)
+	h.add_child(UI.tex_rect(UI.portrait(best["aid"]), Vector2(84, 84), true))
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 2)
+	h.add_child(v)
+	var head := HBoxContainer.new()
+	head.add_theme_constant_override("separation", 8)
+	v.add_child(head)
+	head.add_child(UI.chip("MVP", UI.ACCENT, 16))
+	head.add_child(UI.outlined(best["name"] + " " + UI.stars(int(best["star"])), 20, Color.WHITE, 5))
+	for pair in STAT_KINDS:
+		var val: float = st.get(pair[0], 0.0)
+		if val <= 0.0:
+			continue
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 6)
+		var nl := UI.label(pair[1], 14, pair[2])
+		nl.custom_minimum_size.x = 66
+		row.add_child(nl)
+		var b := UI.bar(pair[2], 8)
+		b.value = 100.0 * val / top
+		b.custom_minimum_size.x = 150
+		b.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		row.add_child(b)
+		row.add_child(UI.label(str(int(val)), 14, UI.SUB))
+		v.add_child(row)
+	v.add_child(UI.label("눌러서 전체 통계", 13, UI.SUB))
+	panel.gui_input.connect(func(ev: InputEvent):
+		if (ev is InputEventMouseButton and ev.pressed) or (ev is InputEventScreenTouch and ev.pressed):
+			panel.queue_free()
+			_show_stats())
+	add_child(panel)
+	panel.reset_size()
+	panel.position = Vector2((size.x - panel.size.x) / 2.0, clampf(140.0, 0.0, maxf(0.0, size.y - panel.size.y - 70.0)))
+	panel.pivot_offset = panel.size / 2.0
+	panel.scale = Vector2(0.8, 0.8)
+	panel.modulate.a = 0.0
+	_mvp_panel = panel
+	var tw := create_tween()
+	tw.set_parallel(true)
+	tw.tween_property(panel, "modulate:a", 1.0, 0.18)
+	tw.tween_property(panel, "scale", Vector2.ONE, 0.22).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tw.chain().tween_interval(1.6)
+	tw.chain().tween_property(panel, "modulate:a", 0.0, 0.3)
+	tw.chain().tween_callback(func():
+		if is_instance_valid(panel):
+			panel.queue_free())
 
 
 func _show_stats(side: int = -1) -> void:
@@ -622,10 +711,12 @@ func _process(delta: float) -> void:
 		_field.position = Vector2(randf_range(-amp, amp), randf_range(-amp, amp))
 		_fx.position = _field.position
 		_plate_layer.position = _field.position
+		_bar_layer.position = _field.position
 	elif _field.position != Vector2.ZERO:
 		_field.position = Vector2.ZERO
 		_fx.position = Vector2.ZERO
 		_plate_layer.position = Vector2.ZERO
+		_bar_layer.position = Vector2.ZERO
 	if _end_stage in [1, 2]:
 		_tick_end()
 	if not _playing or App.session.paused:
@@ -676,7 +767,7 @@ func _apply(e: Array) -> void:
 				if nmode < 2:
 					_float(dst, "치명 " + str(int(e[4])) + "!", col, 36, 0.0, true)
 			elif nmode == 0 or (nmode == 1 and skill_hit):
-				_float(dst, str(int(e[4])), col, 30 if skill_hit else 25)
+				_float_dmg(dst, float(e[4]), col, 30 if skill_hit else 25)
 		"heal":
 			_fx_at(dst, "ring", UI.GOOD, 0.45, 46.0)
 			_stat(src, "heal", float(e[4]))
@@ -771,12 +862,29 @@ func _apply(e: Array) -> void:
 
 ## 떠오르는 글자 (머리 위). 같은 사도에 연달아 뜨면 좌우·위아래로 비켜 놓아 겹치지 않게.
 ## pop: 크게 튀어나왔다 줄어듦 (치명타)
-func _float(i: int, text: String, color: Color, fsize: int, dy: float = 0.0, pop: bool = false) -> void:
-	if not _udata.has(i):
+## 피해 숫자: 같은 사도에 0.35초 안에 같은 색 피해가 또 들어오면 새 글자 대신 기존 숫자에 더한다 (숫자 겹쳐 쌓임 방지)
+func _float_dmg(i: int, amt: float, color: Color, fsize: int) -> void:
+	var acc: Dictionary = _dmg_acc.get(i, {})
+	if not acc.is_empty() and is_instance_valid(acc["l"]) and _clock < float(acc["until"]) and acc["col"] == color:
+		acc["v"] = float(acc["v"]) + amt
+		acc["until"] = _clock + 0.35 / maxf(0.5, _speed)
+		var l: Label = acc["l"]
+		l.text = str(int(acc["v"]))
+		l.pivot_offset = l.size / 2.0
+		l.scale = Vector2(1.18, 1.18)
+		create_tween().tween_property(l, "scale", Vector2.ONE, 0.12)
 		return
+	var nl := _float(i, str(int(amt)), color, fsize)
+	if nl != null:
+		_dmg_acc[i] = {"l": nl, "v": amt, "until": _clock + 0.35 / maxf(0.5, _speed), "col": color}
+
+
+func _float(i: int, text: String, color: Color, fsize: int, dy: float = 0.0, pop: bool = false) -> Label:
+	if not _udata.has(i):
+		return null
 	# 한 사도 위에 동시에 떠 있는 글자는 3개까지 (치명타·부활 같은 큰 글자는 예외)
 	if int(_float_live.get(i, 0)) >= 3 and not pop:
-		return
+		return null
 	_float_live[i] = int(_float_live.get(i, 0)) + 1
 	var n: int = _float_n.get(i, 0)
 	_float_n[i] = n + 1
@@ -786,7 +894,7 @@ func _float(i: int, text: String, color: Color, fsize: int, dy: float = 0.0, pop
 	l.add_theme_constant_override("outline_size", 10 if pop else 8)
 	l.size = Vector2(200, fsize + 16)
 	var head := _foot(i) - Vector2(0, _char_h(i) + 8.0)
-	var off := Vector2(((n % 3) - 1) * 26.0, -(n % 2) * 20.0 + dy * 0.5)
+	var off := Vector2(((n % 3) - 1) * 38.0, -(n % 3) * 16.0 + dy * 0.5)
 	l.position = head + off - Vector2(100, l.size.y)
 	# 전투 화면 밖(위쪽 막대)으로 나가지 않게: 떠오를 거리(34)까지 감안
 	l.position.y = maxf(l.position.y, 44.0 + 34.0)
@@ -806,6 +914,7 @@ func _float(i: int, text: String, color: Color, fsize: int, dy: float = 0.0, pop
 	tw.chain().tween_callback(func():
 		_float_live[fi] = maxi(0, int(_float_live.get(fi, 1)) - 1)
 		l.queue_free())
+	return l
 
 
 ## 스킬 이름 말풍선 (머리 위, 어두운 바탕)

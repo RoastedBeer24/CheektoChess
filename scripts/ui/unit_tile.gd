@@ -33,6 +33,7 @@ var _lock: PanelContainer
 var locked := false
 var _icons: VBoxContainer
 var _corner: Label
+var _pool: Label   # 상점: 공용 풀에 남은 수
 var _inner: Panel
 var _stripe: ColorRect
 var _cost := 0
@@ -78,6 +79,16 @@ func _init(size: Vector2 = Vector2(140, 140)) -> void:
 	_icons.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_icons.position = Vector2(5, 4)
 	add_child(_icons)   # 흐름 밖에 둬서 이름 띠를 아래로 밀어내지 않게
+	# 상점: 남은 수 (오른쪽 위 가격 아래, 흐름 밖)
+	_pool = UI.outlined("", 13, UI.SUB, 4, HORIZONTAL_ALIGNMENT_RIGHT)
+	_pool.visible = false
+	_pool.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_pool.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	_pool.offset_left = -90
+	_pool.offset_right = -6
+	_pool.offset_top = 36
+	_pool.offset_bottom = 56
+	add_child(_pool)
 	# 가운데 위 알림 (합성 가능·보유 수): 어두운 바탕을 깔아 초상화 위에서도 잘 읽히게
 	var cwrap := CenterContainer.new()
 	cwrap.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -252,6 +263,7 @@ func set_empty(hint: String = "") -> void:
 	_badge.text = ""
 	_corner.text = ""
 	_corner.visible = false
+	_pool.visible = false
 	UI.clear(_arts)
 	UI.clear(_icons)
 	_cost = 0
@@ -287,6 +299,7 @@ func set_unit(unit: Dictionary, sub_text: String = "", border: Color = Color.TRA
 	_set_icons(unit)
 	_corner.text = ""
 	_corner.visible = false
+	_pool.visible = false
 	_tex.texture = UI.portrait(aid)
 	_set_motion(aid)
 	_hint.text = ""
@@ -382,6 +395,13 @@ func _process(delta: float) -> void:
 	# 5코스트: 안쪽 테두리가 은은하게 반짝인다
 	_clock += delta
 	_inner.self_modulate.a = 0.55 + 0.45 * (0.5 + 0.5 * sin(_clock * 3.2))
+
+
+## 상점 칸 오른쪽 위 작은 글 (남은 수)
+func set_pool(text: String, color: Color = UI.SUB) -> void:
+	_pool.text = text
+	_pool.visible = text != ""
+	_pool.add_theme_color_override("font_color", color)
 
 
 func set_badge(text: String, color: Color = Color.WHITE, fsize: int = 18) -> void:
