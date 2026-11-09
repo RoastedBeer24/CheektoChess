@@ -159,6 +159,15 @@ func _build() -> void:
 		_pet.offset_right = 118
 		_pet.offset_bottom = 0
 		cstack.add_child(_pet)
+	# 보드에 자리가 남았을 때 안내 (보드 아래쪽 가운데, 칸을 가리지 않게 작은 띠)
+	# 보드 칸 왼쪽 빈자리(가운데 높이)에 두 줄로 — 칸을 가리지 않게
+	_add_hint = UI.chip("사도를\n추가할 수 있어요!", Color("7fffd4"), 17)
+	(_add_hint.get_child(0) as Label).horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_add_hint.set_anchors_preset(Control.PRESET_CENTER_LEFT)
+	_add_hint.grow_vertical = Control.GROW_DIRECTION_BOTH
+	_add_hint.offset_left = 10
+	_add_hint.visible = false
+	cstack.add_child(_add_hint)
 	_battle_view = BattleView.new()
 	_battle_view.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_battle_view.visible = false
@@ -196,15 +205,16 @@ func _build() -> void:
 	_banner_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_banner_box.modulate.a = 0.0
 	cstack.add_child(_banner_box)
-	var bv := VBoxContainer.new()
+	# 한 줄 띠: [라운드 n]  설명 — 보드 열 이름을 덜 가리게 얇게
+	var bv := HBoxContainer.new()
 	bv.alignment = BoxContainer.ALIGNMENT_CENTER
-	bv.add_theme_constant_override("separation", 0)
+	bv.add_theme_constant_override("separation", 14)
 	bv.mouse_filter = Control.MOUSE_FILTER_IGNORE   # 배너가 보드 가운데 줄 터치를 가로채지 않게
 	_banner_box.add_child(bv)
-	_banner = UI.outlined("", 34, UI.ACCENT, 8)
+	_banner = UI.outlined("", 26, UI.ACCENT, 7)
 	_banner.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	bv.add_child(_banner)
-	_banner_sub = UI.outlined("", 20, UI.TEXT, 5)
+	_banner_sub = UI.outlined("", 16, UI.TEXT, 4)
 	_banner_sub.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	bv.add_child(_banner_sub)
 	mid.add_child(_build_right())
@@ -370,6 +380,7 @@ func _build_top() -> Control:
 	_ready_btn = UI.button("준비 완료", 22, Vector2(150, 52), Color("2f6b4a"))
 	_ready_btn.pressed.connect(_on_ready_btn)
 	Tips.set_tip(_ready_btn, "[b]준비 완료[/b]  [color=#8a8fa6]［스페이스］[/color]\n사람 플레이어가 모두 준비하면 시간이 남아도 바로 전투합니다.\n전투 중에는 [b]건너뛰기[/b] — 모두 누르면 바로 다음 라운드.")
+	UI.key_cap(_ready_btn, "Space")
 	h.add_child(_ready_btn)
 	_pause_btn = UI.button("일시정지", 22, Vector2(110, 52), Color("3a4058"))
 	_pause_btn.pressed.connect(func(): App.session.set_paused(not App.session.paused))
@@ -568,6 +579,7 @@ func _build_bench() -> Control:
 	_sell_btn.focus_mode = Control.FOCUS_NONE
 	_sell_btn.pressed.connect(_on_sell)
 	Tips.set_tip(_sell_btn, "[b]판매[/b]  [color=#8a8fa6]［E］[/color]\n사도를 여기로 끌어다 놓거나, 사도를 고른 뒤 누르면 판매합니다.\n판매 가격 = 코스트 × (★1: 1, ★2: 3, ★3: 9). 장착한 아티팩트는 보관함으로 돌아옵니다.")
+	UI.key_cap(_sell_btn, "E")
 	bench.add_child(_sell_btn)
 	# 판매 되돌리기 (이번 준비 단계에서 마지막으로 판 사도)
 	_undo_btn = UI.button("", 18, Vector2(130, 124), Color("4a3f2b"))
@@ -612,6 +624,7 @@ func _build_shop() -> Control:
 	shop.add_child(odds)
 	for i in int(B()["shop_size"]):
 		var t := UnitTile.new(Vector2(206, 124))
+		t.use_shop_layout()
 		var idx := i
 		t.pressed.connect(func():
 			if _take_suppress():
@@ -624,10 +637,12 @@ func _build_shop() -> Control:
 	_reroll_btn = UI.button("새로고침\n%d골드" % int(B()["reroll_cost"]), 22, Vector2(170, 124), Color("2f4f86"))
 	_reroll_btn.pressed.connect(func(): App.session.submit({"t": "reroll"}))
 	Tips.set_tip(_reroll_btn, func(): return "[b]새로고침[/b]  [color=#8a8fa6]［D］[/color]\n상점의 사도 5명을 새로 뽑습니다 ([color=#ffd25e]%d골드[/color]).\n잠근 칸은 그대로 남습니다 (상점 카드 꾹 누르기)." % int(B()["reroll_cost"]) + _lack_text(int(B()["reroll_cost"])))
+	UI.key_cap(_reroll_btn, "D")
 	shop.add_child(_reroll_btn)
 	_xp_btn = UI.button("경험치 +%d\n%d골드" % [int(B()["xp_amount"]), int(B()["xp_cost"])], 22, Vector2(170, 124), Color("4f3586"))
 	_xp_btn.pressed.connect(func(): App.session.submit({"t": "buy_xp"}))
 	Tips.set_tip(_xp_btn, func(): return "[b]경험치 구매[/b]  [color=#8a8fa6]［F］[/color]\n[color=#ffd25e]%d골드[/color]로 경험치 +%d.\n" % [int(B()["xp_cost"]), int(B()["xp_amount"])] + _level_tip() + _lack_text(int(B()["xp_cost"])))
+	UI.key_cap(_xp_btn, "F")
 	shop.add_child(_xp_btn)
 	return shop
 
@@ -845,12 +860,12 @@ func _show_banner(text: String, color: Color, sub: String = "") -> void:
 	_banner_sub.text = sub
 	_banner_sub.visible = sub != ""
 	var band := StyleBoxFlat.new()
-	band.bg_color = Color(color.darkened(0.75), 0.82)
-	band.border_color = Color(color, 0.8)
-	band.border_width_top = 3
-	band.border_width_bottom = 3
-	band.content_margin_top = 4
-	band.content_margin_bottom = 4
+	band.bg_color = Color(color.darkened(0.75), 0.7)
+	band.border_color = Color(color, 0.7)
+	band.border_width_top = 2
+	band.border_width_bottom = 2
+	band.content_margin_top = 1
+	band.content_margin_bottom = 1
 	_banner_box.add_theme_stylebox_override("panel", band)
 	var tw := create_tween()
 	_banner_box.modulate.a = 0.0
@@ -859,8 +874,8 @@ func _show_banner(text: String, color: Color, sub: String = "") -> void:
 	tw.set_parallel(true)
 	tw.tween_property(_banner_box, "modulate:a", 1.0, 0.18)
 	tw.tween_property(_banner_box, "scale", Vector2.ONE, 0.22).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	tw.chain().tween_interval(1.6)
-	tw.chain().tween_property(_banner_box, "modulate:a", 0.0, 0.45)
+	tw.chain().tween_interval(1.0)
+	tw.chain().tween_property(_banner_box, "modulate:a", 0.0, 0.35)
 
 
 func _show_result_banner() -> void:
@@ -1189,6 +1204,35 @@ func _refresh_board() -> void:
 	_board_info.add_theme_color_override("font_color", UI.GOOD if p.get("board", {}).size() >= Match.board_cap(p) else UI.ACCENT)
 	_refresh_next_opp()
 	_refresh_rounds()
+	_refresh_add_hint()
+
+
+var _add_hint: PanelContainer
+var _add_hint_tw: Tween
+
+
+## 보드 인원이 남으면 "사도를 추가할 수 있어요!" (준비 단계, 대기석에 사도가 있거나 살 골드가 있을 때)
+func _refresh_add_hint() -> void:
+	if _add_hint == null:
+		return
+	var p := me()
+	var free: int = Match.board_cap(p) - p.get("board", {}).size()
+	var has_bench := false
+	for u in p.get("bench", []):
+		if u != null:
+			has_bench = true
+	var on: bool = _is_prep() and p.get("alive", false) and free > 0 and (has_bench or int(p.get("gold", 0)) >= 1) and _drag.is_empty()
+	if on:
+		(_add_hint.get_child(0) as Label).text = "사도를\n추가할 수 있어요!\n(%d자리 남음)" % free
+	if on == _add_hint.visible:
+		return
+	_add_hint.visible = on
+	if _add_hint_tw:
+		_add_hint_tw.kill()
+	if on:
+		_add_hint_tw = create_tween().set_loops()
+		_add_hint_tw.tween_property(_add_hint, "modulate:a", 0.55, 0.8)
+		_add_hint_tw.tween_property(_add_hint, "modulate:a", 1.0, 0.8)
 
 
 var _rounds_box: HFlowContainer
@@ -1223,9 +1267,10 @@ func _refresh_rounds() -> void:
 		return
 	_rounds_key = key
 	UI.clear(_rounds_box)
-	_rounds_box.add_child(UI.label("다음", 16, UI.SUB))
-	for k in range(1, 5):
+	for k in range(0, 5):
 		var ev := _round_events(r + k)
+		if k == 0 and ph != "carousel" and ev.size() > 1:
+			ev = ev.filter(func(e): return e[0] != "공유 선택")   # 공유 선택은 이미 끝남
 		var main: Array = ev[0]
 		for e in ev:
 			if e[0] in ["공유 선택", "몬스터"]:
@@ -1235,13 +1280,16 @@ func _refresh_rounds() -> void:
 		for e in ev:
 			if e != main and e[0] != "대전":
 				extra += "·" + String(e[0])
-		_rounds_box.add_child(UI.chip("%d %s%s" % [r + k, main[0], extra], main[1], 14))
+		var c := UI.chip(("이번 " if k == 0 else "%d " % (r + k)) + main[0] + extra, main[1].lightened(0.2) if k == 0 else main[1], 16 if k == 0 else 14)
+		if k > 0:
+			c.modulate = Color(1, 1, 1, 0.85)
+		_rounds_box.add_child(c)
 
 
 func _rounds_tip() -> String:
 	var r := int(App.session.state.get("round", 1))
-	var out := "[b]앞으로의 라운드[/b]"
-	for k in range(1, 7):
+	var out := "[b]이번·앞으로의 라운드[/b]"
+	for k in range(0, 7):
 		var names := []
 		for e in _round_events(r + k):
 			names.append("[color=#%s]%s[/color]" % [Color(e[1]).to_html(false), e[0]])
@@ -1342,6 +1390,11 @@ func _refresh_bench_shop() -> void:
 				sn.append(UI.syn_short(tr))
 		var traits: String = "%s · %s" % [" ".join(sn), GameData.ROW_NAME[a["row"]]]
 		t.set_unit({"aid": aid}, traits, UI.cost_color(aid))
+		var syn_list := []
+		for tr in GameData.traits_of(aid):
+			if GameData.synergies.get(tr, {}).get("kind", "") != "unique":
+				syn_list.append(tr)
+		t.set_syns(syn_list)
 		t.set_badge("%dG" % cost, UI.cost_color(aid).lightened(0.35), 24)
 		t.set_name_color(UI.cost_color(aid).lightened(0.45))
 		var owned := _owned_count(p, aid)
@@ -1476,10 +1529,7 @@ func _refresh_next_opp() -> void:
 	if _sel_bar.visible or st.get("phase", "") != "prep" or not me().get("alive", false):
 		return
 	if st.get("round_kind", "pvp") == "monster":
-		_next_btn.text = "다음: 몬스터"
-		_next_btn.set_meta("pid", "")
-		_next_btn.visible = true
-		return
+		return   # 몬스터 라운드는 아래 라운드 줄의 '이번' 칸이 알려 줌
 	for pr in st.get("next_pairs", []):
 		var opp := ""
 		var ghost := ""
@@ -1493,7 +1543,7 @@ func _refresh_next_opp() -> void:
 		var who: String = opp if opp != "" else ghost
 		var nm: String = String(st["players"].get(who, {}).get("name", "?"))
 		var sm := _opp_summary(st["players"].get(who, {}))
-		_next_btn.text = "다음: %s%s%s" % [nm, " (유령)" if opp == "" else "", ("\n" + sm["short"]) if sm["short"] != "" else ""]
+		_next_btn.text = "이번 상대: %s%s%s" % [nm, " (유령)" if opp == "" else "", ("\n" + sm["short"]) if sm["short"] != "" else ""]
 		_next_btn.set_meta("pid", who)
 		_next_btn.visible = true
 		return
@@ -1631,7 +1681,24 @@ func _refresh_detail() -> void:
 		if not where.is_empty():
 			_detail_art(where["art"]["id"], where.has("inv"))
 			return
-	_detail_box.add_child(UI.label("도움말", 26, UI.ACCENT))
+	# 도움말: 접기/펼치기 (4라운드부터는 기본으로 접힘 — 직접 펼치면 그 판 동안 유지)
+	var hidden := bool(Settings.get_value("help_hide")) or (int(App.session.state.get("round", 1)) >= 4 and not _help_open)
+	if _help_open:
+		hidden = false
+	var hh := HBoxContainer.new()
+	hh.add_theme_constant_override("separation", 10)
+	_detail_box.add_child(hh)
+	var ht := UI.label("도움말", 26 if not hidden else 20, UI.ACCENT if not hidden else UI.SUB)
+	ht.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	hh.add_child(ht)
+	var hb := UI.button("펼치기" if hidden else "접기", 17, Vector2(96, 40), UI.PANEL_LIGHT)
+	hb.pressed.connect(func():
+		_help_open = hidden
+		Settings.set_value("help_hide", not hidden)
+		_refresh_detail())
+	hh.add_child(hb)
+	if hidden:
+		return
 	for line in [
 		"상점 카드를 누르면 구매, 끌어다 놓으면 그 칸에 구매. 테두리 색은 코스트(회색 1 → 금색 5).",
 		"상점 카드를 꾹 누르면 잠금 — 새로고침·다음 라운드에도 남습니다. 다시 꾹 누르면 해제.",
@@ -1641,7 +1708,7 @@ func _refresh_detail() -> void:
 		"보관함 아티팩트를 사도 위로 끌어다 놓으면 장착 (최대 3개, 임의 해제 불가).",
 		"시너지를 꾹 누르면 단계별 효과와 해당 사도 목록을 볼 수 있습니다.",
 		"오른쪽 순위의 플레이어를 누르면 그 플레이어의 보드를 볼 수 있습니다.",
-		"PC 단축키: D 새로고침 · F 경험치 · E 마우스 아래 사도 판매 · 스페이스 준비/건너뛰기 · F11 전체 화면",
+		"PC 단축키: D 새로고침 · F 경험치 · E 마우스 아래 사도 판매 · 스페이스 준비/건너뛰기 · H 단축키 안내 · F11 전체 화면",
 	]:
 		var row := HBoxContainer.new()
 		row.add_theme_constant_override("separation", 8)
@@ -1652,6 +1719,9 @@ func _refresh_detail() -> void:
 		l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		row.add_child(l)
 		_detail_box.add_child(row)
+
+
+var _help_open := false
 
 
 func _detail_unit(u: Dictionary) -> void:
@@ -1765,6 +1835,10 @@ func _local_move(from: Dictionary, to: Dictionary, pers: String) -> void:
 
 ## PC 단축키: D 새로고침, F 경험치, E 마우스 아래 사도 판매, 스페이스 준비/건너뛰기
 func _hotkey(e: InputEventKey) -> void:
+	if _overlay_kind == "keys" and e.keycode in [KEY_ESCAPE, KEY_H]:
+		_close_modal()
+		refresh()
+		return
 	if _overlay_kind != "":
 		return
 	match e.keycode:
@@ -1782,6 +1856,27 @@ func _hotkey(e: InputEventKey) -> void:
 		KEY_SPACE:
 			if not _ready_btn.disabled:
 				_on_ready_btn()
+		KEY_H:
+			_show_hotkeys()
+
+
+## 단축키 안내판 (H)
+func _show_hotkeys() -> void:
+	var v := _modal("단축키", "keys")
+	var g := GridContainer.new()
+	g.columns = 2
+	g.add_theme_constant_override("h_separation", 24)
+	g.add_theme_constant_override("v_separation", 10)
+	v.add_child(g)
+	for pair in [["D", "상점 새로고침"], ["F", "경험치 구매"], ["E", "마우스 아래 사도 판매"], ["스페이스", "준비 완료 / 전투 건너뛰기"],
+			["H", "이 단축키 안내"], ["F11", "전체 화면"], ["Esc", "이 안내 닫기"], ["마우스 올리기", "설명 보기 (휴대폰은 꾹 누르기)"]]:
+		g.add_child(UI.chip(pair[0], UI.ACCENT, 20))
+		g.add_child(UI.label(pair[1], 20, UI.TEXT))
+	var close := UI.button("닫기", 22, Vector2(160, 52), UI.PANEL_LIGHT)
+	close.pressed.connect(func():
+		_close_modal()
+		refresh())
+	v.add_child(close)
 
 
 ## [합계, 이자, 연승·연패 보너스]

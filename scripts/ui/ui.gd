@@ -510,3 +510,26 @@ static func clear(node: Node) -> void:
 	for c in node.get_children():
 		node.remove_child(c)
 		c.queue_free()
+
+
+## PC 단축키 표시: 버튼 오른쪽 위 작은 키 모양 (휴대폰에서는 표시 안 함)
+static func key_cap(btn: Control, key: String) -> void:
+	if OS.has_feature("mobile") or OS.has_feature("web_android") or OS.has_feature("web_ios"):
+		return
+	var p := PanelContainer.new()
+	var sb := box(Color(0.05, 0.06, 0.1, 0.85), 5, Color(1, 1, 1, 0.45), 1)
+	sb.content_margin_left = 5
+	sb.content_margin_right = 5
+	sb.content_margin_top = 0
+	sb.content_margin_bottom = 0
+	p.add_theme_stylebox_override("panel", sb)
+	p.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var l := label(key, 12, Color(1, 1, 1, 0.8))
+	p.add_child(l)
+	p.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	p.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	p.offset_right = -3
+	p.offset_top = 3
+	p.name = "KeyCap"
+	btn.add_child(p)
+

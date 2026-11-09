@@ -156,6 +156,9 @@ func _reset() -> void:
 	state = {}
 	game = null
 	peer_to_pid.clear()
+	# 이전 판의 그룹·봇 번호를 들고 오지 않게 (새 판은 타이틀에서 고른 그룹, 봇 1부터)
+	group_id = ""
+	_bot_seq = 0
 
 
 # ─────────────────────────────── 대기실 ───────────────────────────────
@@ -195,6 +198,7 @@ func set_group(id: String) -> void:
 		return
 	group_id = id
 	GameData.set_group(id)
+	Settings.set_value("group", id)   # 타이틀의 그룹 선택과 같은 값
 	_lobby_updated()
 
 

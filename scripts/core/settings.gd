@@ -15,6 +15,8 @@ const DEFAULTS := {
 	"screen_shake": false,
 	"dmg_numbers": 0,       # 전투 숫자: 0 전부, 1 치명타·스킬만, 2 끔
 	"sp_bar": true,         # 이름표 아래 SP 막대
+	"plate_size": 1.0,      # 전투 이름표·체력바 크기: 0.8 작게, 1 보통, 1.25 크게
+	"help_hide": false,     # 준비 화면 오른쪽 도움말 접기
 	"text_scale": 1.0,      # 1.0 / 1.15 / 1.3
 	"colorblind": false,    # 색약 모드: 좋음/위험 색을 파랑/주황으로
 	"tutorial_done": false,

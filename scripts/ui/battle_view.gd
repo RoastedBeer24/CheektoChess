@@ -311,7 +311,7 @@ func _layout() -> void:
 	_divider.size = Vector2(2, size.y - top - bottom)
 	_left_tag.visible = false    # 제목에 이름이 있고, 이름표 테두리 색(초록/빨강)으로 진영 구분
 	_right_tag.visible = false
-	var pk := clampf(_ppu_v.x * float(mv["spacing"]) / (BattlePlate.W + 4.0), 0.72, 1.0)
+	var pk := clampf(_ppu_v.x * float(mv["spacing"]) / (BattlePlate.W + 4.0), 0.72, 1.0) * float(Settings.num("plate_size"))
 	for i in _plates:
 		_plates[i].scale = Vector2(pk, pk)
 	for i in _sprites:

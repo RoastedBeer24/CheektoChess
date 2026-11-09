@@ -236,6 +236,20 @@ func _show_title() -> void:
 			GameData.set_group(gid)
 			_show_title())
 		grow.add_child(gb)
+	if GameData.groups.size() > 1:
+		var rb := UI.button("무작위", 20, Vector2(110, 56), Color("5a3f86"))
+		Tips.set_tip(rb, "[b]무작위 그룹[/b]\n지금과 다른 그룹 하나를 무작위로 고릅니다.")
+		rb.pressed.connect(func():
+			var ids := []
+			for g in GameData.groups:
+				if g["id"] != GameData.group_id:
+					ids.append(g["id"])
+			var gid: String = ids[randi() % ids.size()]
+			Settings.set_value("group", gid)
+			GameData.set_group(gid)
+			show_toast.call_deferred("그룹: %s" % GameData.group_name(gid))
+			_show_title())
+		grow.add_child(rb)
 	var solo := HBoxContainer.new()
 	solo.add_theme_constant_override("separation", 14)
 	cv.add_child(solo)
@@ -440,6 +454,15 @@ func _refresh_group_box() -> void:
 			_group_box.add_child(b)
 		elif on:
 			_group_box.add_child(UI.chip(txt, UI.ACCENT, 22))
+	if host and GameData.groups.size() > 1:
+		var rb := UI.button("무작위 그룹", 20, Vector2(0, 52), Color("5a3f86"))
+		rb.pressed.connect(func():
+			var ids := []
+			for g in GameData.groups:
+				if g["id"] != GameData.group_id:
+					ids.append(g["id"])
+			App.session.set_group(ids[randi() % ids.size()]))
+		_group_box.add_child(rb)
 
 
 func _on_lobby_changed() -> void:

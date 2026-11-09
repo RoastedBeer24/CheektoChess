@@ -34,6 +34,10 @@ var locked := false
 var _icons: VBoxContainer
 var _corner: Label
 var _pool: Label   # 상점: 공용 풀에 남은 수
+var _syn_row: HBoxContainer   # 상점: 시너지 꼬리표 (왼쪽 위)
+var _syn_names: Array = []
+var _row_name := ""
+var shop_layout := false
 var _inner: Panel
 var _stripe: ColorRect
 var _cost := 0
@@ -89,6 +93,12 @@ func _init(size: Vector2 = Vector2(140, 140)) -> void:
 	_pool.offset_top = 36
 	_pool.offset_bottom = 56
 	add_child(_pool)
+	_syn_row = HBoxContainer.new()
+	_syn_row.add_theme_constant_override("separation", 3)
+	_syn_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_syn_row.position = Vector2(6, 5)
+	_syn_row.visible = false
+	add_child(_syn_row)
 	# 가운데 위 알림 (합성 가능·보유 수): 어두운 바탕을 깔아 초상화 위에서도 잘 읽히게
 	var cwrap := CenterContainer.new()
 	cwrap.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -264,6 +274,9 @@ func set_empty(hint: String = "") -> void:
 	_corner.text = ""
 	_corner.visible = false
 	_pool.visible = false
+	_syn_names = []
+	_syn_row.visible = false
+	UI.clear(_syn_row)
 	UI.clear(_arts)
 	UI.clear(_icons)
 	_cost = 0
@@ -379,8 +392,10 @@ func _fit_texts() -> void:
 	if _stars != null:
 		_stars.add_theme_font_size_override("font_size", 18 if size.y >= 100.0 else 14)
 		_stars.visible = _stars.text != ""   # 빈 별 줄이 자리를 차지해 이름 띠를 칸 밖으로 밀어내지 않게
-	if _badge != null and size.y < 100.0:
+	if _badge != null and size.y < 100.0 and not shop_layout:
 		_badge.add_theme_font_size_override("font_size", 15)
+	elif _badge != null and shop_layout:
+		_badge.add_theme_font_size_override("font_size", 15 if size.y < 100.0 else (17 if size.y < 118.0 else 20))
 	var font: Font = _name.get_theme_font("font")
 	var avail := size.x - 10.0
 	var fsz := base
@@ -388,13 +403,88 @@ func _fit_texts() -> void:
 		fsz -= 1
 	_name.add_theme_font_size_override("font_size", fsz)
 	if _sub != null:
-		_sub.visible = _sub.text != "" and size.y >= 108.0
+		_sub.visible = _sub.text != "" and size.y >= 108.0 and not shop_layout
+	if shop_layout and not _syn_names.is_empty():
+		_build_syns()
 
 
 func _process(delta: float) -> void:
 	# 5코스트: 안쪽 테두리가 은은하게 반짝인다
 	_clock += delta
 	_inner.self_modulate.a = 0.55 + 0.45 * (0.5 + 0.5 * sin(_clock * 3.2))
+
+
+## 상점 칸 배치: 왼쪽 위 시너지 꼬리표, 오른쪽 위 가격, 이름 띠 바로 위에 알림(왼쪽)·남은 수(오른쪽).
+## 휴대폰처럼 칸이 낮아도 시너지가 보이게 (아래 보조 글 줄은 쓰지 않음)
+func use_shop_layout() -> void:
+	shop_layout = true
+	# 알림(★2까지·합성·▲)은 시너지 꼬리표 바로 아래 왼쪽, 남은 수는 가격 바로 아래 오른쪽 — 낮은 칸에서도 이름 띠와 겹치지 않게 위쪽 기준
+	_corner.get_parent().remove_child(_corner)
+	add_child(_corner)
+	_corner.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	_corner.position = Vector2(6, 29)
+	_corner.add_theme_font_size_override("font_size", UI.fs(12))
+	_pool.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	_pool.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	_pool.offset_left = -90
+	_pool.offset_right = -7
+	_pool.offset_top = 25
+	_pool.offset_bottom = 41
+	_pool.add_theme_font_size_override("font_size", UI.fs(12))
+	_lock.move_to_front()
+
+
+## 상점: 시너지 꼬리표 (+ 열 이름). 칸이 좁으면 짧은 이름 대신 색 원(첫 글자)
+func set_syns(names: Array, row_name: String = "") -> void:
+	_syn_names = names.duplicate()
+	_row_name = row_name
+	_icons.visible = _syn_names.is_empty()
+	_build_syns()
+
+
+func _build_syns() -> void:
+	UI.clear(_syn_row)
+	_syn_row.visible = not _syn_names.is_empty()
+	if _syn_names.is_empty():
+		return
+	var w := (size.x if size.x > 0 else custom_minimum_size.x) - 52.0   # 오른쪽 가격 자리 빼고
+	var fs := 14 if (size.y if size.y > 0 else custom_minimum_size.y) >= 110.0 else 12
+	var font: Font = UI.bold()
+	# 다 들어가면 그대로, 아니면 글자를 조금 줄이고, 그래도 안 되면 이름을 앞 3글자로 줄임 (색은 그대로)
+	var cut := 0
+	var fit := false
+	for attempt in [[fs, 0], [fs - 1, 0], [fs - 2, 0], [fs - 2, 3], [fs - 2, 2]]:
+		var need := 0.0
+		for n in _syn_names:
+			var t := _syn_text(n, attempt[1])
+			need += font.get_string_size(t, HORIZONTAL_ALIGNMENT_LEFT, -1, UI.fs(attempt[0])).x + 16.0
+		fs = attempt[0]
+		cut = attempt[1]
+		if need <= w:
+			fit = true
+			break
+	for n in _syn_names:
+		var col := UI.syn_color(n)
+		var pc := PanelContainer.new()
+		var sb := UI.box(Color(col.darkened(0.6), 0.92), 7, col, 2)
+		sb.content_margin_left = 4
+		sb.content_margin_right = 4
+		sb.content_margin_top = 0
+		sb.content_margin_bottom = 0
+		pc.add_theme_stylebox_override("panel", sb)
+		pc.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var l := UI.outlined(_syn_text(n, cut), fs, col.lightened(0.45), 4)
+		pc.add_child(l)
+		_syn_row.add_child(pc)
+	if not fit:
+		_syn_row.size.x = w   # 마지막 수단: 넘치는 건 칸이 잘라 줌
+
+
+func _syn_text(n: String, cut: int) -> String:
+	var t := UI.syn_short(n)
+	if cut > 0 and t.length() > cut:
+		t = t.replace(" ", "").substr(0, cut)
+	return t
 
 
 ## 상점 칸 오른쪽 위 작은 글 (남은 수)
@@ -407,6 +497,8 @@ func set_pool(text: String, color: Color = UI.SUB) -> void:
 func set_badge(text: String, color: Color = Color.WHITE, fsize: int = 18) -> void:
 	_badge.text = text
 	_badge.add_theme_color_override("font_color", color)
+	if shop_layout and size.y > 0.0:
+		fsize = 15 if size.y < 100.0 else (17 if size.y < 118.0 else 20)
 	_badge.add_theme_font_size_override("font_size", fsize)
 
 
