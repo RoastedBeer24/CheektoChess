@@ -1,1 +1,1 @@
-{"size": 192, "fps": 15.0, "facing": "left", "feet": 0.9004, "anims": {"Idle": {"n": 30, "cols": 12}, "Move": {"n": 30, "cols": 12}, "Attack1_1": {"n": 46, "cols": 12}, "Skill1_1": {"n": 52, "cols": 12}, "Die": {"n": 72, "cols": 12, "fps": 3.899}, "Groggy": {"n": 30, "cols": 12}}, "norm": [1.0, 0.0, 40.0]}
+{"size": 320, "fps": 15.0, "facing": "left", "feet": 0.6538, "anims": {"Idle": {"n": 30, "cols": 12}, "Move": {"n": 30, "cols": 12}, "Attack1_1": {"n": 46, "cols": 12}, "Die": {"n": 56, "cols": 12, "fps": 3.0}}, "norm": [1.0, 0.0, 39.7], "span": 2.0234, "raw_edge": 2}

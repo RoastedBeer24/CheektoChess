@@ -1,1 +1,1 @@
-{"size": 192, "fps": 15.0, "facing": "left", "feet": 0.9004, "anims": {"Idle": {"n": 21, "cols": 12}, "Move": {"n": 13, "cols": 12}, "Attack1_1": {"n": 36, "cols": 12}, "Die": {"n": 38, "cols": 12}}, "norm": [1.0, 0.0, 4.0]}
+{"size": 314, "fps": 15.0, "facing": "left", "feet": 0.814, "anims": {"Idle": {"n": 21, "cols": 12}, "Move": {"n": 13, "cols": 12}, "Attack1_1": {"n": 36, "cols": 12}, "Die": {"n": 38, "cols": 12}}, "norm": [1.0, 0.0, 3.7], "span": 1.638, "raw_edge": 0}

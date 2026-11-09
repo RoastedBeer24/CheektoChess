@@ -1,1 +1,1 @@
-{"size": 192, "fps": 15.0, "facing": "left", "feet": 0.9004, "anims": {"Idle": {"n": 11, "cols": 11}, "Move": {"n": 6, "cols": 6}, "Act": {"n": 38, "cols": 12}, "Angry": {"n": 46, "cols": 12}, "Eat": {"n": 41, "cols": 12}, "Play": {"n": 38, "cols": 12}, "Sleep": {"n": 30, "cols": 12}}, "norm": [1.0, 0.5, 34.0]}
+{"size": 192, "fps": 15.0, "facing": "left", "feet": 0.9004, "anims": {"Idle": {"n": 11, "cols": 11}, "Move": {"n": 6, "cols": 6}, "Angry": {"n": 46, "cols": 12}, "Play": {"n": 38, "cols": 12}, "Sleep": {"n": 30, "cols": 12}}, "norm": [1.0, 0.7, 34.3], "raw_edge": 0}

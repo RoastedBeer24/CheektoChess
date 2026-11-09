@@ -1,1 +1,1 @@
-{"size": 192, "fps": 15.0, "facing": "left", "feet": 0.9004, "anims": {"Idle": {"n": 25, "cols": 12}, "Die": {"n": 72, "cols": 12, "fps": 14.211}}, "norm": [1.21, -53.8, 7.2]}
+{"size": 242, "fps": 15.0, "facing": "left", "feet": 0.7297, "anims": {"Idle": {"n": 25, "cols": 12}, "Die": {"n": 71, "cols": 12, "fps": 14.0}}, "norm": [1.213, -53.8, 6.3], "span": 1.259, "raw_edge": 0}

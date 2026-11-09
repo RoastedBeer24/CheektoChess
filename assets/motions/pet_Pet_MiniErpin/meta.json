@@ -1,1 +1,1 @@
-{"size": 192, "fps": 15.0, "facing": "left", "feet": 0.9004, "anims": {"Idle": {"n": 17, "cols": 12}, "Move": {"n": 7, "cols": 7}, "Angry": {"n": 41, "cols": 12}, "Play": {"n": 33, "cols": 12}, "Sleep": {"n": 30, "cols": 12}}, "norm": [1.0, -0.5, 0.0]}
+{"size": 320, "fps": 15.0, "facing": "left", "feet": 0.7358, "anims": {"Idle": {"n": 17, "cols": 12}, "Move": {"n": 7, "cols": 7}, "Angry": {"n": 41, "cols": 12}, "Play": {"n": 33, "cols": 12}, "Sleep": {"n": 30, "cols": 12}}, "norm": [1.0, -0.7, 1.0], "span": 1.8281, "raw_edge": 0}
