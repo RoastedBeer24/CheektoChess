@@ -181,7 +181,9 @@ func _draw() -> void:
 	var src := Rect2((_frame % cols) * cell, (_frame / cols) * cell, cell, cell)
 	var feet := float(_meta.get("feet", 0.9))
 	# 발이 컨트롤 아래쪽 가운데에 오도록 (사도마다 크기 보정)
-	var b := box * body_scale(aid)
+	var body := box * body_scale(aid)
+	# 칸이 512 원본보다 넓게 담긴 사도(span > 1: 큰 동작이 잘리지 않게)는 그만큼 크게 그려 몸 크기는 그대로
+	var b := body * float(_meta.get("span", 1.0))
 	var dst := Rect2(size.x / 2.0 - b / 2.0, size.y - b * feet, b, b)
 	var flip := face_right != (String(_meta.get("facing", "left")) == "right")
 	if flip:
@@ -190,7 +192,7 @@ func _draw() -> void:
 	if shadow:
 		var c := Vector2(size.x / 2.0, size.y - 2.0)
 		draw_set_transform(c, 0.0, Vector2(1.0, 0.28))
-		draw_circle(Vector2.ZERO, minf(b, box) * 0.22, Color(0, 0, 0, 0.35 * tint.a))
+		draw_circle(Vector2.ZERO, minf(body, box) * 0.22, Color(0, 0, 0, 0.35 * tint.a))
 		draw_set_transform(Vector2(size.x, 0) if flip else Vector2.ZERO, 0.0, Vector2(-1, 1) if flip else Vector2.ONE)
 	draw_texture_rect_region(tex, dst, src, tint)
 	if flip:

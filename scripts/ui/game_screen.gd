@@ -167,11 +167,13 @@ func _build() -> void:
 	_add_hint.grow_vertical = Control.GROW_DIRECTION_BOTH
 	_add_hint.offset_left = 10
 	_add_hint.visible = false
+	_add_hint.z_index = 3
 	cstack.add_child(_add_hint)
 	_battle_view = BattleView.new()
 	_battle_view.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_battle_view.visible = false
 	_battle_view.full_toggled.connect(func(): refresh())
+	_battle_view.z_index = 2
 	cstack.add_child(_battle_view)
 	# 선택 안내 줄 (보드 위): 지금 무엇을 골랐는지 + 취소
 	_sel_bar = UI.panel(Color(0.06, 0.07, 0.12, 0.94), 12, UI.ACCENT, 2)
@@ -195,6 +197,7 @@ func _build() -> void:
 		merge_mode = false
 		refresh())
 	sbh.add_child(sbc)
+	_sel_bar.z_index = 3
 	cstack.add_child(_sel_bar)
 	# 라운드·결과 배너: 가운데 가로 띠 + 큰 글자 + 작은 설명
 	_banner_box = PanelContainer.new()
@@ -204,6 +207,7 @@ func _build() -> void:
 	_banner_box.offset_bottom = 0
 	_banner_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_banner_box.modulate.a = 0.0
+	_banner_box.z_index = 3
 	cstack.add_child(_banner_box)
 	# 한 줄 띠: [라운드 n]  설명 — 보드 열 이름을 덜 가리게 얇게
 	var bv := HBoxContainer.new()
@@ -228,10 +232,12 @@ func _build() -> void:
 	_overlay = Control.new()
 	_overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_overlay.z_index = 5   # 칸 밖으로 나온 보드 모션(z 1)보다 위
 	add_child(_overlay)
 	_drag_layer = Control.new()
 	_drag_layer.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_drag_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_drag_layer.z_index = 6
 	add_child(_drag_layer)
 
 

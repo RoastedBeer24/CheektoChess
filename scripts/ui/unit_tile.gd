@@ -247,7 +247,10 @@ func _set_motion(id: String) -> void:
 		_motion.shadow = true
 		add_child(_motion)
 		move_child(_motion, _tex.get_index() + 1)
+	# 모션은 칸 밖으로 나와도 잘리지 않게 (칸 자르기 끔 + 옆 칸 배경보다 위에 그림)
+	clip_contents = _motion == null
 	if _motion != null:
+		_motion.z_index = 1
 		_motion.size = Vector2(size.x if size.x > 0 else custom_minimum_size.x, (size.y if size.y > 0 else custom_minimum_size.y) - 36.0)
 		_motion.box = _motion.size.y / 0.82
 	_tex.visible = _motion == null and not motion_mode
