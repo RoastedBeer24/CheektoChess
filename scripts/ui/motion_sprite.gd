@@ -55,10 +55,17 @@ static func available(id: String) -> bool:
 	return not meta_of(id).is_empty()
 
 
-## 시트 텍스처: 최근에 쓴 것만 MAX_TEX 개까지 메모리에 (오래 안 쓴 것부터 버림).
+## 시트 텍스처: 최근에 쓴 것만 메모리에 (오래 안 쓴 것부터 버림). 개수(MAX_TEX)와 픽셀 수(넓은 칸 사도는 시트가 큼) 둘 다 제한.
 ## 모션 화질 '낮음'이면 절반 크기로 읽어 메모리 1/4.
-const MAX_TEX := 72
+const MAX_TEX := 96
 static var _tex_order: Array = []
+static var _tex_px := {}         # key -> 픽셀 수
+static var _px_total := 0
+
+
+static func _px_budget() -> int:
+	# 휴대폰은 약 360MB, PC 는 약 600MB (RGBA 4바이트)
+	return (90 if OS.has_feature("mobile") else 150) * 1000000
 static var _quality := -1
 
 
@@ -69,6 +76,8 @@ static func _sheet(id: String, anim: String) -> Texture2D:
 		_quality = q
 		_tex_cache.clear()
 		_tex_order.clear()
+		_tex_px.clear()
+		_px_total = 0
 	if _tex_cache.has(key):
 		var at := _tex_order.find(key)
 		if at >= 0 and at < _tex_order.size() - 8:   # 자주 쓰는 것은 뒤로 (매 프레임 옮기지 않게 여유)
@@ -85,8 +94,14 @@ static func _sheet(id: String, anim: String) -> Texture2D:
 			tex = ImageTexture.create_from_image(img)
 	_tex_cache[key] = tex
 	_tex_order.append(key)
-	while _tex_order.size() > MAX_TEX:
-		_tex_cache.erase(_tex_order.pop_front())
+	var px := tex.get_width() * tex.get_height() if tex != null else 0
+	_tex_px[key] = px
+	_px_total += px
+	while _tex_order.size() > 1 and (_tex_order.size() > MAX_TEX or _px_total > _px_budget()):
+		var old: String = _tex_order.pop_front()
+		_px_total -= int(_tex_px.get(old, 0))
+		_tex_px.erase(old)
+		_tex_cache.erase(old)
 	return tex
 
 
