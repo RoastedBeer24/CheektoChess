@@ -36,12 +36,19 @@ STD_CX = 256          # 512 원본에서 가운데
 STD_H = 360           # 대기 모습 기준 키 (원본 px)
 MIN_H, MAX_H = 0.8, 1.15   # 기준 키의 이 비율 밖이면 크기를 맞춤 (너무 작거나 큰 모델)
 RAW_G = float(os.environ.get("RAW_G", "0") or 0)   # 넓게 받은 원본의 배율 (0 = 512 그대로)
+# 뷰어 카메라 크기·휠 축소 칸 수 → 배율 (info.json 의 cam·zn 으로 사도마다 고름; 실측값)
+RAW_G_TABLE = {(1024, 6): 0.7990, (768, 3): 1.0496, (768, 5): 0.7500}
 MAX_CELL = 320        # 칸이 아주 넓은 사도도 시트가 너무 커지지 않게 (넘으면 조금 흐려짐)
 PAD = 6               # 칸 가장자리 여백 (512 기준 px)
 
 
+_G_NOW = [0.0]   # 지금 묶는 사도의 배율 (info.json 의 cam·zn 에서)
+
+
 def raw_g(w):
     """받은 원본 px / 512 기준 px"""
+    if _G_NOW[0] > 0:
+        return _G_NOW[0]
     return RAW_G if RAW_G > 0 else w / 512.0
 
 
@@ -107,12 +114,20 @@ def pack_one(src_dir: str, aid: str) -> int:
     info = json.load(open(info_path, encoding="utf-8")) if os.path.exists(info_path) else {}
     fps = float(info.get("fps", 15))
     step = max(1, round(fps / TARGET_FPS))
+    key = (int(info.get("cam", 0) or 0), int(info.get("zn", 0) or 0))
+    _G_NOW[0] = RAW_G_TABLE.get(key, 0.0)
+    if key[0] > 512 and _G_NOW[0] <= 0 and RAW_G <= 0:
+        raise SystemExit("배율을 모르는 카메라 설정 %s — RAW_G_TABLE 에 실측값을 넣으세요" % (key,))
+    anim_fps = info.get("anim_fps", {})
     out_dir = os.path.join(OUT, aid)
     os.makedirs(out_dir, exist_ok=True)
     s, dx, dy = normalizer(src_dir)
     groups = []
-    for anim, d, frames in _frames_of(src_dir, step):
-        afps = fps / step
+    for anim, d, frames in _frames_of(src_dir, 1):
+        a_fps = float(anim_fps.get(anim, fps))      # 긴 동작은 낮은 fps 로 받았을 수 있음
+        a_step = max(1, round(a_fps / TARGET_FPS))
+        frames = frames[::a_step]
+        afps = a_fps / a_step
         if len(frames) > MAX_FRAMES:
             k = len(frames) / MAX_FRAMES          # 고르게 솎아 길이(초)는 그대로
             frames = [frames[int(i * k)] for i in range(MAX_FRAMES)]
